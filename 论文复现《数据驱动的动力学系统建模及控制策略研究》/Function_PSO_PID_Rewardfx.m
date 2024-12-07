@@ -1,5 +1,5 @@
 function R = Function_PSO_PID_Rewardfx(Kp,Ki,Kd,sys,dt,T)
-
+    
     time = 0 : dt : T;
 
     % 离散化控制系统
@@ -13,7 +13,7 @@ function R = Function_PSO_PID_Rewardfx(Kp,Ki,Kd,sys,dt,T)
     e = zeros(length(time), 1);  % 存储每个时刻的系统的误差
     r = zeros(size(time)); % 初始化奖励函数
     x(1,:) = [0 1]; % 初速度响应条件
-
+    r(1) = -10*x(1,1)^2 - x(1,2)^2 - 0.1*u(1)^2;
     for i = 2 : length(time)
         
         % 更新前一时刻值
@@ -45,7 +45,10 @@ function R = Function_PSO_PID_Rewardfx(Kp,Ki,Kd,sys,dt,T)
     
     % 奖励
     R = sum(r);
-
     
 end
+
+
+
+
 
