@@ -27,7 +27,7 @@ function R = Function_PSO_PID_Rewardfx(Kp,Ki,Kd,sys,dt,T)
         
         % 计算增量
         delta_u = Kp * (e(i) - e_prev) + Ki * e(i) * dt + Kd * (e(i) - 2 * e_prev + e_prev2) / dt;
-        % 更新控制量
+        % 更新控制量 
         u(i) = u(i-1) + delta_u;
 
         % PID 控制器
