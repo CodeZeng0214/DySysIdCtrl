@@ -1,0 +1,187 @@
+## 使用MLS信号进行测试
+
+测试系统在最大长度序列(MLS)信号输入下的响应。
+# 生成MLS信号
+def generate_mls_signal(length, taps=[0, 1, 3, 4], amplitude=0.5):
+    """生成最大长度序列(MLS)信号"""
+    # 初始化寄存器，长度为最大tap + 1
+    register = [1] * (max(taps) + 1)
+    mls = []
+    
+    for _ in range(length):
+        # 计算反馈位
+        new_bit = sum(register[tap] for tap in taps) % 2
+        mls.append(register[-1])
+        register = [new_bit] + register[:-1]  # 更新寄存器
+    
+    # 将二进制序列转换为[-amplitude, amplitude]范围的信号
+    mls_signal = [(2 * bit - 1) * amplitude for bit in mls]
+    
+    return np.array(mls_signal)
+
+# 创建MLS信号扰动函数
+time_points = np.arange(0, T + Ts, Ts)
+mls_values_1d = generate_mls_signal(len(time_points), amplitude=0.3) # 生成1D MLS信号
+
+def mls_disturbance(t):
+    idx = min(int(t / Ts), len(mls_values_1d) - 1)
+    # 返回与Ec列数匹配的数组
+    # return np.array([mls_values_1d[idx], 0.0])
+    z_ddot = mls_values_1d[idx]
+    return np.array([z_ddot, 0.0]) # 假设Ec第一列对应z_ddot
+
+# 初始状态 (通常从0开始)
+x0_mls = np.zeros(4)
+
+# 运行无控制的MLS仿真
+results_no_control_mls = rl_env.run_simulation(X0=x0_mls, z_func=mls_disturbance)
+
+# 运行LQR控制的MLS仿真
+results_lqr_mls = rl_env.run_simulation(X0=x0_mls, z_func=mls_disturbance, use_lqr=True, Q=Q_lqr, R=R_lqr)
+
+# 运行DDPG控制的MLS仿真
+results_ddpg_mls = rl_env.run_simulation(X0=x0_mls, z_func=mls_disturbance, controller=agent.actor)
+
+# 绘制MLS信号对比结果 (基于完整状态)
+plot_state_comparison(results_no_control_mls, results_lqr_mls, results_ddpg_mls)
+
+# 绘制MLS信号 (原始1D信号)
+plt.figure(figsize=(10, 3))
+plt.plot(time_points, mls_values_1d)
+plt.xlabel('Time (s)')
+plt.ylabel('Amplitude')
+plt.title('MLS扰动信号 (z_ddot)')
+plt.grid(True)
+plt.show()
+
+# 打印MLS下的总奖励值对比
+print(f"MLS下无控制总奖励: {results_no_control_mls['total_reward']:.2f}")
+print(f"MLS下LQR控制总奖励: {results_lqr_mls['total_reward']:.2f}")
+print(f"MLS下DDPG控制总奖励: {results_ddpg_mls['total_reward']:.2f}")
+
+# 计算性能指标：平台位移均方根值 (RMS)
+def calculate_rms(data):
+    return np.sqrt(np.mean(np.square(data)))
+
+# 正弦扰动下的RMS值 (基于完整状态历史)
+rms_no_control = calculate_rms(results_no_control['states'][:, 2])  # 平台位移 x2
+rms_lqr = calculate_rms(results_lqr['states'][:, 2])
+rms_ddpg = calculate_rms(results_ddpg['states'][:, 2])
+
+# MLS扰动下的RMS值 (基于完整状态历史)
+rms_no_control_mls = calculate_rms(results_no_control_mls['states'][:, 2])
+rms_lqr_mls = calculate_rms(results_lqr_mls['states'][:, 2])
+rms_ddpg_mls = calculate_rms(results_ddpg_mls['states'][:, 2])
+
+# 计算平台加速度RMS值 (基于观测值历史)
+# 注意：observations 包含初始观测值，长度比 states 多 1
+rms_acc_no_control = calculate_rms(results_no_control['observations'][1:]) # 跳过初始观测
+rms_acc_lqr = calculate_rms(results_lqr['observations'][1:])
+rms_acc_ddpg = calculate_rms(results_ddpg['observations'][1:])
+
+rms_acc_no_control_mls = calculate_rms(results_no_control_mls['observations'][1:])
+rms_acc_lqr_mls = calculate_rms(results_lqr_mls['observations'][1:])
+rms_acc_ddpg_mls = calculate_rms(results_ddpg_mls['observations'][1:])
+
+# 打印性能对比
+print("性能对比分析：")
+print("-"*50)
+print("正弦扰动下平台位移RMS值：")
+print(f"无控制: {rms_no_control:.6f}")
+print(f"LQR控制: {rms_lqr:.6f} (减振率: {(1-rms_lqr/rms_no_control)*100:.1f}%)")
+print(f"DDPG控制: {rms_ddpg:.6f} (减振率: {(1-rms_ddpg/rms_no_control)*100:.1f}%)")
+
+print("\n正弦扰动下平台加速度RMS值：")
+print(f"无控制: {rms_acc_no_control:.6f}")
+print(f"LQR控制: {rms_acc_lqr:.6f} (减振率: {(1-rms_acc_lqr/rms_acc_no_control)*100:.1f}%)")
+print(f"DDPG控制: {rms_acc_ddpg:.6f} (减振率: {(1-rms_acc_ddpg/rms_acc_no_control)*100:.1f}%)")
+
+print("\nMLS扰动下平台位移RMS值：")
+print(f"无控制: {rms_no_control_mls:.6f}")
+print(f"LQR控制: {rms_lqr_mls:.6f} (减振率: {(1-rms_lqr_mls/rms_no_control_mls)*100:.1f}%)")
+print(f"DDPG控制: {rms_ddpg_mls:.6f} (减振率: {(1-rms_ddpg_mls/rms_no_control_mls)*100:.1f}%)")
+
+print("\nMLS扰动下平台加速度RMS值：")
+print(f"无控制: {rms_acc_no_control_mls:.6f}")
+print(f"LQR控制: {rms_acc_lqr_mls:.6f} (减振率: {(1-rms_acc_lqr_mls/rms_acc_no_control_mls)*100:.1f}%)")
+print(f"DDPG控制: {rms_acc_ddpg_mls:.6f} (减振率: {(1-rms_acc_ddpg_mls/rms_acc_no_control_mls)*100:.1f}%)")
+print("-"*50)
+
+## 结论
+
+对比DDPG与LQR控制的性能，并给出结论分析。
+
+# 结论总结 (基于加速度RMS)
+print("\n结论 (基于加速度RMS)：")
+if rms_acc_ddpg < rms_acc_lqr:
+    print("1. DDPG控制在正弦扰动下加速度抑制效果优于LQR控制。")
+else:
+    print("1. LQR控制在正弦扰动下加速度抑制效果优于或等于DDPG控制。")
+    
+if rms_acc_ddpg_mls < rms_acc_lqr_mls:
+    print("2. 在更复杂的MLS扰动下，DDPG控制的加速度抑制效果优于LQR控制。")
+else:
+    print("2. 在MLS扰动下，LQR控制的加速度抑制效果优于或等于DDPG控制。")
+    
+print("3. DDPG作为一种基于观测数据的方法，能够直接优化观测到的加速度指标。")
+print("4. 相比于基于完整状态的LQR，DDPG更符合实际仅能观测部分状态（如加速度）的场景。")
+
+
+## 保存最终模型和结果
+
+保存训练好的DDPG模型和仿真结果，以便后续使用。
+
+# 保存最终模型和结果
+import pickle
+import os
+
+# 确保目录存在
+results_dir = "./results"
+os.makedirs(results_dir, exist_ok=True)
+
+# 保存仿真结果 (包含完整状态和观测值)
+results = {
+    'training_results': training_results,
+    'sine_response': {
+        'no_control': results_no_control,
+        'lqr': results_lqr,
+        'ddpg': results_ddpg
+    },
+    'mls_response': {
+        'no_control': results_no_control_mls,
+        'lqr': results_lqr_mls,
+        'ddpg': results_ddpg_mls
+    },
+    'performance': {
+        'sine': {
+            'no_control_rms': rms_no_control,
+            'lqr_rms': rms_lqr,
+            'ddpg_rms': rms_ddpg,
+            'no_control_acc_rms': rms_acc_no_control,
+            'lqr_acc_rms': rms_acc_lqr,
+            'ddpg_acc_rms': rms_acc_ddpg
+        },
+        'mls': {
+            'no_control_rms': rms_no_control_mls,
+            'lqr_rms': rms_lqr_mls,
+            'ddpg_rms': rms_ddpg_mls,
+            'no_control_acc_rms': rms_acc_no_control_mls,
+            'lqr_acc_rms': rms_acc_lqr_mls,
+            'ddpg_acc_rms': rms_acc_ddpg_mls
+        }
+    }
+}
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+results_filename = f"{results_dir}/electromagnetic_damper_results_{timestamp}.pkl"
+model_filename = f"{results_dir}/ddpg_final_model_{timestamp}.pth"
+
+with open(results_filename, 'wb') as f:
+    pickle.dump(results, f)
+
+# 保存最终的DDPG模型
+agent.save(model_filename)
+
+print("模型和结果已保存至：")
+print(f"- 最终模型: {model_filename}")
+print(f"- 仿真结果: {results_filename}")

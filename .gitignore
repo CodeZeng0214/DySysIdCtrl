@@ -21,3 +21,12 @@
 电磁式阻尼器PID控制器/Matlab&Simulink仿真/二自由度仿真/slprj/sim/varcache/MS_Model/checksumOfCache.mat
 电磁式阻尼器PID控制器/Matlab&Simulink仿真/二自由度仿真/slprj/sim/varcache/MS_Model/checksumOfCache.mat
 电磁式阻尼器PID控制器/Matlab&Simulink仿真/二自由度仿真/slprj/sim/varcache/MS_Model/varInfo.mat
+电磁式阻尼器PID控制器/Matlab&Simulink仿真/二自由度仿真/slprj/sim/varcache/MS_Model/tmwinternal/simulink_cache.xml
+电磁式阻尼器PID控制器/Matlab&Simulink仿真/二自由度仿真/slprj/sim/varcache/MS_Model/checksumOfCache.mat
+电磁式阻尼器PID控制器/Matlab&Simulink仿真/二自由度仿真/slprj/sim/varcache/MS_Model/varInfo.mat
+*.pyc
+/电磁式阻尼器PID控制器/DDPG仿真实验/saved_models
+*.slxc
+*.xml
+*.mat
+/电磁式阻尼器PID控制器/DDPG仿真实验/saved_plots

@@ -360,7 +360,7 @@ def Plot_Data(figsize=(10, 6), plot_title=None, data_sets=None, x_values=None, c
         plt.show()
 
 
-def Target_nnUpdata(actor, critic, target_actor, target_critic):
+def Target_nnUpdata(actor:Actor, critic:Critic, target_actor:Actor, target_critic:Critic):
         # 软更新目标网络参数
     for target_param, param in zip(target_critic.parameters(), critic.parameters()):
         target_param.data.copy_(tau * param.data + (1 - tau) * target_param.data)
