@@ -4,6 +4,7 @@ import numpy as np
 from scipy.linalg import expm
 import torch
 from tqdm import tqdm
+from ddpg_agent import DDPGAgent
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -104,7 +105,7 @@ class ElectromagneticDamperEnv:
         # 返回观测值、是否结束
         return observation, done
     
-    def run_simulation(self, controller=None, X0=None, z_func=None):
+    def run_simulation(self, controller:DDPGAgent=None, X0=None, z_func=None, r_func=None):
         """运行完整仿真"""
         
         # 重置环境并设置初始状态
@@ -117,41 +118,42 @@ class ElectromagneticDamperEnv:
         # 记录仿真数据
         full_states = [] # 记录完整状态历史
         observations = [] # 记录观测值历史
+        rewards = [] # 记录奖励历史
         actions = []
         times = []
         
         done = False
         tqdm_bar = tqdm(total=int(self.T/self.Ts), desc="仿真进度")
         while not done:
-            current_observation = self.get_observation()  # 获取当前观测值
+            obs = self.get_observation()  # 获取当前观测值
             if controller is not None: # DDPG 控制器
-                # 使用提供的控制器 (基于当前观测值)
-                obs_tensor = torch.tensor(current_observation, dtype=torch.float32).unsqueeze(0).to(device)
-                with torch.no_grad():
-                    action_gpu:torch.Tensor = controller(obs_tensor)
-                action = action_gpu.cpu().numpy().flatten()[0]  # 将动作转换为一维数组
-                action = np.clip(action, -3.0, 3.0)  # 限制控制输入范围
+                action = controller.select_action(obs, add_noise=False)
             else:
                 # 无控制
                 action = 0.0
                 
             # 执行一步仿真，获取下一个观测值、奖励等
             # step内部会更新 self.state
-            next_observation, done = self.step(action)
+            next_obs, done = self.step(action)
+            
+            reward = r_func(obs, action, next_obs) if r_func is not None else 0.0
+            rewards.append(reward)  # 记录奖励
+            
             tqdm_bar.update(1)  # 更新进度条
             
             # 记录数据
             full_states.append(self.state) # 记录更新后的完整状态
-            observations.append(next_observation)
+            observations.append(next_obs)
             actions.append(action)
             times.append(self.time)
             
             # 更新当前观测值，用于下一轮决策
-            current_observation = next_observation
+            obs = next_obs
         
         return {
             'states': np.array(full_states), # 返回完整状态历史
             'observations': np.array(observations), # 返回观测值历史
             'actions': np.array(actions), # 返回动作历史
             'times': np.array(times), # 返回时间历史
+            'rewards': np.array(rewards) # 返回奖励历史
         }

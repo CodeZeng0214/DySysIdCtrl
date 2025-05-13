@@ -30,3 +30,5 @@
 *.xml
 *.mat
 /电磁式阻尼器PID控制器/DDPG仿真实验/saved_plots
+/电磁式阻尼器PID控制器/DDPG仿真实验/savedata
+/电磁式阻尼器深度强化学习/savedata

@@ -3,41 +3,56 @@ import numpy as np
 from typing import Callable, Dict, List, Any, Optional
 from datetime import datetime
 import os
+import json
+import logging
 from ddpg_agent import DDPGAgent, ReplayBuffer
 from env import ElectromagneticDamperEnv
 
 def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: ReplayBuffer, 
-              n_episodes=50, batch_size=64, min_buffer_size=1000, print_interval=10, save_interval=5, 
+              n_episodes=200, min_buffer_size=1000, print_interval=5, save_interval=5, 
               save_path=None, r_func: Callable=None, 
-              start_episode=0, initial_episode_rewards=None, load_previous=False, previous_model=None):
+              start_episode=0, initial_episode_rewards=None):
     """## 训练DDPG代理
     参数\n
     - env: 环境对象\n
     - agent: DDPG代理对象\n
     - replay_buffer: 经验回放池对象\n
-    - n_episodes: 训练轮次，默认值为 50\n
-    - batch_size: 批次大小，默认值为 64\n
+    - n_episodes: 训练轮次，默认值为 200\n
     - min_buffer_size: 最小回放池大小，默认值为 1000\n
-    - print_interval: 打印间隔，默认值为 10\n
-    - save_path: 模型保存路径，默认值为 None\n
+    - print_interval: 打印间隔，默认值为 5\n
+    - save_interval: 保存模型的间隔（轮数），默认值为 5\n
+    - save_path: 训练项目保存路径，默认值为 None\n
     - r_func: 奖励函数，默认值为 None\n
     - start_episode: 起始训练轮次，仅在继续训练时有效\n
     - initial_episode_rewards: 之前的奖励记录，仅在继续训练时有效\n
-    - load_previous: 是否加载之前的模型，默认为 False\n
-    - previous_model: 之前的模型路径，仅在 load_previous 为 True 时有效\n
     """
     # 记录训练情况
     episode_rewards = [] if initial_episode_rewards is None else initial_episode_rewards
     avg_rewards = []
-    critic_losses = []
-    actor_losses = []
+    avg_critic_losses = []
+    avg_actor_losses = []
     
     # 当前时间，用于模型命名
     current_time = datetime.now().strftime("%m%d_%H%M")
     
+    # 记录到日志
+    logging.info(f"开始训练 - {current_time}")
+    logging.info(f"总轮次: {n_episodes}, 起始轮次: {start_episode}")
+    
+    # 创建模型的保存路径
+    checkpoints_path = os.path.join(save_path) if save_path else None
+    os.makedirs(checkpoints_path, exist_ok=True) if checkpoints_path else None
+    logging.info(f"保存模型路径: {checkpoints_path}")
+    
+    # 创建奖励日志文件
+    rewards_log_file = os.path.join(save_path, "rewards_log.csv") if save_path else None
+    if rewards_log_file:
+        with open(rewards_log_file, "w") as f:
+            f.write("episode,reward,avg_reward,critic_loss,actor_loss,epsilon\n")
+    
     # 训练循环
     for episode in tqdm(range(start_episode, start_episode + n_episodes), desc="训练轮次"):
-        obs = env.reset() # 重置环境，获取初始观测值 (shape [1,])
+        env.reset() # 重置环境，获取初始观测值 (shape [1,])
         episode_reward = 0
         episode_critic_loss = 0
         episode_actor_loss = 0
@@ -51,6 +66,7 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
         while not done:
             # tqdm_bar.update(1)
             # 选择动作 (基于当前观测值 obs)
+            obs = env.get_observation() # 获取当前观测值 (shape [1,])
             action = agent.select_action(obs, epsilon=epsilon)
             
             # 执行动作 (传入单个动作值)
@@ -63,7 +79,6 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
             # 存储经验 (存储观测值)
             replay_buffer.add(obs, action, reward, next_obs, done) # 传递 done
             
-            obs = next_obs # 更新观测值
             episode_reward += reward
             
             # 更新网络
@@ -77,50 +92,56 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
         avg_reward = np.mean(episode_rewards[-100:]) if len(episode_rewards) >= 100 else np.mean(episode_rewards)
         avg_rewards.append(avg_reward)
         if num_updates > 0:
-             critic_losses.append(episode_critic_loss / num_updates)
-             actor_losses.append(episode_actor_loss / num_updates)
+             avg_critic_losses.append(episode_critic_loss / num_updates)
+             avg_actor_losses.append(episode_actor_loss / num_updates)
         else:
-             critic_losses.append(0)
-             actor_losses.append(0)
+             avg_critic_losses.append(0)
+             avg_actor_losses.append(0)
         
+        # 获取当前训练指标
+        current_critic_loss = float(avg_critic_losses[-1]) if avg_critic_losses else 0.0
+        current_actor_loss = float(avg_actor_losses[-1]) if avg_actor_losses else 0.0
+        
+        # 记录到CSV
+        # if rewards_log_file:
+        #     with open(rewards_log_file, "a") as f:
+        #         f.write(f"{episode+1},{float(episode_reward):.6f},{float(avg_reward):.6f},{current_critic_loss:.6f},{current_actor_loss:.6f},{float(epsilon)::.6f}\n")
+                
         # 打印训练进度
         if (episode + 1) % print_interval == 0:
             # 确保值是标量浮点数，然后格式化
-            current_critic_loss = float(critic_losses[-1]) if critic_losses else 0.0
-            current_actor_loss = float(actor_losses[-1]) if actor_losses else 0.0
-            print(f"Episode: {episode+1}, Reward: {float(episode_reward):.2f}, Avg Reward: {float(avg_reward):.2f}, Avg Critic Loss: {current_critic_loss:.4f}, Avg Actor Loss: {current_actor_loss:.4f}, Epsilon: {float(epsilon):.2f}")
+            log_msg = f"Episode: {episode+1}, Reward: {float(episode_reward):.2f}, Avg Reward: {float(avg_reward):.2f}, Avg Critic Loss: {current_critic_loss:.4f}, Avg Actor Loss: {current_actor_loss:.4f}, Epsilon: {float(epsilon):.2f}"
+            print(log_msg)
+            logging.info(log_msg)
             
-        # 保存模型和检查点
-        if save_path and (episode + 1) % save_interval == 0:
-            # 保存基本模型 (只有网络权重)
-            model_name = f"{current_time}_ep{episode+1}"
-            agent.save(f"{save_path}/ddpg_agent_{model_name}.pth")
+        # 保存模型训练的检查点
+        if checkpoints_path and (episode + 1) % save_interval == 0:
             
             # 保存完整检查点 (包含所有训练状态)
             checkpoint_name = f"{current_time}_ep{episode+1}_checkpoint.pth"
+            checkpoint_path = f"{checkpoints_path}/{checkpoint_name}"
+            
             agent.save_checkpoint(
-                f"{save_path}/{checkpoint_name}", 
+                checkpoint_path, 
                 episode_rewards, 
                 episode + 1
             )
-            print(f"已保存模型和检查点: {model_name}")
+            
+            save_msg = f"已保存模型数据: {checkpoint_name}"
+            print(save_msg)
+            # logging.info(save_msg)
+        
+    # 记录最终结果
+    final_msg = f"训练完成，已保存最终模型: {checkpoint_name}, 训练轮次: {episode+1}, 最终奖励: {float(episode_reward):.2f}, 平均奖励: {float(avg_reward):.2f}"
+    print(final_msg)
+    logging.info(final_msg)
+    logging.info(f"最终平均奖励: {float(avg_rewards[-1]):.4f}")
     
-    # 保存最终模型
-    if save_path:
-        final_model_name = f"{current_time}_ep{start_episode+n_episodes}_final"
-        agent.save(f"{save_path}/ddpg_agent_{final_model_name}.pth")
-        agent.save_checkpoint(
-            f"{save_path}/{final_model_name}_checkpoint.pth", 
-            episode_rewards, 
-            start_episode + n_episodes
-        )
-        print(f"已保存最终模型和检查点: {final_model_name}")
         
     return {
         'episode_rewards': episode_rewards,
         'avg_rewards': avg_rewards,
-        'critic_losses': critic_losses,
-        'actor_losses': actor_losses,
-        'final_model': f"{save_path}/ddpg_agent_{final_model_name}.pth" if save_path else None,
-        'final_checkpoint': f"{save_path}/{final_model_name}_checkpoint.pth" if save_path else None
+        'critic_losses': avg_critic_losses,
+        'actor_losses': avg_actor_losses,
+        'final_checkpoint': f"{checkpoints_path}/{checkpoint_name}" if checkpoints_path else None
     }
