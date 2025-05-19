@@ -138,15 +138,18 @@ def find_checkpoint_files(directory):
 
 def load_checkpoint(agent: DDPGAgent, save_dir):
         # 是否加载先前的训练模型
-    load_previous_model = input("是否加载先前的训练模型? (y/n): ").strip().lower() == 'y'
+    checkpoint_files = find_checkpoint_files(save_dir)
+    
+    load_previous_model = False
+    if checkpoint_files: load_previous_model = input("是否加载先前的训练模型? (y/n): ").strip().lower() == 'y'
 
     start_episode = 0
     previous_model_path = None
+    loaded_model_name = None
+    episode_rewards = []
 
     if load_previous_model:
         logging.info(f"准备加载检查点文件")
-        
-        checkpoint_files = find_checkpoint_files(save_dir)
         
         if checkpoint_files:
             print("\n找到以下检查点文件:")
@@ -163,9 +166,11 @@ def load_checkpoint(agent: DDPGAgent, save_dir):
             else:
                 # 默认选择最新的检查点
                 previous_model_path = checkpoint_files[0]
+                
+            loaded_model_name = os.path.basename(previous_model_path)
             
-            print(f"加载模型: {os.path.basename(previous_model_path)}")
-            logging.info(f"加载检查点: {os.path.basename(previous_model_path)}")
+            print(f"加载模型: {loaded_model_name}")
+            logging.info(f"加载检查点: {loaded_model_name}")
             
             # 加载模型并获取训练状态
             episode_rewards, current_episode = agent.load_checkpoint(previous_model_path)
@@ -175,7 +180,7 @@ def load_checkpoint(agent: DDPGAgent, save_dir):
         else:
             print("未找到可加载的检查点文件")
             logging.info("未找到可加载的检查点")
-            
+    agent.model_name ,_ = os.path.splitext(loaded_model_name) if loaded_model_name else (None, None)
     return start_episode, episode_rewards
 
 ## 通用的绘图函数模块

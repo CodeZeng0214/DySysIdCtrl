@@ -10,8 +10,7 @@ from collections import deque
 from typing import Tuple
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-## Actor 网络 - 策略网络
+    
 class Actor(nn.Module):
     """## Actor 网络\n
     策略网络，输出动作值\n
@@ -22,16 +21,19 @@ class Actor(nn.Module):
     - action_bound: 动作范围，默认值为 5.0"""
     def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0):
         super(Actor, self).__init__()
-        self.fc1 = nn.Linear(state_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, action_dim)
+        self.net = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, action_dim),
+            nn.Tanh()
+        )
         self.action_bound = action_bound # 输出电流范围 [-action_bound, action_bound]
         
     def forward(self, state:torch.Tensor)-> torch.Tensor:
-        x = F.relu(self.fc1(state))
-        x = F.relu(self.fc2(x))
-        x = torch.tanh(self.fc3(x)) * self.action_bound
-        return x
+        action = self.net(state) * self.action_bound
+        return action
     
 ## Critic 网络 - 价值网络
 class Critic(nn.Module):
@@ -44,17 +46,19 @@ class Critic(nn.Module):
     def __init__(self, state_dim=1, action_dim=1, hidden_dim=64): # state_dim 改为 1
         super(Critic, self).__init__()
         # 输入维度是 state_dim + action_dim
-        self.fc1 = nn.Linear(state_dim + action_dim, hidden_dim)
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc3 = nn.Linear(hidden_dim, hidden_dim)
-        self.fc4 = nn.Linear(hidden_dim, 1)
+        self.net = nn.Sequential(
+            nn.Linear(state_dim + action_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
         
     def forward(self, state:torch.Tensor, action:torch.Tensor)-> torch.Tensor:
         x = torch.cat([state, action], dim=-1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        q_value = self.fc4(x)
+        q_value = self.net(x)
         return q_value
     
 ## 经验回放池
@@ -83,10 +87,10 @@ class ReplayBuffer:
         states, actions, rewards, next_states, dones = zip(*batch) # 解包 dones
 
         # states 和 next_states 是观测值列表，每个元素是 shape [1,] 的 numpy array
-        states = torch.tensor(np.array(states), dtype=torch.float32).reshape(-1, 1).to(device) # shape [batch_size, 1]
+        states = torch.tensor(np.array(states), dtype=torch.float32).to(device)
         actions = torch.tensor(np.array(actions), dtype=torch.float32).reshape(-1, 1).to(device) # shape [batch_size, 1]
         rewards = torch.tensor(np.array(rewards), dtype=torch.float32).reshape(-1, 1).to(device) # shape [batch_size, 1]
-        next_states = torch.tensor(np.array(next_states), dtype=torch.float32).reshape(-1, 1).to(device) # shape [batch_size, 1]
+        next_states = torch.tensor(np.array(next_states), dtype=torch.float32).to(device)
         dones = torch.tensor(np.array(dones, dtype=np.uint8), dtype=torch.float32).reshape(-1, 1).to(device) # shape [batch_size, 1]
         
         return states, actions, rewards, next_states, dones # 返回 dones
@@ -97,7 +101,7 @@ class ReplayBuffer:
 ## DDPG 代理
 class DDPGAgent:
     def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0, # state_dim 改为 1
-                 actor_lr=1e-3, critic_lr=1e-3, gamma=0.99, tau=0.005, sigma=0.2):
+                 actor_lr=1e-3, critic_lr=1e-3, gamma=0.99, tau=0.005, sigma=0.2, clip_grad=False):
         """参数\n
         state_dim: 状态维度\n
         action_dim: 动作维度\n
@@ -108,6 +112,7 @@ class DDPGAgent:
         gamma: 折扣因子\n
         tau: 软更新参数\n
         sigma: 探索噪声标准差\n
+        clip_grad: 是否使用梯度裁剪\n
         """
         # 初始化参数
         self.gamma = gamma  # 折扣因子
@@ -116,6 +121,8 @@ class DDPGAgent:
         self.action_bound = action_bound
         self.action_dim = action_dim
         self.state_dim = state_dim # 保存 state_dim
+        self.clip_grad = clip_grad # 是否使用梯度裁剪
+        self.model_name = None # 当前加载的模型名称
         
         # 网络初始化
         self.actor = Actor(state_dim, action_dim, hidden_dim, action_bound).to(device)
@@ -153,7 +160,7 @@ class DDPGAgent:
         # 返回单个动作值或动作数组
         return np.clip(action, -self.action_bound, self.action_bound)
     
-    def update(self, replay_buffer:ReplayBuffer):
+    def update(self, replay_buffer:ReplayBuffer)-> Tuple[float, float]:
         """更新Actor和Critic网络\n"""
         if len(replay_buffer) < replay_buffer.batch_size:
             return 0.0, 0.0 # 返回 0 损失
@@ -173,7 +180,7 @@ class DDPGAgent:
         
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        # torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0) # 可选：梯度裁剪
+        if self.clip_grad: torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0) # 可选：梯度裁剪
         self.critic_optimizer.step()
         
         # 4. 更新Actor网络
@@ -182,7 +189,7 @@ class DDPGAgent:
         
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
-        # torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0) # 可选：梯度裁剪
+        if self.clip_grad: torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0) # 可选：梯度裁剪
         self.actor_optimizer.step()
         
         # 5. 软更新目标网络

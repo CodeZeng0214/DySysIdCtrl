@@ -3,14 +3,13 @@ import numpy as np
 from typing import Callable, Dict, List, Any, Optional
 from datetime import datetime
 import os
-import json
 import logging
 from ddpg_agent import DDPGAgent, ReplayBuffer
 from env import ElectromagneticDamperEnv
 
 def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: ReplayBuffer, 
               n_episodes=200, min_buffer_size=1000, print_interval=5, save_interval=5, 
-              save_path=None, r_func: Callable=None, 
+              save_path=None,
               start_episode=0, initial_episode_rewards=None):
     """## 训练DDPG代理
     参数\n
@@ -70,11 +69,7 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
             action = agent.select_action(obs, epsilon=epsilon)
             
             # 执行动作 (传入单个动作值)
-            next_obs, done = env.step(action)
-
-            # 计算奖励 (使用自定义奖励函数 r_func)
-            if r_func is not None: reward = r_func(obs, action, next_obs)
-            else: reward = 0.0  # 默认奖励为 0.0
+            next_obs, reward, done = env.step(action)
             
             # 存储经验 (存储观测值)
             replay_buffer.add(obs, action, reward, next_obs, done) # 传递 done
@@ -83,7 +78,12 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
             
             # 更新网络
             if len(replay_buffer) > min_buffer_size:
-                critic_loss, actor_loss = agent.update(replay_buffer)
+                try:
+                    critic_loss, actor_loss = agent.update(replay_buffer)
+                except Exception as e:
+                    print(f"更新网络时发生错误: {e}")
+                    logging.error(f"更新网络时发生错误: {e}")
+                    raise e
                 episode_critic_loss += critic_loss
                 episode_actor_loss += actor_loss
                 num_updates += 1
@@ -103,14 +103,14 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
         current_actor_loss = float(avg_actor_losses[-1]) if avg_actor_losses else 0.0
         
         # 记录到CSV
-        # if rewards_log_file:
-        #     with open(rewards_log_file, "a") as f:
-        #         f.write(f"{episode+1},{float(episode_reward):.6f},{float(avg_reward):.6f},{current_critic_loss:.6f},{current_actor_loss:.6f},{float(epsilon)::.6f}\n")
+        if rewards_log_file:
+            with open(rewards_log_file, "a") as f:
+                f.write(f"{episode+1:>4d},{float(episode_reward):.6f},{float(avg_reward):.6f},{current_critic_loss:.6f},{current_actor_loss:.6f},{float(epsilon):.6f}\n")
                 
         # 打印训练进度
         if (episode + 1) % print_interval == 0:
             # 确保值是标量浮点数，然后格式化
-            log_msg = f"Episode: {episode+1}, Reward: {float(episode_reward):.2f}, Avg Reward: {float(avg_reward):.2f}, Avg Critic Loss: {current_critic_loss:.4f}, Avg Actor Loss: {current_actor_loss:.4f}, Epsilon: {float(epsilon):.2f}"
+            log_msg = f"Episode: {episode+1:>4d}, Reward: {float(episode_reward):.2f}, Avg Reward: {float(avg_reward):.2f}, Avg Critic Loss: {current_critic_loss:.4f}, Avg Actor Loss: {current_actor_loss:.4f}, Epsilon: {float(epsilon):.2f}"
             print(log_msg)
             logging.info(log_msg)
             
@@ -119,6 +119,7 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
             
             # 保存完整检查点 (包含所有训练状态)
             checkpoint_name = f"{current_time}_ep{episode+1}_checkpoint.pth"
+            agent.model_name,_ = os.path.splitext(checkpoint_name)
             checkpoint_path = f"{checkpoints_path}/{checkpoint_name}"
             
             agent.save_checkpoint(
