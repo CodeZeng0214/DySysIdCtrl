@@ -6,6 +6,7 @@ import os
 import logging
 from ddpg_agent import DDPGAgent, ReplayBuffer
 from env import ElectromagneticDamperEnv
+from af import plot_test_data
 
 def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: ReplayBuffer, 
               n_episodes=200, min_buffer_size=1000, print_interval=5, save_interval=5, 
@@ -30,6 +31,7 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
     avg_rewards = []
     avg_critic_losses = []
     avg_actor_losses = []
+    nc_data = env.run_simulation(controller=None) # 无控制的仿真数据
     
     # 当前时间，用于模型命名
     current_time = datetime.now().strftime("%m%d_%H%M")
@@ -44,7 +46,7 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
     logging.info(f"保存模型路径: {checkpoints_path}")
     
     # 创建奖励日志文件
-    rewards_log_file = os.path.join(save_path, "rewards_log.csv") if save_path else None
+    rewards_log_file = os.path.join(save_path, f"rewards_log{current_time}.csv") if save_path else None
     if rewards_log_file:
         with open(rewards_log_file, "w") as f:
             f.write("episode,reward,avg_reward,critic_loss,actor_loss,epsilon\n")
@@ -106,14 +108,7 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
         if rewards_log_file:
             with open(rewards_log_file, "a") as f:
                 f.write(f"{episode+1:>4d},{float(episode_reward):.6f},{float(avg_reward):.6f},{current_critic_loss:.6f},{current_actor_loss:.6f},{float(epsilon):.6f}\n")
-                
-        # 打印训练进度
-        if (episode + 1) % print_interval == 0:
-            # 确保值是标量浮点数，然后格式化
-            log_msg = f"Episode: {episode+1:>4d}, Reward: {float(episode_reward):.2f}, Avg Reward: {float(avg_reward):.2f}, Avg Critic Loss: {current_critic_loss:.4f}, Avg Actor Loss: {current_actor_loss:.4f}, Epsilon: {float(epsilon):.2f}"
-            print(log_msg)
-            logging.info(log_msg)
-            
+                            
         # 保存模型训练的检查点
         if checkpoints_path and (episode + 1) % save_interval == 0:
             
@@ -128,6 +123,17 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
                 episode + 1
             )
             
+        # 打印训练进度
+        if (episode + 1) % print_interval == 0:
+            # 确保值是标量浮点数，然后格式化
+            log_msg = f"Episode: {episode+1:>4d}, Reward: {float(episode_reward):.2f}, Avg Reward: {float(avg_reward):.2f}, Avg Critic Loss: {current_critic_loss:.4f}, Avg Actor Loss: {current_actor_loss:.4f}, Epsilon: {float(epsilon):.2f}"
+            print(log_msg)
+            logging.info(log_msg)
+            
+            # 运行一次仿真并绘制结果
+            save_plot_path = os.path.join(os.path.dirname(save_path), "plots")
+            test_data = env.run_simulation(controller=agent)
+            plot_test_data(save_plot_path=save_plot_path,data=test_data,show=False, name=agent.model_name, nc_data=nc_data)
             save_msg = f"已保存模型数据: {checkpoint_name}"
             print(save_msg)
             # logging.info(save_msg)

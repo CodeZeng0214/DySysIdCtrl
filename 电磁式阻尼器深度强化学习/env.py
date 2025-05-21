@@ -35,7 +35,7 @@ class ElectromagneticDamperEnv:
         self.T = T    # 仿真总时长
         self.time = 0.0  # 当前仿真时间
         self.all_states = np.zeros(6)  # 完整状态 [x1, v1, a1, x2, v2, a2]
-        self.set_observation_indices(obs_indices)
+        self.set_observation_indices(obs_indices, log=False)  # 设置观测状态索引
         self.discretize_system() # 离散化系统
         self.reset()  # 初始化状态
         
@@ -76,7 +76,7 @@ class ElectromagneticDamperEnv:
     
     def get_observation(self) -> np.ndarray:
         """获取当前时刻的观测值"""
-        return np.array([self.all_states[i] for i in self.obs_indices])  # 返回选定的观测状态
+        return np.array([self.all_states[i] for i in self.obs_indices]).copy()  # 返回选定的观测状态
         
     def get_Z(self)-> np.ndarray:
         """获取扰动的速度和位移\n
@@ -87,7 +87,7 @@ class ElectromagneticDamperEnv:
         z_dot = (z_func(self.time) - z_func(self.time - self.Ts)) / self.Ts  # 计算扰动的导数
         return np.array([[z_dot], [z_func(self.time)]])  # 返回扰动的速度和位移
         
-    def set_observation_indices(self, obs_indices: List[int]):
+    def set_observation_indices(self, obs_indices: List[int], log:bool=True):
         """设置观测状态的索引"""
             # Observation mapping for better logging
         state_names = {
@@ -100,13 +100,17 @@ class ElectromagneticDamperEnv:
         }
         obs_indices = obs_indices if obs_indices is not None else [3]  # 默认观测 x2
         observed_states = [state_names.get(idx, f"状态{idx}") for idx in obs_indices]
-        logging.info(f"观测量: {', '.join(observed_states)}")
+        if log: logging.info(f"观测量: {', '.join(observed_states)}")
         self.obs_indices = obs_indices
         self.obs_dim = len(obs_indices)
     
     def set_disturbance(self, z_func:Callable):
         """设置外部扰动函数"""
         self.z_func = z_func  # 设置扰动函数
+        
+    def set_reward_function(self, r_func:Callable):
+        """设置奖励函数"""
+        self.r_func = r_func  # 设置奖励函数
         
     def step(self, action:np.ndarray)-> Tuple[np.ndarray, bool]:
         """执行一个控制动作，更新系统状态，返回观测值、是否结束等信息"""
@@ -184,9 +188,6 @@ class ElectromagneticDamperEnv:
             observations.append(next_obs)
             actions.append(action)
             times.append(self.time)
-            
-            # 更新当前观测值，用于下一轮决策
-            obs = next_obs
         
         return {
             'all_states': np.array(full_states), # 返回完整状态历史

@@ -141,7 +141,7 @@ def load_checkpoint(agent: DDPGAgent, save_dir):
     checkpoint_files = find_checkpoint_files(save_dir)
     
     load_previous_model = False
-    if checkpoint_files: load_previous_model = input("是否加载先前的训练模型? (y/n): ").strip().lower() == 'y'
+    if checkpoint_files: load_previous_model = input("是否加载先前的训练模型? (y/n): ").strip().lower() == 'y' or ''
 
     start_episode = 0
     previous_model_path = None
@@ -186,7 +186,7 @@ def load_checkpoint(agent: DDPGAgent, save_dir):
 ## 通用的绘图函数模块
 def plot_data(figsize=(10, 6), plot_title=None, data_sets=None, x_values=None, colors=None, legends=None, 
               xlabel=None, ylabel=None, xlim=None, ylim=None, log_scale=False, 
-              line_styles=None, show_legend=True, legend_loc='upper right', save_path=None, show_grid=False):
+              line_styles=None, show_legend=True, legend_loc='upper right', save_path=None, show_grid=False, show=True):
     """
     figsize: 绘制的图像大小，默认为(8, 6)\n
     plot_title:图像的标题，默认为空\n
@@ -252,5 +252,44 @@ def plot_data(figsize=(10, 6), plot_title=None, data_sets=None, x_values=None, c
     if save_path:
         if plot_title: plt.savefig(save_path +'\\'+ plot_title)
         else: plt.savefig(save_path +'\\'+ 'plot')
-    else:
+    
+    if show:
         plt.show()
+    else:
+        plt.close()
+        
+def plot_test_data(save_plot_path:str, data, show:bool=True, name:str='',nc_data=None):
+    """
+    绘制测试数据的函数\n
+    只接受一个数据集，数据集的格式为字典\n"""
+    x_datas = [data['all_states'][:, 3], nc_data['all_states'][:, 3]] if nc_data else [data['all_states'][:, 3]]
+    x_legends = ["有控制"] if not nc_data else ["有控制", "无控制"]
+    plot_data(plot_title=f"{name}位移",
+          xlabel="时间 (s)",
+          ylabel="状态",
+          x_values=data['times'],
+          data_sets=x_datas,
+          save_path=save_plot_path,
+          legends=x_legends,
+          show = show
+          )
+
+    plot_data(plot_title=f"{name}动作",
+          xlabel="时间 (s)",
+          ylabel="动作",
+          x_values=data['times'],
+          data_sets=[data['actions']],
+          save_path=save_plot_path,
+          legends=["动作"],
+          show = show
+          )
+
+    plot_data(plot_title=f"{name}奖励",
+          xlabel="时间 (s)",
+          ylabel="奖励",
+          x_values=data['times'],
+          data_sets=[data['rewards']],
+          save_path=save_plot_path,
+          legends=["奖励"],
+          show = show
+          )
