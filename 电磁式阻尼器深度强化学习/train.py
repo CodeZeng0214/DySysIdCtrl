@@ -37,16 +37,17 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
     current_time = datetime.now().strftime("%m%d_%H%M")
     
     # 记录到日志
-    logging.info(f"开始训练 - {current_time}")
+    logging.info(f"开始训练 - {datetime.now()}")
     logging.info(f"总轮次: {n_episodes}, 起始轮次: {start_episode}")
     
-    # 创建模型的保存路径
+    # 创建保存路径
+    save_plot_path = os.path.join(os.path.dirname(save_path), "plots")
     checkpoints_path = os.path.join(save_path) if save_path else None
     os.makedirs(checkpoints_path, exist_ok=True) if checkpoints_path else None
     logging.info(f"保存模型路径: {checkpoints_path}")
     
     # 创建奖励日志文件
-    rewards_log_file = os.path.join(save_path, f"rewards_log{current_time}.csv") if save_path else None
+    rewards_log_file = os.path.join(os.path.dirname(save_path), f"rewards_log{current_time}.csv") if save_path else None
     if rewards_log_file:
         with open(rewards_log_file, "w") as f:
             f.write("episode,reward,avg_reward,critic_loss,actor_loss,epsilon\n")
@@ -60,7 +61,7 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
         num_updates = 0
         
         # 计算当前探索噪声的大小，使用线性衰减
-        epsilon = max(1.0 - episode / ((start_episode + n_episodes) * 0.6), 0.1)
+        epsilon = max(1.0 - episode / ((start_episode + n_episodes) * 0.7), 0.1)
         
         done = False
         # tqdm_bar = tqdm(total=env.T/env.Ts, desc=f"Episode {episode+1}", leave=False)
@@ -131,7 +132,6 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
             logging.info(log_msg)
             
             # 运行一次仿真并绘制结果
-            save_plot_path = os.path.join(os.path.dirname(save_path), "plots")
             test_data = env.run_simulation(controller=agent)
             plot_test_data(save_plot_path=save_plot_path,data=test_data,show=False, name=agent.model_name, nc_data=nc_data)
             save_msg = f"已保存模型数据: {checkpoint_name}"

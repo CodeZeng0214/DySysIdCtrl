@@ -27,7 +27,7 @@ class Actor(nn.Module):
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, action_dim),
-            nn.Tanh()
+            nn.Tanh() # 输出范围 [-1, 1]
         )
         self.action_bound = action_bound # 输出电流范围 [-action_bound, action_bound]
         
@@ -155,8 +155,11 @@ class DDPGAgent:
             
         if add_noise:
             noise = np.random.normal(0, self.sigma * epsilon, size=self.action_dim)
+            # print(noise)
             action += noise
-            
+            if np.random.random() < 0.1:  # 10%的概率使用完全随机动作
+                action = np.random.uniform(-self.action_bound, self.action_bound, self.action_dim)
+
         # 返回单个动作值或动作数组
         return np.clip(action, -self.action_bound, self.action_bound)
     

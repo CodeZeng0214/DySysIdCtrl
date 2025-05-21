@@ -2,6 +2,31 @@ import numpy as np
 from typing import Callable
 from scipy.linalg import expm
 
+def better_reward_function(obs, action, next_obs):
+    """提供更多梯度信息的奖励函数"""
+    x1, v1, a1 = obs[:3]
+    x2, v2, a2 = obs[3:6]
+    next_x1, next_v1, next_a1 = next_obs[:3]
+    next_x2, next_v2, next_a2 = next_obs[3:6]
+    
+    # 减振效果奖励: 状态减小给予正奖励
+    state_improvement = 2.0 * (abs(x2) - abs(next_x2))
+    
+    # 状态值越小越好
+    position_reward = -5.0 * abs(next_x2)
+    
+    # 动作平滑度奖励
+    action_smoothness = 0 # -0.05 * action**2
+    
+    # 相位差异奖励: 鼓励主结构和吸振器反相运动
+    phase_reward = 0.0
+    # if np.sign(next_v1) != np.sign(next_v2):
+    #     phase_reward = 0.2 * abs(next_v1 - next_v2)
+        
+    total_reward = state_improvement + position_reward + action_smoothness + phase_reward
+    return float(total_reward)
+
+
 def enhanced_reward_func(obs:np.ndarray, action:np.ndarray, next_obs:np.ndarray)-> float:
     """增强型奖励函数"""
     x1, v1, a1 = obs[:3]

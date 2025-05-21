@@ -13,15 +13,15 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class ElectromagneticDamperEnv:
     """二自由度电磁阻尼器系统仿真环境"""
     def __init__(self, A:np.ndarray, B:np.ndarray, C:np.ndarray, D:np.ndarray, E:np.ndarray, Ts:float=0.001, T:float=10, z_func:Callable=None, 
-                obs_indices: List[int] = None, r_func:Callable=None):
+                obs_indices: List[int] = None, r_func:Callable=None, all_state0:np.ndarray=None):
         """
         ## 初始化环境参数\n
         Xdot = Ax + Bu + E*z\n
         Y = Cx + Du\n
         
         参数:
-        - obs_indices: 用于选择观测状态的索引列表。默认为[3]表示只观测x2_dot(主结构加速度)
-                      例如: [1, 3]表示观测吸振器加速度和主结构加速度
+        - obs_indices: 用于选择观测状态的索引列表。默认为[5]表示只观测x2_dot(主结构加速度)
+                      例如: [2, 5]表示观测吸振器加速度和主结构加速度
         """
         # 设置观测索引
         self.A = A  # 连续状态转移矩阵
@@ -34,7 +34,8 @@ class ElectromagneticDamperEnv:
         self.Ts = Ts  # 采样时间 
         self.T = T    # 仿真总时长
         self.time = 0.0  # 当前仿真时间
-        self.all_states = np.zeros(6)  # 完整状态 [x1, v1, a1, x2, v2, a2]
+        self.all_state0 = all_state0 if all_state0 is not None else np.zeros(6)  # 初始状态
+        self.all_states = np.zeros(6) # 完整状态 [x1, v1, a1, x2, v2, a2]
         self.set_observation_indices(obs_indices, log=False)  # 设置观测状态索引
         self.discretize_system() # 离散化系统
         self.reset()  # 初始化状态
@@ -63,7 +64,7 @@ class ElectromagneticDamperEnv:
     def reset(self, X0=None, z_func:Callable=None) -> np.ndarray:
         """重置环境到初始状态，返回初始观测值"""
         if X0 is None:
-            self.all_states = np.zeros(6)
+            self.all_states = self.all_state0
             # 随机扰动初始状态（可选）
             # self.state[1] = np.random.uniform(-0.5, 0.5)  # 随机初始速度
         else:

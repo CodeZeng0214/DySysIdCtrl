@@ -263,7 +263,7 @@ def plot_test_data(save_plot_path:str, data, show:bool=True, name:str='',nc_data
     绘制测试数据的函数\n
     只接受一个数据集，数据集的格式为字典\n"""
     x_datas = [data['all_states'][:, 3], nc_data['all_states'][:, 3]] if nc_data else [data['all_states'][:, 3]]
-    x_legends = ["有控制"] if not nc_data else ["有控制", "无控制"]
+    x_legends = ["无控制"] if not nc_data else ["有控制", "无控制"]
     plot_data(plot_title=f"{name}位移",
           xlabel="时间 (s)",
           ylabel="状态",
