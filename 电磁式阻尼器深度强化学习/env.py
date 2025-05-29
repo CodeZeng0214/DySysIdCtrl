@@ -12,8 +12,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ElectromagneticDamperEnv:
     """二自由度电磁阻尼器系统仿真环境"""
-    def __init__(self, A:np.ndarray, B:np.ndarray, C:np.ndarray, D:np.ndarray, E:np.ndarray, Ts:float=0.001, T:float=10, z_func:Callable=None, 
-                obs_indices: List[int] = None, r_func:Callable=None, all_state0:np.ndarray=None):
+    def __init__(self, A:np.ndarray, B:np.ndarray, C:np.ndarray, D:np.ndarray, E:np.ndarray, Ts:float=0.001, T:float=10, 
+                 z_func:Callable=None, r_func:Callable=None, all_state0:np.ndarray=None, 
+                 obs_indices: List[int] = None, x1_limit:float=None):
         """
         ## 初始化环境参数\n
         Xdot = Ax + Bu + E*z\n
@@ -31,6 +32,7 @@ class ElectromagneticDamperEnv:
         self.E = E  # 地基扰动转移矩阵
         self.z_func:Callable = z_func # 地基扰动函数
         self.r_func:Callable = r_func # 奖励函数
+        self.x1_limit = x1_limit # 吸振器位移限制
         self.Ts = Ts  # 采样时间 
         self.T = T    # 仿真总时长
         self.time = 0.0  # 当前仿真时间
@@ -63,12 +65,12 @@ class ElectromagneticDamperEnv:
         
     def reset(self, X0=None, z_func:Callable=None) -> np.ndarray:
         """重置环境到初始状态，返回初始观测值"""
-        if X0 is None:
-            self.all_states = self.all_state0
+        if X0:
+            self.all_states = X0
             # 随机扰动初始状态（可选）
             # self.state[1] = np.random.uniform(-0.5, 0.5)  # 随机初始速度
         else:
-            self.all_states = np.array(X0)
+            self.all_states = self.all_state0
             
         self.time = 0.0
         if z_func is not None:
@@ -113,7 +115,7 @@ class ElectromagneticDamperEnv:
         """设置奖励函数"""
         self.r_func = r_func  # 设置奖励函数
         
-    def step(self, action:np.ndarray)-> Tuple[np.ndarray, bool]:
+    def step(self, action:np.ndarray)-> Tuple[np.ndarray, float, bool]:
         """执行一个控制动作，更新系统状态，返回观测值、是否结束等信息"""
         # 检查动作的类型
         if isinstance(action, torch.Tensor): action = action.cpu().numpy()
@@ -125,6 +127,11 @@ class ElectromagneticDamperEnv:
         # Xdot = Ax + Bu + E*z
         X = self.all_states[[0,1,3,4]].copy() # 提取 x 和 v
         next_X = self.Ad @ X.reshape(-1, 1) + self.Bd @ action.reshape(-1, 1) + self.Ed @ self.get_Z()
+        
+        # 限制吸振器位移
+        if self.x1_limit and (abs(next_X[0]-next_X[2]) > self.x1_limit):
+            next_X[0] = self.x1_limit * np.sign(next_X[0]-next_X[2]) + next_X[2]
+        
         Y = self.C @ next_X.reshape(-1, 1) + self.D @ action.reshape(-1, 1)
         
         # 更新内部状态和时间
@@ -136,7 +143,7 @@ class ElectromagneticDamperEnv:
         
         # 计算奖励
         if self.r_func is not None:
-            reward = self.r_func(before_states, action, self.all_states.copy())
+            reward:float = self.r_func(before_states, action, self.all_states.copy())
         else:
             reward = 0.0
         
@@ -160,18 +167,18 @@ class ElectromagneticDamperEnv:
             self.set_disturbance(z_func)
         
         # 记录仿真数据
-        full_states = [] # 记录完整状态历史
-        observations = [] # 记录观测值历史
-        rewards = [] # 记录奖励历史
-        actions = []
-        times = []
+        full_states = [self.all_states.copy()] # 记录完整状态历史
+        observations = [self.get_observation()] # 记录观测值历史
+        rewards = [0.0] # 记录奖励历史
+        actions = [0.0] # 记录动作历史
+        times = [0.0]  # 记录时间历史
         
         done = False
         tqdm_bar = tqdm(total=int(self.T/self.Ts), desc="仿真进度")
         while not done:
             obs = self.get_observation()  # 获取当前观测值
             if controller is not None: # DDPG 控制器
-                action = controller.select_action(obs, add_noise=False)
+                action = controller.select_action(obs, add_noise=False,rand_prob=0)
             else:
                 # 无控制
                 action = 0.0
@@ -187,13 +194,13 @@ class ElectromagneticDamperEnv:
             # 记录数据
             full_states.append(self.all_states.copy()) # 记录更新后的完整状态
             observations.append(next_obs)
-            actions.append(action)
+            actions.append(action.item() if isinstance(action, np.ndarray) else action) # 记录动作
             times.append(self.time)
         
         return {
             'all_states': np.array(full_states), # 返回完整状态历史
             'observations': np.array(observations), # 返回观测值历史
             'actions': np.array(actions), # 返回动作历史
-            'times': np.array(times), # 返回时间历史
-            'rewards': np.array(rewards) # 返回奖励历史
+            'times': times, # 返回时间历史
+            'rewards': rewards # 返回奖励历史
         }

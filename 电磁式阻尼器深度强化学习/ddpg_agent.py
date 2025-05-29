@@ -30,6 +30,13 @@ class Actor(nn.Module):
             nn.Tanh() # 输出范围 [-1, 1]
         )
         self.action_bound = action_bound # 输出电流范围 [-action_bound, action_bound]
+        self._init_weights()
+        
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                nn.init.constant_(m.bias, 0)
         
     def forward(self, state:torch.Tensor)-> torch.Tensor:
         action = self.net(state) * self.action_bound
@@ -55,6 +62,16 @@ class Critic(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, 1)
         )
+        self._init_weights()
+    
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                nn.init.constant_(m.bias, 0)
+        # 最后一层使用较小的初始化
+        nn.init.uniform_(self.net[-1].weight, -3e-3, 3e-3)
+        nn.init.uniform_(self.net[-1].bias, -3e-3, 3e-3)
         
     def forward(self, state:torch.Tensor, action:torch.Tensor)-> torch.Tensor:
         x = torch.cat([state, action], dim=-1)
@@ -138,7 +155,7 @@ class DDPGAgent:
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=actor_lr)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=critic_lr)
         
-    def select_action(self, state:np.ndarray, add_noise=True, epsilon=1.0)-> np.ndarray:
+    def select_action(self, state:np.ndarray, add_noise=True, epsilon=1.0, rand_prob=0.05)-> np.ndarray:
         """选择动作，支持探索 (输入 state 是观测值)
         参数\n
         - state: 当前状态 (numpy array)\n
@@ -154,10 +171,10 @@ class DDPGAgent:
             action = action_np.flatten()  # 展平 shape [action_dim,]
             
         if add_noise:
-            noise = np.random.normal(0, self.sigma * epsilon, size=self.action_dim)
+            noise = np.random.normal(0, self.action_bound * self.sigma * epsilon, size=self.action_dim)
             # print(noise)
             action += noise
-            if np.random.random() < 0.1:  # 10%的概率使用完全随机动作
+            if np.random.random() < rand_prob:  # 有概率使用完全随机动作
                 action = np.random.uniform(-self.action_bound, self.action_bound, self.action_dim)
 
         # 返回单个动作值或动作数组
@@ -183,7 +200,7 @@ class DDPGAgent:
         
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        if self.clip_grad: torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=1.0) # 可选：梯度裁剪
+        if self.clip_grad: torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=10) # 可选：梯度裁剪
         self.critic_optimizer.step()
         
         # 4. 更新Actor网络
@@ -192,7 +209,7 @@ class DDPGAgent:
         
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
-        if self.clip_grad: torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=1.0) # 可选：梯度裁剪
+        if self.clip_grad: torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=10) # 可选：梯度裁剪
         self.actor_optimizer.step()
         
         # 5. 软更新目标网络

@@ -2,6 +2,18 @@ import numpy as np
 from typing import Callable
 from scipy.linalg import expm
 
+def test_reward_function(obs, action, next_obs):
+    """测试奖励函数"""
+    x1, v1, a1 = obs[:3]
+    x2, v2, a2 = obs[3:6]
+    next_x1, next_v1, next_a1 = next_obs[:3]
+    next_x2, next_v2, next_a2 = next_obs[3:6]
+    
+    # 奖励函数
+    reward = - (1000 * abs(float(next_x2)) + 0.1 * abs(float(action)))
+    
+    return float(reward)
+
 def better_reward_function(obs, action, next_obs):
     """提供更多梯度信息的奖励函数"""
     x1, v1, a1 = obs[:3]
@@ -10,7 +22,7 @@ def better_reward_function(obs, action, next_obs):
     next_x2, next_v2, next_a2 = next_obs[3:6]
     
     # 减振效果奖励: 状态减小给予正奖励
-    state_improvement = 2.0 * (abs(x2) - abs(next_x2))
+    state_improvement = 0 # 2.0 * (abs(x2) - abs(next_x2))
     
     # 状态值越小越好
     position_reward = -5.0 * abs(next_x2)
@@ -25,6 +37,16 @@ def better_reward_function(obs, action, next_obs):
         
     total_reward = state_improvement + position_reward + action_smoothness + phase_reward
     return float(total_reward)
+
+def squared_reward_function(obs, action, next_obs):
+    """平方奖励函数"""
+    x1, v1, a1 = obs[:3]
+    x2, v2, a2 = obs[3:6]
+    next_x1, next_v1, next_a1 = next_obs[:3]
+    next_x2, next_v2, next_a2 = next_obs[3:6]
+    
+    reward = - (10 * (1e3 * next_x2)**2 + 1.0 * float(action)**2)
+    return float(reward)
 
 
 def enhanced_reward_func(obs:np.ndarray, action:np.ndarray, next_obs:np.ndarray)-> float:
@@ -64,21 +86,21 @@ def tolerance_if_rf(tolerance: float = 1e-3) -> Callable:
         next_x1, next_v1, next_a1 = next_obs[:3]
         next_x2, next_v2, next_a2 = next_obs[3:6]
         
-        if (abs(next_x2) <= tolerance) and (abs(next_x2) <= abs(x2)):
+        reward = 0
+        if (abs(next_x2) <= tolerance):
+            # 处于容忍范围内
+            reward += 0.5
+            if (abs(next_x2) <= abs(x2)):
             # 处于容忍范围内且下一个状态更接近容忍范围
-            reward = +1.0 * abs(tolerance - abs(next_x2)) / tolerance
-        elif (abs(next_x2) >= tolerance):
+                reward += 1.0
+        elif (abs(next_x2) > tolerance):
             # 处于容忍范围外
-            reward = -0.5 * (abs(tolerance - abs(next_x2)) / tolerance)
-        # elif (abs(next_x2) > tolerance) and (abs(next_x2) > abs(x2)):
-        #     # 处于容忍范围外或下一个状态更远离容忍范围
-        #     pass
-        #     # reward = -0.5 
-        elif (abs(next_x2) <= tolerance) and (abs(next_x2) > abs(x2)):
-            # 处于容忍范围内但下一个状态更远离容忍范围
-            reward = - 0.5 * ((abs(next_x2) - abs(x2)) / tolerance)
+            reward += -0.5
+            if (abs(next_x2) > abs(x2)):
+            # 处于容忍范围外且下一个状态更远离容忍范围
+                reward += -1.0
         else:
-            reward = -0.5
+            reward += 0
         return reward
     return reward_func
 

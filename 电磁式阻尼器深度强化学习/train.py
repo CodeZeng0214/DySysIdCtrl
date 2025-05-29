@@ -10,7 +10,7 @@ from af import plot_test_data
 
 def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: ReplayBuffer, 
               n_episodes=200, min_buffer_size=1000, print_interval=5, save_interval=5, 
-              save_path=None,
+              save_path=None,rand_prob=0,
               start_episode=0, initial_episode_rewards=None):
     """## 训练DDPG代理
     参数\n
@@ -53,7 +53,7 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
             f.write("episode,reward,avg_reward,critic_loss,actor_loss,epsilon\n")
     
     # 训练循环
-    for episode in tqdm(range(start_episode, start_episode + n_episodes), desc="训练轮次"):
+    for episode in tqdm(range(start_episode, n_episodes), desc="训练轮次"):
         env.reset() # 重置环境，获取初始观测值 (shape [1,])
         episode_reward = 0
         episode_critic_loss = 0
@@ -69,7 +69,7 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
             # tqdm_bar.update(1)
             # 选择动作 (基于当前观测值 obs)
             obs = env.get_observation() # 获取当前观测值 (shape [1,])
-            action = agent.select_action(obs, epsilon=epsilon)
+            action = agent.select_action(obs, epsilon=epsilon,rand_prob=rand_prob)
             
             # 执行动作 (传入单个动作值)
             next_obs, reward, done = env.step(action)
