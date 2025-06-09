@@ -343,14 +343,11 @@ def DDPG_circulation(istrain=False, save_path=save_path, model_name=model_name,s
     # 神经网络训练的循环
     for episode in range(start_episode, max_episodes):
         
-        
         # 随训练轮次减少噪声
         if episode+1 >= 0.3 * max_episodes:
             ddpg_sigma = sigma * 0.5 # 减少噪声，提高策略的稳定性
             if episode+1 >= 0.5 * max_episodes:
                 ddpg_sigma = 0 # 当轮次进行到一半时，使噪声归为零
-        
-        
         
         state = torch.tensor(env.reset(), dtype=torch.float32).unsqueeze(0).to(device) # 重置环境并获取初始状态
         #print("state shape:", state.shape)
@@ -362,7 +359,6 @@ def DDPG_circulation(istrain=False, save_path=save_path, model_name=model_name,s
         env.u_set(u)
         
         while not done:
-    
             with torch.no_grad(): # 禁用梯度计算，加快推理速度
                 #print("actor(state) shape:", actor(state).shape)
                 action = actor(state) + torch.normal(mean=0, std=ddpg_sigma, size=[1, 1]).to(device) # 获取动作并添加高斯噪声
@@ -379,7 +375,6 @@ def DDPG_circulation(istrain=False, save_path=save_path, model_name=model_name,s
                 
                 # 从经验回放池中采样一个批次
                 states, actions, rewards, next_states = buffer.sample()
-                
 
                 # Critic 网络更新
                 # 使用目标 Actor 网络和目标 Critic 网络计算 TD 目标

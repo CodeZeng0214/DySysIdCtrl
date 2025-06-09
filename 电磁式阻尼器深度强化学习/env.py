@@ -156,7 +156,7 @@ class ElectromagneticDamperEnv:
         # 返回观测值、是否结束
         return observation, reward, done
     
-    def run_simulation(self, controller:DDPGAgent=None, X0=None, z_func=None, r_func=None):
+    def run_simulation(self, controller=None, X0=None, z_func=None, r_func=None):
         """运行完整仿真"""
         
         # 重置环境并设置初始状态

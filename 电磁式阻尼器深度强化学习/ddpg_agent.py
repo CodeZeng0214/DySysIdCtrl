@@ -1,119 +1,13 @@
 ## DDPG 算法定义的函数
 
 import torch
-import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
-import random
-from collections import deque
 from typing import Tuple
+from my_nn import Actor, Critic, ReplayBuffer, Gru_Actor, Gru_Critic, Gru_ReplayBuffer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-class Actor(nn.Module):
-    """## Actor 网络\n
-    策略网络，输出动作值\n
-    ## 初始化参数\n
-    - state_dim: 状态维度，默认值为 1
-    - action_dim: 动作维度，默认值为 1
-    - hidden_dim: 隐藏层维度，默认值为 64
-    - action_bound: 动作范围，默认值为 5.0"""
-    def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0):
-        super(Actor, self).__init__()
-        self.net = nn.Sequential(
-            nn.Linear(state_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, action_dim),
-            nn.Tanh() # 输出范围 [-1, 1]
-        )
-        self.action_bound = action_bound # 输出电流范围 [-action_bound, action_bound]
-        self._init_weights()
-        
-    def _init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                nn.init.constant_(m.bias, 0)
-        
-    def forward(self, state:torch.Tensor)-> torch.Tensor:
-        action = self.net(state) * self.action_bound
-        return action
-    
-## Critic 网络 - 价值网络
-class Critic(nn.Module):
-    """## Critic 网络\n
-    价值网络，输出 Q 值\n
-    ## 初始化参数\n
-    - state_dim: 状态维度,默认值为 1
-    - action_dim: 动作维度，默认值为 1
-    - hidden_dim: 隐藏层维度，默认值为 64"""
-    def __init__(self, state_dim=1, action_dim=1, hidden_dim=64): # state_dim 改为 1
-        super(Critic, self).__init__()
-        # 输入维度是 state_dim + action_dim
-        self.net = nn.Sequential(
-            nn.Linear(state_dim + action_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, 1)
-        )
-        self._init_weights()
-    
-    def _init_weights(self):
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                nn.init.constant_(m.bias, 0)
-        # 最后一层使用较小的初始化
-        nn.init.uniform_(self.net[-1].weight, -3e-3, 3e-3)
-        nn.init.uniform_(self.net[-1].bias, -3e-3, 3e-3)
-        
-    def forward(self, state:torch.Tensor, action:torch.Tensor)-> torch.Tensor:
-        x = torch.cat([state, action], dim=-1)
-        q_value = self.net(x)
-        return q_value
-    
-## 经验回放池
-class ReplayBuffer:
-    """### 经验回放池，用于存储和采样经验\n
-    ## 初始化参数\n
-    - capacity: 回放池容量，默认值为 100000\n
-    - batch_size: 采样批次大小，默认值为 64"""
-    def __init__(self, capacity=100000, batch_size=64):
-        self.buffer = deque(maxlen=capacity)
-        self.batch_size = batch_size
-        
-    def add(self, state:np.ndarray, action:np.ndarray, reward:float, next_state:np.ndarray, done:bool): # 添加 done 参数
-        # state 和 next_state 是观测量，action 是动作值
-        self.buffer.append((state, action, reward, next_state, done)) # 存储 done
-        
-    def sample(self)-> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]: # 返回类型添加 Tensor
-        """随机采样一批经验\n
-        返回：\n
-        - states: 状态列表，shape [batch_size, state_dim]\n
-        - actions: 动作列表，shape [batch_size, action_dim]\n
-        - rewards: 奖励列表，shape [batch_size, 1]\n
-        - next_states: 下一个状态列表，shape [batch_size, state_dim]\n
-        - dones: 完成标志列表，shape [batch_size, 1]\n"""
-        batch = random.sample(self.buffer, self.batch_size)
-        states, actions, rewards, next_states, dones = zip(*batch) # 解包 dones
-
-        # states 和 next_states 是观测值列表，每个元素是 shape [1,] 的 numpy array
-        states = torch.tensor(np.array(states), dtype=torch.float32).to(device)
-        actions = torch.tensor(np.array(actions), dtype=torch.float32).reshape(-1, 1).to(device) # shape [batch_size, 1]
-        rewards = torch.tensor(np.array(rewards), dtype=torch.float32).reshape(-1, 1).to(device) # shape [batch_size, 1]
-        next_states = torch.tensor(np.array(next_states), dtype=torch.float32).to(device)
-        dones = torch.tensor(np.array(dones, dtype=np.uint8), dtype=torch.float32).reshape(-1, 1).to(device) # shape [batch_size, 1]
-        
-        return states, actions, rewards, next_states, dones # 返回 dones
-    
-    def __len__(self):
-        return len(self.buffer)
     
 ## DDPG 代理
 class DDPGAgent:
@@ -284,3 +178,196 @@ class DDPGAgent:
         current_episode = checkpoint.get('current_episode', 0)
         
         return episode_rewards, current_episode
+
+## 基于GRU的DDPG代理
+class GruDDPGAgent:
+    def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0, 
+                 actor_lr=1e-3, critic_lr=1e-3, gamma=0.99, tau=0.005, sigma=0.2, 
+                 clip_grad=False, seq_len=10, num_layers=2):
+        """基于GRU的DDPG代理参数\n
+        state_dim: 状态维度\n
+        action_dim: 动作维度\n
+        hidden_dim: 隐藏层维度\n
+        action_bound: 动作范围\n
+        actor_lr: Actor网络学习率\n
+        critic_lr: Critic网络学习率\n
+        gamma: 折扣因子\n
+        tau: 软更新参数\n
+        sigma: 探索噪声标准差\n
+        clip_grad: 是否使用梯度裁剪\n
+        seq_len: 序列长度\n
+        num_layers: GRU层数\n
+        """
+        # 初始化参数
+        self.gamma = gamma
+        self.tau = tau
+        self.sigma = sigma
+        self.action_bound = action_bound
+        self.action_dim = action_dim
+        self.state_dim = state_dim
+        self.clip_grad = clip_grad
+        self.seq_len = seq_len
+        self.model_name = None
+        
+        # GRU网络初始化
+        self.actor = Gru_Actor(state_dim, action_dim, hidden_dim, action_bound, seq_len, num_layers).to(device)
+        self.critic = Gru_Critic(state_dim, action_dim, hidden_dim, seq_len, num_layers).to(device)
+        self.target_actor = Gru_Actor(state_dim, action_dim, hidden_dim, action_bound, seq_len, num_layers).to(device)
+        self.target_critic = Gru_Critic(state_dim, action_dim, hidden_dim, seq_len, num_layers).to(device)
+        
+        # 复制参数到目标网络
+        self.target_actor.load_state_dict(self.actor.state_dict())
+        self.target_critic.load_state_dict(self.critic.state_dict())
+        
+        # 优化器设置
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=actor_lr)
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=critic_lr)
+        
+        # 用于维护状态历史的缓冲区
+        self.state_history = []
+        
+    def reset_state_history(self):
+        """重置状态历史，在新的episode开始时调用"""
+        self.state_history = []
+        
+    def select_action(self, state: np.ndarray, add_noise=True, epsilon=1.0, rand_prob=0.05) -> np.ndarray:
+        """选择动作，支持探索
+        参数\n
+        - state: 当前状态 (numpy array)\n
+        - add_noise: 是否添加噪声\n
+        - epsilon: 噪声强度\n
+        - rand_prob: 随机动作概率\n
+        返回：\n
+        - action: 选择的动作 (numpy array)
+        """
+        # 更新状态历史
+        self.state_history.append(state.copy())
+        
+        # 如果历史长度不够，使用零填充或重复当前状态
+        if len(self.state_history) < self.seq_len:
+            # 用当前状态填充不足的部分
+            padded_history = [state] * (self.seq_len - len(self.state_history)) + self.state_history
+        else:
+            # 保持最近的seq_len个状态
+            padded_history = self.state_history[-self.seq_len:]
+            
+        # 构建状态序列
+        state_seq = np.array(padded_history)  # [seq_len, state_dim]
+        state_seq_tensor = torch.tensor(state_seq, dtype=torch.float32).unsqueeze(0).to(device)  # [1, seq_len, state_dim]
+        
+        with torch.no_grad():
+            action_tensor = self.actor(state_seq_tensor)
+            action_np = action_tensor.cpu().detach().numpy()
+            action = action_np.flatten()
+            
+        if add_noise:
+            noise = np.random.normal(0, self.action_bound * self.sigma * epsilon, size=self.action_dim)
+            action += noise
+            if np.random.random() < rand_prob:
+                action = np.random.uniform(-self.action_bound, self.action_bound, self.action_dim)
+
+        return np.clip(action, -self.action_bound, self.action_bound)
+    
+    def update(self, replay_buffer: Gru_ReplayBuffer) -> Tuple[float, float]:
+        """更新Actor和Critic网络"""
+        if len(replay_buffer) < replay_buffer.batch_size:
+            return 0.0, 0.0
+        
+        # 1. 从回放池中采样
+        state_seqs, actions, rewards, next_state_seqs, dones = replay_buffer.sample()
+        
+        # 2. 计算目标Q值
+        with torch.no_grad():
+            next_actions = self.target_actor(next_state_seqs)  # [batch_size, action_dim]
+            target_q = self.target_critic(next_state_seqs, next_actions)  # [batch_size, 1]
+            target_value = rewards + self.gamma * target_q * (1 - dones)  # [batch_size, 1]
+            
+        # 3. 更新Critic网络
+        current_q = self.critic(state_seqs, actions)  # [batch_size, 1]
+        critic_loss = F.mse_loss(current_q, target_value)
+        
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        if self.clip_grad: 
+            torch.nn.utils.clip_grad_norm_(self.critic.parameters(), max_norm=10)
+        self.critic_optimizer.step()
+        
+        # 4. 更新Actor网络
+        policy_actions = self.actor(state_seqs)  # [batch_size, action_dim]
+        actor_loss = -self.critic(state_seqs, policy_actions).mean()
+        
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward()
+        if self.clip_grad: 
+            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=10)
+        self.actor_optimizer.step()
+        
+        # 5. 软更新目标网络
+        self._soft_update(self.actor, self.target_actor)
+        self._soft_update(self.critic, self.target_critic)
+        
+        return critic_loss.item(), actor_loss.item()
+    
+    def _soft_update(self, source, target):
+        """软更新目标网络参数"""
+        for target_param, source_param in zip(target.parameters(), source.parameters()):
+            target_param.data.copy_(self.tau * source_param.data + (1 - self.tau) * target_param.data)
+            
+    def save_model(self, save_path, episode):
+        """保存模型"""
+        import os
+        from datetime import datetime
+        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"gru_ddpg_model_ep{episode}_{current_time}.pth"
+        full_path = os.path.join(save_path, filename)
+        
+        torch.save({
+            'actor': self.actor.state_dict(),
+            'critic': self.critic.state_dict(),
+            'target_actor': self.target_actor.state_dict(),
+            'target_critic': self.target_critic.state_dict(),
+            'actor_optimizer': self.actor_optimizer.state_dict(),
+            'critic_optimizer': self.critic_optimizer.state_dict(),
+            'episode': episode,
+        }, full_path)
+        
+        self.model_name = filename.replace('.pth', '')
+        return full_path
+        
+    def save_checkpoint(self, path, episode_rewards, current_episode):
+        """保存包含训练状态的完整检查点"""
+        torch.save({
+            'actor': self.actor.state_dict(),
+            'critic': self.critic.state_dict(),
+            'target_actor': self.target_actor.state_dict(),
+            'target_critic': self.target_critic.state_dict(),
+            'actor_optimizer': self.actor_optimizer.state_dict(),
+            'critic_optimizer': self.critic_optimizer.state_dict(),
+            'episode_rewards': episode_rewards,
+            'current_episode': current_episode,
+        }, path)
+        
+    def load_checkpoint(self, path):
+        """加载检查点并返回训练状态"""
+        checkpoint = torch.load(path, map_location=device)
+        self.actor.load_state_dict(checkpoint['actor'])
+        self.critic.load_state_dict(checkpoint['critic'])
+        self.target_actor.load_state_dict(checkpoint['target_actor'])
+        self.target_critic.load_state_dict(checkpoint['target_critic'])
+        
+        if 'actor_optimizer' in checkpoint:
+            self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer'])
+            self.critic_optimizer.load_state_dict(checkpoint['critic_optimizer'])
+        
+        episode_rewards = checkpoint.get('episode_rewards', [])
+        current_episode = checkpoint.get('current_episode', 0)
+        
+        return episode_rewards, current_episode
+        
+    def load(self, path):
+        """加载模型"""
+        checkpoint = torch.load(path, map_location=device)
+        self.actor.load_state_dict(checkpoint['actor'])
+        self.critic.load_state_dict(checkpoint['critic'])
+        self.target_actor.load_state_dict(checkpoint['target_actor'])
+        self.target_critic.load_state_dict(checkpoint['target_critic'])

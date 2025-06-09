@@ -3,9 +3,9 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 import logging
-from ddpg_agent import DDPGAgent
+from ddpg_agent import DDPGAgent, GruDDPGAgent
 
 def plot_rewards(rewards, avg_rewards=None, window=10, save_dir=None, save_path=None):
     """绘制奖励曲线
@@ -136,7 +136,7 @@ def find_checkpoint_files(directory):
     checkpoint_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
     return checkpoint_files
 
-def load_checkpoint(agent: DDPGAgent, save_dir):
+def load_checkpoint(agent: Union[DDPGAgent, GruDDPGAgent], save_dir):
         # 是否加载先前的训练模型
     checkpoint_files = find_checkpoint_files(save_dir)
     
