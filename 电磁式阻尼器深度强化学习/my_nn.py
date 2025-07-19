@@ -17,7 +17,7 @@ class Gru_Actor(nn.Module):
     - action_bound: 动作范围，默认值为 5.0
     - seq_len: 输入序列长度，默认值为 10
     """
-    def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0, seq_len=10, num_layers=2):
+    def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0, seq_len=10, num_layers=1):
         super(Gru_Actor, self).__init__()
         self.hidden_dim = hidden_dim
         self.seq_len = seq_len
@@ -79,7 +79,7 @@ class Gru_Critic(nn.Module):
     - hidden_dim: 隐藏层维度，默认值为 64
     - seq_len: 输入序列长度，默认值为 10
     """
-    def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, seq_len=10, num_layers=2):
+    def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, seq_len=10, num_layers=1):
         super(Gru_Critic, self).__init__()
         self.hidden_dim = hidden_dim
         self.seq_len = seq_len

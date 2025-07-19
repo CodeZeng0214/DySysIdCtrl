@@ -185,3 +185,6 @@ agent.save(model_filename)
 print("模型和结果已保存至：")
 print(f"- 最终模型: {model_filename}")
 print(f"- 仿真结果: {results_filename}")
+
+
+R(s_t, a_t, s_{t+1}) = \begin{cases}1.5, & \text{若 } |x_2^{t+1}| \leq \varepsilon \text{ 且 } |x_2^{t+1}| \leq |x_2^t| \\0.5, & \text{若 } |x_2^{t+1}| \leq \varepsilon \text{ 且 } |x_2^{t+1}| > |x_2^t| \\-1.5, & \text{若 } |x_2^{t+1}| > \varepsilon \text{ 且 } |x_2^{t+1}| > |x_2^t| \\-0.5, & \text{若 } |x_2^{t+1}| > \varepsilon \text{ 且 } |x_2^{t+1}| \leq |x_2^t|\end{cases}
