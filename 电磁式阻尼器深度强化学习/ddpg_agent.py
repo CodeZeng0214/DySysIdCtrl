@@ -271,7 +271,7 @@ class GruDDPGAgent:
             if self.use_time_input and self.time_history is not None:
                 padded_time_history = self.time_history[-self.seq_len:]
             # 保持最近的seq_len个状态
-            padded_history = self.state_history[-self.seq_len:]
+            # padded_history = self.state_history[-self.seq_len:]
             
         # 构建状态序列
         state_seq = np.array(padded_history)  # [seq_len, state_dim]

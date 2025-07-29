@@ -223,22 +223,13 @@ def train_gru_ddpg(env: ElectromagneticDamperEnv, agent: GruDDPGAgent, replay_bu
             obs = env.get_observation()
             
             # 获取当前时间步长（如果环境支持时间噪声）
-            dt = getattr(env, 'current_dt', env.Ts)
+            dt = env.get_current_timestep()
             
             # 选择动作（GRU版本会维护状态历史）
             action = agent.select_action(obs, epsilon=epsilon, rand_prob=rand_prob, dt=dt)
             
             # 执行动作
-            if hasattr(env, 'use_time_noise') and env.use_time_noise:
-                next_obs, reward, done, actual_dt = env.step(action)
-            else:
-                # 兼容旧版本环境
-                result = env.step(action)
-                if len(result) == 4:
-                    next_obs, reward, done, actual_dt = result
-                else:
-                    next_obs, reward, done = result
-                    actual_dt = env.Ts
+            next_obs, reward, done, actual_dt = env.step(action, dt=dt)
             
             # 存储经验到GRU回放池
             if hasattr(replay_buffer, 'use_time_input') and replay_buffer.use_time_input:

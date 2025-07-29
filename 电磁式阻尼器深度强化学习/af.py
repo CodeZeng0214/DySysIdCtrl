@@ -227,7 +227,7 @@ def plot_data(figsize=(10, 6), plot_title=None, data_sets=None, x_values=None, c
         else:
             x_value = x_values
         
-        if len(x_value) != len(data_sets[0]):
+        if len(x_value) != len(data_sets[i]):
             print("x_values的长度与数据集长度不匹配，绘图失败")
             return
         
