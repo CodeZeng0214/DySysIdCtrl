@@ -4,7 +4,7 @@ import numpy as np
 from scipy.linalg import expm
 import torch
 from tqdm import tqdm
-from ddpg_agent import DDPGAgent
+from ddpg_agent import DDPGAgent, GruDDPGAgent
 import logging
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -14,7 +14,8 @@ class ElectromagneticDamperEnv:
     """二自由度电磁阻尼器系统仿真环境"""
     def __init__(self, A:np.ndarray, B:np.ndarray, C:np.ndarray, D:np.ndarray, E:np.ndarray, Ts:float=0.001, T:float=10, 
                  z_func:Callable=None, r_func:Callable=None, all_state0:np.ndarray=None, 
-                 obs_indices: List[int] = None, x1_limit:float=None):
+                 obs_indices: List[int] = None, x1_limit:float=None,
+                 use_time_noise:bool=False, time_noise_std:float=0.01):
         """
         ## 初始化环境参数\n
         Xdot = Ax + Bu + E*z\n
@@ -35,17 +36,19 @@ class ElectromagneticDamperEnv:
         self.x1_limit = x1_limit # 吸振器位移限制
         self.Ts = Ts  # 采样时间 
         self.T = T    # 仿真总时长
+        self.use_time_noise = use_time_noise # 是否使用时间噪声
+        self.time_noise_std = time_noise_std  # 时间噪声标准差(比例)
         self.time = 0.0  # 当前仿真时间
         self.all_state0 = all_state0 if all_state0 is not None else np.zeros(6)  # 初始状态
         self.all_states = np.zeros(6) # 完整状态 [x1, v1, a1, x2, v2, a2]
         self.set_observation_indices(obs_indices, log=False)  # 设置观测状态索引
-        self.discretize_system() # 离散化系统
+        self.Ad, self.Bd, self.Ed = self.discretize_system(self.Ts) # 离散化系统
         self.reset()  # 初始化状态
         
-    def discretize_system(self, Ts=None):
+    def discretize_system(self, dt)-> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """离散化连续状态空间系统"""
-        if Ts is not None:
-            self.Ts = Ts
+        current_dt = self.Ts if dt is None else dt
+        
         n = self.A.shape[0]  # 状态维度
         m1 = self.B.shape[1]  # 控制输入维度
         m2 = self.E.shape[1]  # 外部干扰维度
@@ -57,11 +60,13 @@ class ElectromagneticDamperEnv:
         M[:n, n+m1:] = self.E
         
         # 计算矩阵指数
-        expM = expm(M * self.Ts)
+        expM = expm(M * current_dt)
           # 提取离散化矩阵
-        self.Ad = expM[:n, :n]  # 离散状态转移矩阵
-        self.Bd = expM[:n, n:n+m1]  # 离散控制输入矩阵
-        self.Ed = expM[:n, n+m1:]  # 离散外部干扰矩阵
+        Ad = expM[:n, :n]  # 离散状态转移矩阵
+        Bd = expM[:n, n:n+m1]  # 离散控制输入矩阵
+        Ed = expM[:n, n+m1:]  # 离散外部干扰矩阵
+        
+        return Ad, Bd, Ed
         
     def reset(self, X0=None, z_func:Callable=None) -> np.ndarray:
         """重置环境到初始状态，返回初始观测值"""
@@ -76,6 +81,17 @@ class ElectromagneticDamperEnv:
         if z_func is not None:
             self.z_func = z_func  # 重置扰动函数
         return self.get_observation()  # 返回初始观测值
+    
+    def get_current_timestep(self):
+        """获取当前时间步长（可能包含噪声）"""
+        if self.use_time_noise:
+            # 添加高斯噪声到时间步长
+            noise = np.random.normal(0, self.time_noise_std * self.Ts)
+            # 限制时间步长在合理范围内（0.5*Ts 到 1.5*Ts）
+            dt = np.clip(self.Ts + noise, 0.5 * self.Ts, 1.5 * self.Ts)
+        else:
+            dt = self.Ts
+        return dt
     
     def get_observation(self) -> np.ndarray:
         """获取当前时刻的观测值"""
@@ -115,8 +131,11 @@ class ElectromagneticDamperEnv:
         """设置奖励函数"""
         self.r_func = r_func  # 设置奖励函数
         
-    def step(self, action:np.ndarray)-> Tuple[np.ndarray, float, bool]:
+    def step(self, action:np.ndarray, dt=None)-> Tuple[np.ndarray, float, bool, float]:
         """执行一个控制动作，更新系统状态，返回观测值、是否结束等信息"""
+        
+        current_dt = self.Ts if dt is None else dt
+        
         # 检查动作的类型
         if isinstance(action, torch.Tensor): action = action.cpu().numpy()
         elif isinstance(action, float): action = np.array([action])
@@ -139,7 +158,7 @@ class ElectromagneticDamperEnv:
         self.all_states[[1,4]] = next_X[[1,3]].reshape(-1) # 更新速度
         self.all_states[[2,5]] = Y.reshape(-1) # 更新加速度
 
-        self.time += self.Ts
+        self.time += current_dt  # 更新当前时间
         
         # 计算奖励
         if self.r_func is not None:
@@ -151,12 +170,12 @@ class ElectromagneticDamperEnv:
         observation = self.get_observation()
         
         # 判断是否结束
-        done:bool = self.time >= self.T
+        done:bool = (self.time >= self.T)
         
-        # 返回观测值、是否结束
-        return observation, reward, done
+        # 返回观测值、奖励、是否结束和当前时间步长
+        return observation, reward, done, current_dt
     
-    def run_simulation(self, controller=None, X0=None, z_func=None, r_func=None):
+    def run_simulation(self, controller:GruDDPGAgent=None, X0=None, z_func=None, r_func=None):
         """运行完整仿真"""
         
         # 重置环境并设置初始状态
@@ -172,26 +191,28 @@ class ElectromagneticDamperEnv:
         rewards = [0.0] # 记录奖励历史
         actions = [0.0] # 记录动作历史
         times = [0.0]  # 记录时间历史
+        dt_history = []  # 记录时间步长历史
         
         done = False
         tqdm_bar = tqdm(total=int(self.T/self.Ts), desc="仿真进度")
         while not done:
+            current_dt = self.get_current_timestep()  # 获取当前时间步长
             obs = self.get_observation()  # 获取当前观测值
+    
             if controller is not None: # DDPG 控制器
-                action = controller.select_action(obs, add_noise=False,rand_prob=0)
+                action = controller.select_action(obs, add_noise=False,rand_prob=0, dt=current_dt)
             else:
                 # 无控制
                 action = 0.0
                 
             # 执行一步仿真，获取下一个观测值、奖励等
             # step内部会更新 self.state
-            next_obs, reward, done = self.step(action)
-
-            rewards.append(reward)  # 记录奖励
-            
-            tqdm_bar.update(1)  # 更新进度条
+            next_obs, reward, done, current_dt = self.step(action, dt=current_dt)
             
             # 记录数据
+            rewards.append(reward)  # 记录奖励
+            dt_history.append(current_dt)  # 记录时间步长
+            tqdm_bar.update(1)  # 更新进度条
             full_states.append(self.all_states.copy()) # 记录更新后的完整状态
             observations.append(next_obs)
             actions.append(action.item() if isinstance(action, np.ndarray) else action) # 记录动作
@@ -202,5 +223,6 @@ class ElectromagneticDamperEnv:
             'observations': np.array(observations), # 返回观测值历史
             'actions': np.array(actions), # 返回动作历史
             'times': times, # 返回时间历史
-            'rewards': rewards # 返回奖励历史
+            'rewards': rewards, # 返回奖励历史
+            'dt_history': dt_history  # 返回时间步长历史
         }

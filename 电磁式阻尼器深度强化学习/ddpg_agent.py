@@ -183,7 +183,7 @@ class DDPGAgent:
 class GruDDPGAgent:
     def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0, 
                  actor_lr=1e-3, critic_lr=1e-3, gamma=0.99, tau=0.005, sigma=0.2, 
-                 clip_grad=False, seq_len=10, num_layers=2):
+                 clip_grad=False, seq_len=10, num_layers=2, use_time_input=False):
         """基于GRU的DDPG代理参数\n
         state_dim: 状态维度\n
         action_dim: 动作维度\n
@@ -207,6 +207,7 @@ class GruDDPGAgent:
         self.state_dim = state_dim
         self.clip_grad = clip_grad
         self.seq_len = seq_len
+        self.use_time_input = use_time_input
         self.model_name = None
         
         # GRU网络初始化
@@ -229,34 +230,52 @@ class GruDDPGAgent:
     def reset_state_history(self):
         """重置状态历史，在新的episode开始时调用"""
         self.state_history = []
+        self.time_history = []
         
-    def select_action(self, state: np.ndarray, add_noise=True, epsilon=1.0, rand_prob=0.05) -> np.ndarray:
+    def select_action(self, state: np.ndarray, add_noise=True, epsilon=1.0, rand_prob=0.05, dt=None) -> np.ndarray:
         """选择动作，支持探索
         参数\n
         - state: 当前状态 (numpy array)\n
         - add_noise: 是否添加噪声\n
         - epsilon: 噪声强度\n
         - rand_prob: 随机动作概率\n
+        - dt: 当前时间步长（如果使用时间输入）\n
         返回：\n
         - action: 选择的动作 (numpy array)
         """
+        current_dt = dt
+        
         # 更新状态历史
         self.state_history.append(state.copy())
+
+        # 如果使用时间输入，记录时间步长
+        if self.use_time_input: self.time_history.append(current_dt)
         
         # 如果历史长度不够，使用零填充或重复当前状态
         if len(self.state_history) < self.seq_len:
             # 用当前状态填充不足的部分
             padded_history = [state] * (self.seq_len - len(self.state_history)) + self.state_history
+            if self.use_time_input: 
+                padded_time_history = [current_dt] * (self.seq_len - len(self.time_history)) + self.time_history
         else:
             # 保持最近的seq_len个状态
             padded_history = self.state_history[-self.seq_len:]
-            
+            if self.use_time_input: padded_time_history = self.time_history[-self.seq_len:]
+
         # 构建状态序列
         state_seq = np.array(padded_history)  # [seq_len, state_dim]
         state_seq_tensor = torch.tensor(state_seq, dtype=torch.float32).unsqueeze(0).to(device)  # [1, seq_len, state_dim]
+        # 如果使用时间输入，构建时间序列
+        if self.use_time_input:
+            time_seq = np.array(padded_time_history)  # [seq_len, 1]
+            time_seq_tensor = torch.tensor(time_seq, dtype=torch.float32).unsqueeze(0).to(device)  # [1, seq_len, 1]
         
         with torch.no_grad():
-            action_tensor = self.actor(state_seq_tensor)
+            if self.use_time_input:
+                action_tensor: torch.Tensor = self.actor(state_seq_tensor, time_seq_tensor)  # [1, action_dim]
+            else:
+                # 仅使用状态序列进行动作选择
+                action_tensor: torch.Tensor = self.actor(state_seq_tensor)
             action_np = action_tensor.cpu().detach().numpy()
             action = action_np.flatten()
             
@@ -274,16 +293,16 @@ class GruDDPGAgent:
             return 0.0, 0.0
         
         # 1. 从回放池中采样
-        state_seqs, actions, rewards, next_state_seqs, dones = replay_buffer.sample()
+        state_seqs, actions, rewards, next_state_seqs, dones, time_seqs, next_time_seqs = replay_buffer.sample()
         
         # 2. 计算目标Q值
         with torch.no_grad():
-            next_actions = self.target_actor(next_state_seqs)  # [batch_size, action_dim]
-            target_q = self.target_critic(next_state_seqs, next_actions)  # [batch_size, 1]
+            next_actions = self.target_actor(next_state_seqs, next_time_seqs)  # [batch_size, action_dim]
+            target_q = self.target_critic(next_state_seqs, next_actions, next_time_seqs)  # [batch_size, 1]
             target_value = rewards + self.gamma * target_q * (1 - dones)  # [batch_size, 1]
             
         # 3. 更新Critic网络
-        current_q = self.critic(state_seqs, actions)  # [batch_size, 1]
+        current_q = self.critic(state_seqs, actions, time_seqs)  # [batch_size, 1]
         critic_loss = F.mse_loss(current_q, target_value)
         
         self.critic_optimizer.zero_grad()
@@ -293,8 +312,8 @@ class GruDDPGAgent:
         self.critic_optimizer.step()
         
         # 4. 更新Actor网络
-        policy_actions = self.actor(state_seqs)  # [batch_size, action_dim]
-        actor_loss = -self.critic(state_seqs, policy_actions).mean()
+        policy_actions = self.actor(state_seqs, time_seqs)  # [batch_size, action_dim]
+        actor_loss = -self.critic(state_seqs, policy_actions, time_seqs).mean()
         
         self.actor_optimizer.zero_grad()
         actor_loss.backward()

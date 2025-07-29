@@ -215,16 +215,17 @@ def train_gru_ddpg(env: ElectromagneticDamperEnv, agent: GruDDPGAgent, replay_bu
         done = False
         while not done:
             # 获取当前观测值
+            current_dt = env.get_current_timestep()  # 获取当前时间步长
             obs = env.get_observation()
             
             # 选择动作（GRU版本会维护状态历史）
-            action = agent.select_action(obs, epsilon=epsilon, rand_prob=rand_prob)
-            
+            action = agent.select_action(obs, epsilon=epsilon, rand_prob=rand_prob, dt=current_dt)
+
             # 执行动作
-            next_obs, reward, done = env.step(action)
+            next_obs, reward, done, current_dt = env.step(action, dt=current_dt)
             
             # 存储经验到GRU回放池
-            replay_buffer.add(obs, action, reward, next_obs, done)
+            replay_buffer.add(obs, action, reward, next_obs, done, current_dt) # 传递 done 和时间步长
             
             episode_reward += reward
             
