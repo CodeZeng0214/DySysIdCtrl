@@ -201,7 +201,7 @@ def train_gru_ddpg(env: ElectromagneticDamperEnv, agent: GruDDPGAgent, replay_bu
     # 训练循环
     for episode in tqdm(range(start_episode, n_episodes), desc="GRU DDPG训练轮次"):
         env.reset() # 重置环境
-        agent.reset_state_history() # 重置代理的状态历史
+        agent.reset_history() # 重置代理的状态历史
         replay_buffer.reset_history() # 重置回放池的状态历史
         
         episode_reward = 0
@@ -282,7 +282,7 @@ def train_gru_ddpg(env: ElectromagneticDamperEnv, agent: GruDDPGAgent, replay_bu
             
             # 运行一次仿真并绘制结果
             # 注意：测试时需要重置代理的状态历史
-            agent.reset_state_history()
+            agent.reset_history()
             test_data = env.run_simulation(controller=agent)
             plot_test_data(save_plot_path=save_plot_path, data=test_data, show=False, name=agent.model_name, nc_data=nc_data)
             save_msg = f"已保存GRU模型数据: {checkpoint_name}"
