@@ -1,49 +1,204 @@
 # 辅助函数定义
-
 import os
 import numpy as np
+import torch
 import matplotlib.pyplot as plt
 from typing import List, Dict, Tuple, Union
 import logging
-from TD3 import TD3Agent, GruTD3Agent
+from TD3 import TD3Agent, Gru_TD3Agent
 
-def plot_rewards(rewards, avg_rewards=None, window=10, save_dir=None, save_path=None):
-    """绘制奖励曲线
-    
-    Args:
-        rewards: 每轮的奖励列表
-        avg_rewards: 平均奖励列表，如果为None则计算移动平均
-        window: 计算移动平均的窗口大小
-        save_dir: 保存目录（旧参数，为向后兼容保留）
-        save_path: 完整保存路径，优先于save_dir
-    """
-    plt.figure(figsize=(10, 5))
-    plt.plot(rewards, label='Episode Reward', alpha=0.5)
-    
-    if avg_rewards is None and len(rewards) > window:
-        # 计算移动平均
-        avg_rewards = np.convolve(rewards, np.ones(window)/window, mode='valid')
-        plt.plot(np.arange(window-1, len(rewards)), avg_rewards, label=f'{window}-Episode Average')
-    elif avg_rewards is not None:
-        plt.plot(avg_rewards, label='Average Reward')
-        
-    plt.xlabel('Episode')
-    plt.ylabel('Reward')
-    plt.title('Training Rewards')
-    plt.legend()
-    plt.grid(True)
-    
-    # 保存图表
-    if save_path:
-        plt.savefig(save_path)
-    elif save_dir:
-        plt.savefig(os.path.join(save_dir, 'training_rewards.png'))
-        
-    plt.show()
-    
-    return plt.gcf()
+# 枚举观测状态
+STATES_NAME = {
+    0: "吸振器位移 (x1)",
+    1: "吸振器速度 (v1)",
+    2: "吸振器加速度 (a1)",
+    3: "平台位移 (x2)",
+    4: "平台速度 (v2)",
+    5: "平台加速度 (a2)"
+}
 
-    
+class Datasets:
+    """管理数据的类"""
+    def __init__(self):
+        self.checkpoint_name = "空检查点"
+
+        # 单轮次数据
+        self.state_history = np.zeros((0, 6))  # 单轮次的状态历史
+        self.action_history = np.array([])  # 单轮次的动作历史
+        self.dt_history = np.array([])  # 单轮次的时间步长历史
+        self.time_history = np.array([])  # 单轮次的时间历史
+        self.reward_history = np.array([])  # 单轮次的奖励历史
+
+        # 所有轮次数据
+        self.current_episode = 0
+        self.episode_rewards = np.array([])  # 轮次的累计奖励
+        self.episode_actor_losses = np.array([])  # 轮次的策略网络累计损失
+        self.episode_critic_losses = np.array([])  # 轮次的评估网络累计损失
+
+    def save_datasets(self, agent: Union[TD3Agent, Gru_TD3Agent], save_dir):
+        """保存数据集"""
+        os.makedirs(save_dir, exist_ok=True)
+        torch.save({
+            "checkpoint_name": self.checkpoint_name,
+
+            # 保存数据
+            "state_history": self.state_history,
+            "action_history": self.action_history,
+            "dt_history": self.dt_history,
+            "time_history": self.time_history,
+            "reward_history": self.reward_history,
+            
+            "current_episode": self.current_episode,
+            "episode_rewards": self.episode_rewards,
+            "episode_actor_losses": self.episode_actor_losses,
+            "episode_critic_losses": self.episode_critic_losses,
+            # 保存模型参数
+            'actor': agent.actor.state_dict(),
+            'critic1': agent.critic1.state_dict(),
+            'critic2': agent.critic2.state_dict(),
+            'target_actor': agent.target_actor.state_dict(),
+            'target_critic1': agent.target_critic1.state_dict(),
+            'target_critic2': agent.target_critic2.state_dict(),
+            'actor_optimizer': agent.actor_optimizer.state_dict(),
+            'critic1_optimizer': agent.critic1_optimizer.state_dict(),
+            'critic2_optimizer': agent.critic2_optimizer.state_dict(),
+            'total_it': agent.total_it,
+        }, os.path.join(save_dir, f"{self.checkpoint_name}.pth"))
+        logging.info(f"保存检查点: {os.path.join(save_dir, f'{self.checkpoint_name}.pth')}")
+
+    def load_datasets(self, agent: Union[TD3Agent, Gru_TD3Agent], save_dir):
+        """加载数据集"""
+        checkpoint_files = find_checkpoint_files(save_dir)
+        
+        load_previous_model = False
+        if checkpoint_files: 
+            load_previous_model = input("是否加载先前的训练模型? (y/n): ").strip().lower() == 'y' or ''
+        else:
+            return 0
+
+        if load_previous_model:
+            logging.info(f"准备加载检查点文件")
+            
+            if checkpoint_files:
+                print("\n找到以下检查点文件:")
+                for i, file in enumerate(checkpoint_files):
+                    file_name = os.path.basename(file)
+                    print(f"{i+1}. {file_name}")
+                
+                choice = input("请选择要加载的检查点文件编号 (输入数字，直接回车取最新): ")
+                
+                if choice.strip():
+                    selected_index = int(choice) - 1
+                    if 0 <= selected_index < len(checkpoint_files):
+                        checkpoint_path = checkpoint_files[selected_index]
+                else:
+                    # 默认选择最新的检查点
+                    checkpoint_path = checkpoint_files[0]
+
+                self.checkpoint_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
+
+                print(f"加载检查点: {self.checkpoint_name}")
+                logging.info(f"加载检查点: {self.checkpoint_name}")
+
+                # 加载模型并获取训练状态
+                datasets = torch.load(checkpoint_path, map_location='cpu')
+
+                # 加载训练数据
+                self.current_episode = datasets.get("current_episode", 0)
+                self.state_history = datasets.get("state_history", np.zeros((0, 6)))
+                self.action_history = datasets.get("action_history", np.array([]))
+                self.episode_rewards = datasets.get("episode_rewards", np.array([]))
+                self.dt_history = datasets.get("dt_history", np.array([]))
+                self.time_history = datasets.get("time_history", np.array([]))
+                self.episode_actor_losses = datasets.get("episode_actor_losses", np.array([]))
+                self.episode_critic_losses = datasets.get("episode_critic_losses", np.array([]))
+
+                # 加载模型参数
+                agent.actor.load_state_dict(datasets.get("actor", {}))
+                agent.critic1.load_state_dict(datasets.get("critic1", {}))
+                agent.critic2.load_state_dict(datasets.get("critic2", {}))
+                agent.target_actor.load_state_dict(datasets.get("target_actor", {}))
+                agent.target_critic1.load_state_dict(datasets.get("target_critic1", {}))
+                agent.target_critic2.load_state_dict(datasets.get("target_critic2", {}))
+                agent.actor_optimizer.load_state_dict(datasets.get("actor_optimizer", {}))
+                agent.critic1_optimizer.load_state_dict(datasets.get("critic1_optimizer", {}))
+                agent.critic2_optimizer.load_state_dict(datasets.get("critic2_optimizer", {}))
+                agent.total_it = datasets.get("total_it", 0)
+
+                print(f"成功加载检查点: {self.checkpoint_name}，当前回合: {self.current_episode}")
+                logging.info(f"成功加载检查点: {self.checkpoint_name}, 当前回合: {self.current_episode}")
+            else:
+                print("未找到可加载的检查点文件")
+                logging.info("未找到可加载的检查点")
+        return self.current_episode
+
+    def record_history(self, state: np.ndarray, action: float, reward: float, dt: float, time: float):
+        """记录单个回合的当前时间步数据"""
+        self.state_history = np.vstack([self.state_history, state])
+        self.action_history = np.append(self.action_history, action)
+        self.reward_history = np.append(self.reward_history, reward)
+        self.dt_history = np.append(self.dt_history, dt)
+        self.time_history = np.append(self.time_history, time)
+
+    def reset_history(self):
+        """重置单回合历史数据"""
+        self.state_history = np.zeros((0, 6))  # 单轮次的状态历史
+        self.reward_history = np.array([])
+        self.action_history = np.array([])
+        self.dt_history = np.array([])
+        self.time_history = np.array([])
+
+    def record_episode_data(self, episode_reward, episode_actor_losses, episode_critic_losses):
+        """记录回合累计数据"""
+        self.episode_rewards = np.append(self.episode_rewards, episode_reward)
+        self.episode_actor_losses = np.append(self.episode_actor_losses, episode_actor_losses)
+        self.episode_critic_losses = np.append(self.episode_critic_losses, episode_critic_losses)
+
+    def reset_episode_data(self):
+        """重置单回合数据，用于下一回合"""
+        self.state_history = np.zeros((0, 6))
+        self.action_history = np.array([])
+        self.dt_history = np.array([])
+        self.time_history = np.array([])
+        self.reward_history = np.array([])
+
+    def plot_episode_history(self, plot_state=[], plot_action=False, plot_reward=False, plot_dt=False, save_path=None, show=False):
+        """绘制训练历史\n
+        - plot_state: 是否绘制状态历史，[状态索引]
+        - plot_action: 是否绘制动作历史
+        - plot_reward: 是否绘制奖励历史
+        - plot_dt: 是否绘制时间步长历史
+        """
+        if plot_state and self.state_history.size > 0:
+            for state_idx in plot_state:
+                plot_data(x_values_list=self.time_history, y_values_list=self.state_history[:, state_idx], 
+                          plot_title=f'{self.checkpoint_name} 状态 {STATES_NAME[state_idx]} 历史', legends=[f'状态 {STATES_NAME[state_idx]}'], 
+                          xlabel='时间 (s)', ylabel=f'状态 {STATES_NAME[state_idx]}', save_path=save_path, show=show)
+
+        if plot_action and self.action_history.size > 0:
+            plot_data(x_values_list=self.time_history, y_values_list=self.action_history, 
+                      plot_title=f'{self.checkpoint_name} 动作历史', legends=['动作'], 
+                      xlabel='时间 (s)', ylabel='动作', save_path=save_path, show=show)
+
+        if plot_reward and self.reward_history.size > 0:
+            plot_data(x_values_list=self.time_history, y_values_list=self.reward_history, 
+                      plot_title=f'{self.checkpoint_name} 奖励历史', legends=['奖励'], 
+                      xlabel='时间 (s)', ylabel='奖励', save_path=save_path, show=show)
+
+        if plot_dt and self.dt_history.size > 0:
+            plot_data(x_values_list=self.time_history, y_values_list=self.dt_history, 
+                      plot_title=f'{self.checkpoint_name} 时间步长历史', legends=['时间步长'], 
+                      xlabel='时间 (s)', ylabel='时间步长', save_path=save_path, show=show)
+
+def plot_compare_no_control(nc_datasets:Datasets, c_datasets:Datasets, save_path=None, use_time_noise=False, show=False):
+    """绘制与无控制的状态比较图"""
+    plot_data(x_values_list=[nc_datasets.time_history, c_datasets.time_history],
+              y_values_list=[nc_datasets.state_history[:, 3], c_datasets.state_history[:, 3]], 
+              plot_title=f'{c_datasets.checkpoint_name} 平台位移对比', legends=['无控制', 'TD3控制'], 
+              xlabel='时间 (s)', ylabel='平台位移 (x2)', save_path=save_path, show=show)
+
+    c_datasets.plot_episode_history(plot_action=True, plot_reward=True, plot_dt=use_time_noise, save_path=save_path, show=show)
+
 def plot_state_comparison(results_no_control, results_td3, save_path=None):
     """比较不同控制策略下的状态轨迹
     
@@ -136,105 +291,61 @@ def find_checkpoint_files(directory):
     checkpoint_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
     return checkpoint_files
 
-def load_checkpoint(agent: Union[TD3Agent, GruTD3Agent], save_dir):
-        # 是否加载先前的训练模型
-    checkpoint_files = find_checkpoint_files(save_dir)
-    
-    load_previous_model = False
-    if checkpoint_files: load_previous_model = input("是否加载先前的训练模型? (y/n): ").strip().lower() == 'y' or ''
-
-    start_episode = 0
-    previous_model_path = None
-    loaded_model_name = None
-    episode_rewards = []
-
-    if load_previous_model:
-        logging.info(f"准备加载检查点文件")
-        
-        if checkpoint_files:
-            print("\n找到以下检查点文件:")
-            for i, file in enumerate(checkpoint_files):
-                file_name = os.path.basename(file)
-                print(f"{i+1}. {file_name}")
-            
-            choice = input("请选择要加载的检查点文件编号 (输入数字，直接回车取最新): ")
-            
-            if choice.strip():
-                selected_index = int(choice) - 1
-                if 0 <= selected_index < len(checkpoint_files):
-                    previous_model_path = checkpoint_files[selected_index]
-            else:
-                # 默认选择最新的检查点
-                previous_model_path = checkpoint_files[0]
-                
-            loaded_model_name = os.path.basename(previous_model_path)
-            
-            print(f"加载模型: {loaded_model_name}")
-            logging.info(f"加载检查点: {loaded_model_name}")
-            
-            # 加载模型并获取训练状态
-            episode_rewards, current_episode = agent.load_checkpoint(previous_model_path)
-            start_episode = current_episode
-            # logging.info(f"继续从第 {start_episode} 轮训练，已完成 {len(episode_rewards)} 轮")
-            # print(f"继续从第 {start_episode} 轮训练，已完成 {len(episode_rewards)} 轮")
-        else:
-            print("未找到可加载的检查点文件")
-            logging.info("未找到可加载的检查点")
-    agent.model_name ,_ = os.path.splitext(loaded_model_name) if loaded_model_name else (None, None)
-    return start_episode, episode_rewards
-
 ## 通用的绘图函数模块
-def plot_data(figsize=(10, 6), plot_title=None, data_sets=None, x_values=None, colors=None, legends=None, 
-              xlabel=None, ylabel=None, xlim=None, ylim=None, log_scale=False, 
-              line_styles=None, show_legend=True, legend_loc='upper right', save_path=None, show_grid=False, show=True):
+def plot_data(x_values_list: List[np.ndarray], y_values_list: List[np.ndarray], figsize=(10, 6), plot_title: str = None, 
+              colors: List[str] = None, line_styles: List[str] = None, 
+              legends: List[str] = None, show_legend=True, legend_loc='upper right', 
+              xlabel: str = None, ylabel: str = None, log_scale=False, 
+              xlim: Tuple[float, float] = None, ylim: Tuple[float, float] = None, 
+              save_path: str = None, show_grid=False, show=True):
     """
-    figsize: 绘制的图像大小，默认为(8, 6)\n
-    plot_title:图像的标题，默认为空\n
-    data_sets: 你要绘制的数据集（可以是多个数组或列表）。若为空则绘图失败\n
-    x_values: x轴的值。如果没有提供，默认使用 0, 1, 2, ... 来作为x轴值。\n
-    colors: 设置每一条线的颜色，可以是如 ['r', 'g', 'b'] 这样的列表。\n
-    legends: 图例的标签。\n
-    xlabel=None, ylabel=None :关于横纵轴的标签\n
-    xlim, ylim: 设置x轴和y轴的范围，格式为 (min, max)。\n
-    log_scale: 如果设置为 True，则y轴使用对数坐标。\n
-    line_styles: 每一条线的样式，如 ['-', '--', ':']。\n
-    show_legend: 控制是否显示图例。\n
-    legend_pos : 指定图例的位置，没有则默认为右上角\n
-    save_path: 如果提供该路径，图像将会保存到指定位置，否则会直接显示图像。\n
-    show_grid: 是否显示网格，默认为否
+    - x_values: 绘制的x轴数据，可以是一个数组或多个数组列表。
+    - y_values: 绘制的y轴数据，可以是一个数组或多个数组列表。
+    - figsize: 图像的大小, 默认为(10, 6)
+    - plot_title: 图像的标题, 默认为None
+    - colors: 设置每一条线的颜色，可以是如 ['r', 'g', 'b'] 这样的列表。
+    - line_styles: 每一条线的样式，如 ['-', '--', ':']。
+    - legends: 图例的标签。
+    - show_legend: 控制是否显示图例。
+    - legend_loc : 指定图例的位置，没有则默认为右上角
+    - xlabel=None, ylabel=None :关于横纵轴的标签
+    - log_scale: 如果设置为 True，则y轴使用对数坐标。
+    - xlim, ylim: 设置x轴和y轴的范围，格式为 (min, max)。
+    - save_path: 如果提供该路径，图像将会保存到指定位置，否则会直接显示图像。
+    - show_grid: 是否显示网格，默认为否
+    - show: 是否显示图像，默认为是
     """
-    
-    # 判断数据集是否正确传入
-    if data_sets is None:
-        print("未提供数据集，绘图失败")
-        return
-    
     # 图像的大小
     plt.figure(figsize=figsize)
-    
+
+    # 设置标题
     if plot_title:
         plt.title(plot_title, fontsize = 16)
-    
+
     # 判断是否提供x轴参数，若没有则设置为默认的自然数序列，长度为数据集长度
-    if x_values is None:
-        x_values = np.arange(len(data_sets[0]))
+    if x_values_list is None:
+        x_values_list = [np.arange(len(y_values_list[i])) for i in range(len(y_values_list))]
+
+    # 确保x_values_list 和 y_values_list 是一个列表
+    if not isinstance(x_values_list, list): x_values_list = [x_values_list]
+    if not isinstance(y_values_list, list): y_values_list = [y_values_list]
         
     # 绘制每一个数据集
-    for i, data in enumerate(data_sets):
-        # 指定绘制数据集的线段属性，没有则默认
-        if isinstance(x_values[0], list):
-            x_value = x_values[i]
-        else:
-            x_value = x_values
-        
-        if len(x_value) != len(data_sets[i]):
+    for i, data in enumerate(y_values_list):
+        # 获取x轴数据
+        if len(x_values_list) == 1: x_values = x_values_list[0]
+        else: x_values = x_values_list[i]
+
+        # 检查x轴数据与y轴数据的长度是否匹配
+        if len(x_values) != len(data):
             print("x_values的长度与数据集长度不匹配，绘图失败")
             return
         
+        # 指定绘制数据集的线段属性，没有则默认
         color = colors[i] if colors else None
         label = legends[i] if legends else None
         line_style = line_styles[i] if line_styles else '-'
-        plt.plot(x_value, data, color=color, label=label, linestyle=line_style)
+        plt.plot(x_values, data, color=color, label=label, linestyle=line_style)
 
     # 开启x和y的标签
     if xlabel: plt.xlabel(xlabel, fontsize = 14)
@@ -259,46 +370,10 @@ def plot_data(figsize=(10, 6), plot_title=None, data_sets=None, x_values=None, c
 
     # 保存路径设置
     if save_path:
-        if plot_title: plt.savefig(save_path +'\\'+ plot_title)
-        else: plt.savefig(save_path +'\\'+ 'plot')
+        if plot_title: plt.savefig(save_path +'\\'+ f"{plot_title}.png")
+        else: plt.savefig(save_path +'\\'+ 'plot.png')
     
     if show:
         plt.show()
     else:
         plt.close()
-        
-def plot_test_data(save_plot_path:str, data, show:bool=True, name:str='',nc_data=None):
-    """
-    绘制测试数据的函数\n
-    只接受一个数据集，数据集的格式为字典\n"""
-    x_datas = [data['all_states'][:, 3], nc_data['all_states'][:, 3]] if nc_data else [data['all_states'][:, 3]]
-    x_legends = ["无控制"] if not nc_data else ["有控制", "无控制"]
-    plot_data(plot_title=f"{name}位移",
-          xlabel="时间 (s)",
-          ylabel="状态",
-          x_values=[data['times'], nc_data['times']] if nc_data else data['times'],
-          data_sets=x_datas,
-          save_path=save_plot_path,
-          legends=x_legends,
-          show = show
-          )
-
-    plot_data(plot_title=f"{name}动作",
-          xlabel="时间 (s)",
-          ylabel="动作",
-          x_values=data['times'],
-          data_sets=[data['actions']],
-          save_path=save_plot_path,
-          legends=["动作"],
-          show = show
-          )
-
-    plot_data(plot_title=f"{name}奖励",
-          xlabel="时间 (s)",
-          ylabel="奖励",
-          x_values=data['times'],
-          data_sets=[data['rewards']],
-          save_path=save_plot_path,
-          legends=["奖励"],
-          show = show
-          )
