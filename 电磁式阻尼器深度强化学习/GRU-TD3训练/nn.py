@@ -49,7 +49,10 @@ class Gru_Actor(nn.Module):
             if isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
                 nn.init.constant_(m.bias, 0)
-        
+        # 输出层使用小的均匀分布初始化
+        nn.init.uniform_(self.output_layer[0, 2].weight, -3e-3, 3e-3)
+        nn.init.uniform_(self.output_layer[0, 2].bias, -3e-3, 3e-3)
+
     def forward(self, state_seq: torch.Tensor) -> torch.Tensor:
         """前向传播
         Args:
@@ -231,7 +234,10 @@ class Actor(nn.Module):
             if isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
                 nn.init.constant_(m.bias, 0)
-        
+        # 输出层使用小的均匀分布初始化
+        nn.init.uniform_(self.net[-2].weight, -3e-3, 3e-3)
+        nn.init.uniform_(self.net[-2].bias, -3e-3, 3e-3)
+
     def forward(self, state:torch.Tensor)-> torch.Tensor:
         action = self.net(state) * self.action_bound
         return action
@@ -266,7 +272,7 @@ class Critic(nn.Module):
         # 最后一层使用较小的初始化
         nn.init.uniform_(self.net[-1].weight, -3e-3, 3e-3)
         nn.init.uniform_(self.net[-1].bias, -3e-3, 3e-3)
-        
+
     def forward(self, state:torch.Tensor, action:torch.Tensor)-> torch.Tensor:
         x = torch.cat([state, action], dim=-1)
         q_value = self.net(x)

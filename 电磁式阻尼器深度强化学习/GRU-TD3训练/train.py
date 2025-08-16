@@ -113,6 +113,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         
         # 保存检查点
         if (episode + 1) % save_interval == 0 and save_checkpoint_path:
+            train_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_checkpoint.pth"
             train_datasets.save_datasets(agent, save_checkpoint_path)
 
             # 保存当前模型的测试数据的控制图
@@ -121,4 +122,8 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
             os.makedirs(save_plot_path, exist_ok=True)
             plot_compare_no_control(nc_datasets, c_datasets, save_path=save_plot_path, use_time_noise=env.use_time_noise)
 
+            # 保存当前轮次的探索过程数据图
+            train_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_datasets"
+            plot_compare_no_control(nc_datasets, train_datasets, save_path=save_plot_path, use_time_noise=env.use_time_noise)
+            
     return train_datasets
