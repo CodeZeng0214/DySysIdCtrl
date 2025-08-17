@@ -236,7 +236,7 @@ class Actor(nn.Module):
                 nn.init.constant_(m.bias, 0)
         # 输出层使用小的均匀分布初始化
         nn.init.uniform_(self.net[-2].weight, -3e-3, 3e-3)
-        nn.init.uniform_(self.net[-2].bias, -3e-3, 3e-3)
+        nn.init.constant_(self.net[-2].bias, 0)
 
     def forward(self, state:torch.Tensor)-> torch.Tensor:
         action = self.net(state) * self.action_bound
@@ -271,7 +271,7 @@ class Critic(nn.Module):
                 nn.init.constant_(m.bias, 0)
         # 最后一层使用较小的初始化
         nn.init.uniform_(self.net[-1].weight, -3e-3, 3e-3)
-        nn.init.uniform_(self.net[-1].bias, -3e-3, 3e-3)
+        nn.init.constant_(self.net[-1].bias, 0)
 
     def forward(self, state:torch.Tensor, action:torch.Tensor)-> torch.Tensor:
         x = torch.cat([state, action], dim=-1)

@@ -26,7 +26,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
     - rand_prob: 随机动作概率\n
     - datasets: 数据集对象，默认值为 None\n
     """
-    nc_datasets = env.run_simulation(controller=None) # 无控制的仿真数据
+    nc_datasets = env.run_simulation(controller=None, show_bar=False) # 无控制的仿真数据
     
     # 加载数据集
     train_datasets = Datasets() if train_datasets is None else train_datasets
@@ -113,11 +113,12 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         
         # 保存检查点
         if (episode + 1) % save_interval == 0 and save_checkpoint_path:
-            train_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_checkpoint.pth"
+            train_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_checkpoint"
+            print(agent.actor.net[-2].state_dict()['bias'])
             train_datasets.save_datasets(agent, save_checkpoint_path)
 
             # 保存当前模型的测试数据的控制图
-            c_datasets = env.run_simulation(controller=agent)
+            c_datasets = env.run_simulation(controller=agent, show_bar=False)
             c_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_checkpoint"
             os.makedirs(save_plot_path, exist_ok=True)
             plot_compare_no_control(nc_datasets, c_datasets, save_path=save_plot_path, use_time_noise=env.use_time_noise)

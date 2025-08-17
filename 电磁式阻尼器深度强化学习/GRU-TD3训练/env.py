@@ -178,7 +178,7 @@ class ElectromagneticDamperEnv:
         # 返回观测值、奖励、是否结束
         return observation, reward, done
 
-    def run_simulation(self, controller: Union[TD3Agent, Gru_TD3Agent] = None, X0=None, z_func=None, r_func=None):
+    def run_simulation(self, controller: Union[TD3Agent, Gru_TD3Agent] = None, X0=None, z_func=None, r_func=None, show_bar=True):
         """运行完整仿真"""
         # 重置环境并设置初始状态
         self.reset(X0)
@@ -191,8 +191,8 @@ class ElectromagneticDamperEnv:
         simu_datasets = Datasets()
         simu_datasets.reset_history() # 重置数据集的单回合历史记录
         simu_datasets.record_history(state=self.all_state.copy(), action=0.0, reward=0.0, dt=self.get_current_timestep(), time=self.time)
-        
-        tqdm_bar = tqdm(total=int(self.T/self.Ts), desc="仿真进度")
+        if show_bar:
+            tqdm_bar = tqdm(total=int(self.T/self.Ts), desc="仿真进度")
         done = False
         while not done:
             state = self.get_observation()  # 获取当前观测值
@@ -210,6 +210,6 @@ class ElectromagneticDamperEnv:
 
             # 记录当前时间步的数据
             simu_datasets.record_history(state=self.all_state.copy(), action=action, reward=reward, dt=self.get_current_timestep(), time=self.time)
-            tqdm_bar.update(1)  # 更新进度条
+            if show_bar: tqdm_bar.update(1)  # 更新进度条
             
         return simu_datasets

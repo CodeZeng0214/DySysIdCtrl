@@ -46,8 +46,6 @@ class BaseTD3Agent:
         self.model_name = None
         self.total_it = 0 # 总迭代次数
         self.episode_rewards = [] # 存储每个回合的奖励
-        self._init_nn()
-        self._init_optimizer()
 
     def _init_nn(self):
         # 需要在子类中定义
@@ -136,6 +134,25 @@ class BaseTD3Agent:
             
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
+            
+            # 打印梯度信息（调试用）
+            total_grad_norm = 0
+            param_count = 0
+            for name, param in self.actor.named_parameters():
+                if param.grad is not None:
+                    grad_norm = param.grad.data.norm(2)
+                    total_grad_norm += grad_norm.item() ** 2
+                    param_count += 1
+                    if self.total_it % 1000 == 0:  # 每1000次打印一次
+                        pass # 打印梯度信息
+                        print(f"  {name}: grad_norm={grad_norm:.6f}")
+            total_grad_norm = total_grad_norm ** (1. / 2)
+            if self.total_it % 1000 == 0:
+                print(f"🔍 Actor总梯度范数: {total_grad_norm:.6f}, 参数数量: {param_count}")            
+            # 检查梯度是否为零
+            if total_grad_norm < 1e-8:
+                print(f"⚠️ 警告: Actor梯度几乎为零! 梯度范数: {total_grad_norm}")
+            
             if self.clip_grad:
                 torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=10)
             self.actor_optimizer.step()
@@ -159,6 +176,7 @@ class TD3Agent(BaseTD3Agent):
                  actor_lr=actor_lr, critic_lr=critic_lr, gamma=gamma, tau=tau,
                  policy_noise=policy_noise, noise_clip=noise_clip, policy_freq=policy_freq, sigma=sigma, clip_grad=clip_grad)
         self._init_nn()
+        self._init_optimizer()
 
     def _init_nn(self):
         # 网络初始化

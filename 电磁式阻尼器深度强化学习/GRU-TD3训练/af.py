@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from typing import List, Dict, Tuple, Union
 import logging
 from TD3 import TD3Agent, Gru_TD3Agent
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 枚举观测状态
 STATES_NAME = {
@@ -62,7 +63,7 @@ class Datasets:
             'actor_optimizer': agent.actor_optimizer.state_dict(),
             'critic1_optimizer': agent.critic1_optimizer.state_dict(),
             'critic2_optimizer': agent.critic2_optimizer.state_dict(),
-            'total_it': agent.total_it,
+            'total_it': agent.total_it
         }, os.path.join(save_dir, f"{self.checkpoint_name}.pth"))
         logging.info(f"保存检查点: {os.path.join(save_dir, f'{self.checkpoint_name}.pth')}")
 
@@ -88,11 +89,17 @@ class Datasets:
                 choice = input("请选择要加载的检查点文件编号 (输入数字，直接回车取最新): ")
                 
                 if choice.strip():
-                    selected_index = int(choice) - 1
-                    if 0 <= selected_index < len(checkpoint_files):
-                        checkpoint_path = checkpoint_files[selected_index]
+                    try:
+                        selected_index = int(choice) - 1
+                        if 0 <= selected_index < len(checkpoint_files):
+                            checkpoint_path = checkpoint_files[selected_index]
+                        else:
+                            print("无效的选择，使用最新检查点")
+                            checkpoint_path = checkpoint_files[0]
+                    except ValueError:
+                        print("无效输入，使用最新检查点")
+                        checkpoint_path = checkpoint_files[0]
                 else:
-                    # 默认选择最新的检查点
                     checkpoint_path = checkpoint_files[0]
 
                 self.checkpoint_name = os.path.splitext(os.path.basename(checkpoint_path))[0]
@@ -101,7 +108,9 @@ class Datasets:
                 logging.info(f"加载检查点: {self.checkpoint_name}")
 
                 # 加载模型并获取训练状态
-                datasets = torch.load(checkpoint_path, map_location='cpu')
+                datasets = torch.load(os.path.join(save_dir, f"{self.checkpoint_name}.pth"), map_location=device)
+                print(f"✅ 检查点文件加载成功")
+                logging.info(f"✅ 检查点文件加载成功")
 
                 # 加载训练数据
                 self.current_episode = datasets.get("current_episode", 0)
@@ -114,17 +123,20 @@ class Datasets:
                 self.episode_critic_losses = datasets.get("episode_critic_losses", np.array([]))
 
                 # 加载模型参数
-                agent.actor.load_state_dict(datasets.get("actor", {}))
-                agent.critic1.load_state_dict(datasets.get("critic1", {}))
-                agent.critic2.load_state_dict(datasets.get("critic2", {}))
-                agent.target_actor.load_state_dict(datasets.get("target_actor", {}))
-                agent.target_critic1.load_state_dict(datasets.get("target_critic1", {}))
-                agent.target_critic2.load_state_dict(datasets.get("target_critic2", {}))
-                agent.actor_optimizer.load_state_dict(datasets.get("actor_optimizer", {}))
-                agent.critic1_optimizer.load_state_dict(datasets.get("critic1_optimizer", {}))
-                agent.critic2_optimizer.load_state_dict(datasets.get("critic2_optimizer", {}))
-                agent.total_it = datasets.get("total_it", 0)
-
+                try:
+                    agent.actor.load_state_dict(datasets["actor"])
+                    agent.critic1.load_state_dict(datasets["critic1"])
+                    agent.critic2.load_state_dict(datasets["critic2"])
+                    agent.target_actor.load_state_dict(datasets["target_actor"])
+                    agent.target_critic1.load_state_dict(datasets["target_critic1"])
+                    agent.target_critic2.load_state_dict(datasets["target_critic2"])
+                    agent.actor_optimizer.load_state_dict(datasets["actor_optimizer"])
+                    agent.critic1_optimizer.load_state_dict(datasets["critic1_optimizer"])
+                    agent.critic2_optimizer.load_state_dict(datasets["critic2_optimizer"])
+                    agent.total_it = datasets["total_it"]
+                except Exception as e:
+                    print(f"加载模型参数时发生错误: {e}")
+                    logging.error(f"加载模型参数时发生错误: {e}")
                 print(f"成功加载检查点: {self.checkpoint_name}，当前回合: {self.current_episode}")
                 logging.info(f"成功加载检查点: {self.checkpoint_name}, 当前回合: {self.current_episode}")
             else:
@@ -189,6 +201,24 @@ class Datasets:
             plot_data(x_values_list=self.time_history, y_values_list=self.dt_history, 
                       plot_title=f'{self.checkpoint_name} 时间步长历史', legends=['时间步长'], 
                       xlabel='时间 (s)', ylabel='时间步长', save_path=save_path, show=show)
+    
+    def plot_episode_datas(self, plot_rewards=True, plot_actor_losses=False, plot_critic_losses=False, save_path=None, show=False):
+        """绘制回合数据"""
+        if plot_rewards and self.episode_rewards.size > 0:
+            plot_data(x_values_list=np.arange(len(self.episode_rewards)), y_values_list=self.episode_rewards, 
+                      plot_title=f'{self.checkpoint_name} 奖励历史', legends=['奖励'], 
+                      xlabel='回合', ylabel='奖励', save_path=save_path, show=show)
+
+        if plot_actor_losses and self.episode_actor_losses.size > 0:
+        # 注意去除0值的前几个回合
+            plot_data(x_values_list=np.arange(start=np.count_nonzero(self.episode_actor_losses == 0), stop=len(self.episode_actor_losses)), y_values_list=self.episode_actor_losses[self.episode_actor_losses != 0], 
+                      plot_title=f'{self.checkpoint_name} Actor损失历史', legends=['Actor损失'], 
+                      xlabel='回合', ylabel='损失', save_path=save_path, show=show)
+
+        if plot_critic_losses and self.episode_critic_losses.size > 0:
+            plot_data(x_values_list=np.arange(start=np.count_nonzero(self.episode_critic_losses == 0), stop=len(self.episode_critic_losses)), y_values_list=self.episode_critic_losses[self.episode_critic_losses != 0], 
+                      plot_title=f'{self.checkpoint_name} Critic损失历史', legends=['Critic损失'], 
+                      xlabel='回合', ylabel='损失', save_path=save_path, show=show)
 
 def plot_compare_no_control(nc_datasets:Datasets, c_datasets:Datasets, save_path=None, use_time_noise=False, show=False):
     """绘制与无控制的状态比较图"""
