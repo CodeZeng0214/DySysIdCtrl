@@ -74,11 +74,11 @@ class ElectromagneticDamperEnv:
     def reset(self, X0=None, z_func:Callable=None) -> np.ndarray:
         """重置环境到初始状态，返回初始观测值"""
         if X0:
-            self.all_state = X0
+            self.all_state = X0.copy()
             # 随机扰动初始状态（可选）
             # self.state[1] = np.random.uniform(-0.5, 0.5)  # 随机初始速度
         else:
-            self.all_state = self.all_state0
+            self.all_state = self.all_state0.copy()
             
         self.time = 0.0
         if z_func is not None:
@@ -107,7 +107,7 @@ class ElectromagneticDamperEnv:
             return np.zeros((2,1))  # 如果没有扰动函数，返回零矩阵
         z_func = self.z_func
         z_dot = (z_func(self.time) - z_func(self.time - self.Ts)) / self.Ts  # 计算扰动的导数
-        return np.array([[z_dot], [z_func(self.time)]])  # 返回扰动的速度和位移
+        return np.array([[z_dot], [z_func(self.time)]]).copy()  # 返回扰动的速度和位移
         
     def set_observation_indices(self, obs_indices: List[int], log:bool=True):
         """设置观测状态的索引"""
@@ -159,7 +159,7 @@ class ElectromagneticDamperEnv:
         # 更新内部状态和时间
         self.all_state[[0,3]] = next_X[[0,2]].reshape(-1) # 更新位移
         self.all_state[[1,4]] = next_X[[1,3]].reshape(-1) # 更新速度
-        self.all_state[[2,5]] = Y.reshape(-1) # 更新加速度
+        self.all_state[[2,5]] = Y.reshape(-1).copy() # 更新加速度
 
         self.time += current_dt  # 更新当前时间
         

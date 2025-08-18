@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Callable
 from scipy.linalg import expm
+action_bound = 5
 
 def enhanced_reward_func(obs:np.ndarray, action:np.ndarray, next_obs:np.ndarray)-> float:
     """增强型奖励函数"""
@@ -41,19 +42,26 @@ def tolerance_if_rf(tolerance: float = 1e-3) -> Callable:
         
         reward = 0
         if (abs(next_x2) <= tolerance):
-            # 处于容忍范围内
-            reward += 0.5
+            # 处于容忍范围内的线性奖励
+            reward += ((tolerance-abs(next_x2)) / tolerance)
             if (abs(next_x2) <= abs(x2)):
             # 处于容忍范围内且下一个状态更接近容忍范围
                 reward += 1.0
+
         elif (abs(next_x2) > tolerance):
             # 处于容忍范围外
-            reward += -0.5
+            reward += -1.0
             if (abs(next_x2) > abs(x2)):
             # 处于容忍范围外且下一个状态更远离容忍范围
                 reward += -1.0
+            # 基于nx2比tol的值的数量级增大惩罚
+            reward += (-np.log10(abs(next_x2) / tolerance))
         else:
             reward += 0
+            
+        # 动作过大的惩罚
+        reward += -(abs(float(action)) / action_bound)
+        
         return reward
     return reward_func
 

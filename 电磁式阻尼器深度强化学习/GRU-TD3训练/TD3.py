@@ -148,9 +148,12 @@ class BaseTD3Agent:
                         print(f"  {name}: grad_norm={grad_norm:.6f}")
             total_grad_norm = total_grad_norm ** (1. / 2)
             if self.total_it % 1000 == 0:
-                print(f"🔍 Actor总梯度范数: {total_grad_norm:.6f}, 参数数量: {param_count}")            
+                print(f"🔍 Actor总梯度范数: {total_grad_norm:.6f}, 参数数量: {param_count}")
+            # 检查梯度是否爆炸
+            if self.total_it % 1000 == 0 and total_grad_norm > 10:
+                print(f"⚠️ 警告: Actor梯度过高! 梯度范数: {total_grad_norm}")
             # 检查梯度是否为零
-            if total_grad_norm < 1e-8:
+            if self.total_it % 1000 == 0 and total_grad_norm < 1e-8:
                 print(f"⚠️ 警告: Actor梯度几乎为零! 梯度范数: {total_grad_norm}")
             
             if self.clip_grad:

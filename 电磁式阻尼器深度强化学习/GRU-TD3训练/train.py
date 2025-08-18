@@ -60,6 +60,8 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         
         # 计算当前探索噪声的大小，使用线性衰减
         epsilon = max(1.0 - episode / ((start_episode + n_episodes) * 0.7), 0.1)
+        # 计算当前探索噪声的大小，使用指数衰减
+        epsilon = 0.1 + (1.0 - 0.1) * np.exp(-0.01 * episode)
 
         # 重置数据集的单回合历史记录
         train_datasets.current_episode = episode + 1
@@ -115,6 +117,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         if (episode + 1) % save_interval == 0 and save_checkpoint_path:
             train_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_checkpoint"
             print(agent.actor.net[-2].state_dict()['bias'])
+            
             train_datasets.save_datasets(agent, save_checkpoint_path)
 
             # 保存当前模型的测试数据的控制图
