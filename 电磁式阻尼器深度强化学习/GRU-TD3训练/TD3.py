@@ -4,7 +4,7 @@ import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Union
 from nn import Actor, Critic, ReplayBuffer, Gru_Actor, Gru_Critic, Gru_ReplayBuffer
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -83,7 +83,12 @@ class BaseTD3Agent:
 
         return float(np.clip(action, -self.action_bound, self.action_bound))
 
-    def update(self, replay_buffer: ReplayBuffer) -> Tuple[float, float, float]:
+    def reset_history(self):
+        """重置状态历史，在新的episode开始时调用"""        
+        if hasattr(self, 'state_history'):
+            self.state_history = []
+        
+    def update(self, replay_buffer: Union[ReplayBuffer, Gru_ReplayBuffer]) -> Tuple[float, float, float]:
         """更新Actor和Critic网络"""
         if len(replay_buffer) < replay_buffer.batch_size:
             return 0.0, 0.0, 0.0
@@ -145,16 +150,19 @@ class BaseTD3Agent:
                     param_count += 1
                     if self.total_it % 1000 == 0:  # 每1000次打印一次
                         pass # 打印梯度信息
-                        print(f"  {name}: grad_norm={grad_norm:.6f}")
+                        #print(f"  {name}: grad_norm={grad_norm:.6f}")
             total_grad_norm = total_grad_norm ** (1. / 2)
             if self.total_it % 1000 == 0:
-                print(f"🔍 Actor总梯度范数: {total_grad_norm:.6f}, 参数数量: {param_count}")
+                pass # 打印梯度信息
+                #print(f"🔍 Actor总梯度范数: {total_grad_norm:.6f}, 参数数量: {param_count}")
             # 检查梯度是否爆炸
             if self.total_it % 1000 == 0 and total_grad_norm > 10:
-                print(f"⚠️ 警告: Actor梯度过高! 梯度范数: {total_grad_norm}")
+                pass # 打印梯度信息
+                #print(f"⚠️ 警告: Actor梯度过高! 梯度范数: {total_grad_norm}")
             # 检查梯度是否为零
             if self.total_it % 1000 == 0 and total_grad_norm < 1e-8:
-                print(f"⚠️ 警告: Actor梯度几乎为零! 梯度范数: {total_grad_norm}")
+                pass # 打印梯度信息
+                #print(f"⚠️ 警告: Actor梯度几乎为零! 梯度范数: {total_grad_norm}")
             
             if self.clip_grad:
                 torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=10)
@@ -201,27 +209,55 @@ class Gru_TD3Agent(BaseTD3Agent):
     def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0,
                  actor_lr=1e-3, critic_lr=1e-3, gamma=0.99, tau=0.005,
                  policy_noise=0.2, noise_clip=0.5, policy_freq=2, sigma=0.2, clip_grad=False, 
-                 seq_len=10, num_layers=1):
+                 seq_len=10, gru_layers=1):
         self.seq_len = seq_len  # 序列长度
-        self.num_layers = num_layers  # GRU层数
+        self.gru_layers = gru_layers  # GRU层数
         super().__init__(state_dim=state_dim, action_dim=action_dim, hidden_dim=hidden_dim, action_bound=action_bound,
                          actor_lr=actor_lr, critic_lr=critic_lr, gamma=gamma, tau=tau,
                          policy_noise=policy_noise, noise_clip=noise_clip, policy_freq=policy_freq, sigma=sigma, clip_grad=clip_grad)
         # 用于维护状态历史的缓冲区
         self.state_history = []
         self._init_nn()
+        self._init_optimizer()
 
     def _init_nn(self):
         # GRU网络初始化
-        self.actor = Gru_Actor(self.state_dim, self.action_dim, self.hidden_dim, self.action_bound, self.seq_len, self.num_layers).to(device)
-        self.critic1 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.num_layers).to(device)
-        self.critic2 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.num_layers).to(device)
+        self.actor = Gru_Actor(self.state_dim, self.action_dim, self.hidden_dim, self.action_bound, self.seq_len, self.gru_layers).to(device)
+        self.critic1 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers).to(device)
+        self.critic2 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers).to(device)
         
-        self.target_actor = Gru_Actor(self.state_dim, self.action_dim, self.hidden_dim, self.action_bound, self.seq_len, self.num_layers).to(device)
-        self.target_critic1 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.num_layers).to(device)
-        self.target_critic2 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.num_layers).to(device)
+        self.target_actor = Gru_Actor(self.state_dim, self.action_dim, self.hidden_dim, self.action_bound, self.seq_len, self.gru_layers).to(device)
+        self.target_critic1 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers).to(device)
+        self.target_critic2 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers).to(device)
         
         # 复制参数到目标网络
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.target_critic1.load_state_dict(self.critic1.state_dict())
         self.target_critic2.load_state_dict(self.critic2.state_dict())
+        
+    def select_action(self, state: np.ndarray, add_noise=True, epsilon=1.0, rand_prob=0.05) -> float:
+        """选择动作，支持探索"""
+        self.state_history.append(state.copy())
+                # 如果历史长度不够，使用零填充或重复当前状态
+        if len(self.state_history) < self.seq_len:
+            # 用当前状态填充不足的部分
+            padded_history = [state] * (self.seq_len - len(self.state_history)) + self.state_history
+        else:
+            # 保持最近的seq_len个状态
+            padded_history = self.state_history[-self.seq_len:]
+        # 构建状态序列
+        state_seq = np.array(padded_history)  # [seq_len, state_dim]
+        state_seq_tensor = torch.tensor(state_seq, dtype=torch.float32).unsqueeze(0).to(device)  # [1, seq_len, state_dim]
+
+        with torch.no_grad():
+            action_tensor: torch.Tensor = self.actor(state_seq_tensor)
+            action_np: np.ndarray = action_tensor.cpu().detach().numpy()
+            action = action_np.flatten()
+            
+        if add_noise:
+            noise = np.random.normal(0, self.action_bound * self.sigma * epsilon, size=self.action_dim)
+            action += noise
+            if np.random.random() < rand_prob:
+                action = np.random.uniform(-self.action_bound, self.action_bound, self.action_dim)
+
+        return float(np.clip(action, -self.action_bound, self.action_bound))

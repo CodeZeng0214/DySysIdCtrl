@@ -65,7 +65,8 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
 
         # 重置数据集的单回合历史记录
         train_datasets.current_episode = episode + 1
-        train_datasets.reset_history()
+        train_datasets.reset_history() 
+        agent.reset_history() # 重置代理的状态历史
         train_datasets.record_history(state=env.all_state.copy(), action=0.0, reward=0.0, dt=env.get_current_timestep(), time=env.time)
 
         done = False
@@ -116,7 +117,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         # 保存检查点
         if (episode + 1) % save_interval == 0 and save_checkpoint_path:
             train_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_checkpoint"
-            print(agent.actor.net[-2].state_dict()['bias'])
+            # print(agent.actor.net[-2].state_dict()['bias'])
             
             train_datasets.save_datasets(agent, save_checkpoint_path)
 

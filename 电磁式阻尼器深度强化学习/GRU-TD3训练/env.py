@@ -153,12 +153,13 @@ class ElectromagneticDamperEnv:
         # 限制吸振器位移
         if self.x1_limit and (abs(next_X[0]-next_X[2]) > self.x1_limit):
             next_X[0] = self.x1_limit * np.sign(next_X[0]-next_X[2]) + next_X[2]
+            next_X[1] = 0.0  # 重置吸振器速度为0
         
         Y = self.C @ next_X.reshape(-1, 1) + self.D @ action.reshape(-1, 1)
         
         # 更新内部状态和时间
-        self.all_state[[0,3]] = next_X[[0,2]].reshape(-1) # 更新位移
-        self.all_state[[1,4]] = next_X[[1,3]].reshape(-1) # 更新速度
+        self.all_state[[0,3]] = next_X[[0,2]].reshape(-1).copy() # 更新位移
+        self.all_state[[1,4]] = next_X[[1,3]].reshape(-1).copy() # 更新速度
         self.all_state[[2,5]] = Y.reshape(-1).copy() # 更新加速度
 
         self.time += current_dt  # 更新当前时间

@@ -50,8 +50,10 @@ class Gru_Actor(nn.Module):
                 nn.init.xavier_uniform_(m.weight)
                 nn.init.constant_(m.bias, 0)
         # 输出层使用小的均匀分布初始化
-        nn.init.uniform_(self.output_layer[0, 2].weight, -3e-3, 3e-3)
-        nn.init.uniform_(self.output_layer[0, 2].bias, -3e-3, 3e-3)
+        nn.init.uniform_(self.output_layer[0].weight, -3e-3, 3e-3)
+        nn.init.constant_(self.output_layer[0].bias, 0)
+        nn.init.uniform_(self.output_layer[2].weight, -3e-3, 3e-3)
+        nn.init.constant_(self.output_layer[2].bias, 0)
 
     def forward(self, state_seq: torch.Tensor) -> torch.Tensor:
         """前向传播
@@ -119,8 +121,8 @@ class Gru_Critic(nn.Module):
         
         # 最后一层使用较小的初始化
         nn.init.uniform_(self.fusion_layer[-1].weight, -3e-3, 3e-3)
-        nn.init.uniform_(self.fusion_layer[-1].bias, -3e-3, 3e-3)
-        
+        nn.init.constant_(self.fusion_layer[-1].bias, 0)
+
     def forward(self, state_seq: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """前向传播
         Args:
