@@ -15,9 +15,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 class ElectromagneticDamperEnv:
     """二自由度电磁阻尼器系统仿真环境"""
     def __init__(self, A:np.ndarray, B:np.ndarray, C:np.ndarray, D:np.ndarray, E:np.ndarray, Ts:float=0.001, T:float=10, 
-                 z_func:Callable=None, r_func:Callable=None, state0:np.ndarray=None, 
-                 obs_indices: List[int] = None, x1_limit:float=None,
-                 use_time_input=False, use_time_noise:bool=False, time_noise_std:float=0.01):
+                 z_func:Callable=None, r_func:Callable=None, f_func:Callable=None,
+                 state0:np.ndarray=None, obs_indices: List[int] = None, x1_limit:float=None,
+                 use_time_input=False, use_time_noise:bool=False, time_noise_std:float=0.01,
+                 F=None):
         """
         ## 初始化环境参数\n
         Xdot = Ax + Bu + E*z\n
@@ -33,8 +34,11 @@ class ElectromagneticDamperEnv:
         self.C = C  # 连续输出状态转移矩阵
         self.D = D  # 连续控制传递矩阵 
         self.E = E  # 地基扰动转移矩阵
+        self.F = F  # 直接扰动力转移矩阵
+        self.F = F if F is not None else np.array([[0.0], [0.0], [0.0], [0.0]]) # 直接扰动力的输入矩阵
         self.z_func:Callable = z_func # 地基扰动函数
         self.r_func:Callable = r_func # 奖励函数
+        self.f_func:Callable = f_func # 直接扰动力函数
         self.x1_limit = x1_limit # 吸振器位移限制
         self.Ts = Ts  # 采样时间 
         self.T = T    # 仿真总时长
@@ -45,32 +49,36 @@ class ElectromagneticDamperEnv:
         self.all_state0 = state0 if state0 is not None else np.zeros(6)  # 初始状态
         self.all_state = np.zeros(6) # 完整状态 [x1, v1, a1, x2, v2, a2]
         self.set_observation_indices(obs_indices, log=False)  # 设置观测状态索引
-        self.Ad, self.Bd, self.Ed = self.discretize_system(self.Ts) # 离散化系统
+        self.Ad, self.Bd, self.Ed, self.Fd = self.discretize_system(self.Ts) # 离散化系统
         self.reset()  # 初始化状态
-        
-    def discretize_system(self, dt)-> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+
+    def discretize_system(self, dt)-> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """离散化连续状态空间系统"""
         current_dt = self.Ts if dt is None else dt
         
         n = self.A.shape[0]  # 状态维度
         m1 = self.B.shape[1]  # 控制输入维度
         m2 = self.E.shape[1]  # 外部干扰维度
-        
+        m3 = self.F.shape[1]  # 直接扰动力维度
+
         # 构建扩展系统矩阵
-        M = np.zeros((n + m1 + m2, n + m1 + m2))
+        M = np.zeros((n + m1 + m2 + m3, n + m1 + m2 + m3))
+         # 填充扩展矩阵
         M[:n, :n] = self.A
         M[:n, n:n+m1] = self.B
-        M[:n, n+m1:] = self.E
-        
+        M[:n, n+m1:n+m1+m2] = self.E
+        M[:n, n+m1+m2:] = self.F
+
         # 计算矩阵指数
         expM = expm(M * current_dt)
           # 提取离散化矩阵
         Ad = expM[:n, :n]  # 离散状态转移矩阵
         Bd = expM[:n, n:n+m1]  # 离散控制输入矩阵
-        Ed = expM[:n, n+m1:]  # 离散外部干扰矩阵
-        
-        return Ad, Bd, Ed
-        
+        Ed = expM[:n, n+m1:n+m1+m2]  # 离散外部干扰矩阵
+        Fd = expM[:n, n+m1+m2:]  # 离散直接扰动力矩阵
+
+        return Ad, Bd, Ed, Fd
+
     def reset(self, X0=None, z_func:Callable=None) -> np.ndarray:
         """重置环境到初始状态，返回初始观测值"""
         if X0:
@@ -108,7 +116,13 @@ class ElectromagneticDamperEnv:
         z_func = self.z_func
         z_dot = (z_func(self.time) - z_func(self.time - self.Ts)) / self.Ts  # 计算扰动的导数
         return np.array([[z_dot], [z_func(self.time)]]).copy()  # 返回扰动的速度和位移
-        
+
+    def get_F(self) -> np.ndarray:
+        """获取直接扰动力"""
+        if self.f_func is None:
+            return np.zeros((1, 1))  # 如果没有扰动力函数，返回零矩阵
+        return np.array(self.f_func(self.time).copy()).reshape(-1, 1)  # 返回扰动力
+
     def set_observation_indices(self, obs_indices: List[int], log:bool=True):
         """设置观测状态的索引"""
             # Observation mapping for better logging
@@ -133,11 +147,17 @@ class ElectromagneticDamperEnv:
     def set_reward_function(self, r_func:Callable):
         """设置奖励函数"""
         self.r_func = r_func  # 设置奖励函数
+        
+    def set_force_function(self, f_func:Callable):
+        """设置外部扰动力函数"""
+        self.f_func = f_func  # 设置扰动力函数
 
     def step(self, action:np.ndarray, dt:float=None)-> Tuple[np.ndarray, float, bool]:
         """执行一个控制动作，更新系统状态，返回观测值、是否结束等信息"""
         
         current_dt = self.Ts if dt is None else dt
+        
+        if self.use_time_noise: self.Ad, self.Bd, self.Ed, self.Fd = self.discretize_system(current_dt) # 如果使用时间噪声，则重新离散化系统
         
         # 检查动作的类型
         if isinstance(action, torch.Tensor): action = action.cpu().numpy()
@@ -148,7 +168,7 @@ class ElectromagneticDamperEnv:
         # 应用离散状态方程更新内部状态
         # Xdot = Ax + Bu + E*z
         X = self.all_state[[0,1,3,4]].copy() # 提取 x 和 v
-        next_X = self.Ad @ X.reshape(-1, 1) + self.Bd @ action.reshape(-1, 1) + self.Ed @ self.get_Z()
+        next_X = self.Ad @ X.reshape(-1, 1) + self.Bd @ action.reshape(-1, 1) + self.Ed @ self.get_Z() + self.Fd @ self.get_F()
         
         # 限制吸振器位移
         if self.x1_limit and (abs(next_X[0]-next_X[2]) > self.x1_limit):

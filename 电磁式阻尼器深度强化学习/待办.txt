@@ -1,0 +1,2 @@
+白噪声激励：Research on deep reinforcement learning control algorithm for active suspension considering uncertain time delay
+归一化状态，加快训练速度：Research on deep reinforcement learning control algorithm for active suspension considering uncertain time delay

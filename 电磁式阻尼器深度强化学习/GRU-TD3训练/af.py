@@ -232,7 +232,7 @@ def plot_compare_no_control(nc_datasets:Datasets, c_datasets:Datasets, save_path
               plot_title=f'{c_datasets.checkpoint_name} 平台加速度对比',  legends=['TD3控制', '无控制'],
               xlabel='时间 (s)', ylabel='平台加速度 (a2)', save_path=save_path, show=show)
 
-    c_datasets.plot_episode_history(plot_state=[0,1,2,4,5], plot_action=True, plot_reward=True, plot_dt=use_time_noise, save_path=save_path, show=show)
+    c_datasets.plot_episode_history(plot_state=[0,1,2,4], plot_action=True, plot_reward=True, plot_dt=use_time_noise, save_path=save_path, show=show)
 
 def plot_state_comparison(results_no_control, results_td3, save_path=None):
     """比较不同控制策略下的状态轨迹
