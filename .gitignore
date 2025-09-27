@@ -49,3 +49,4 @@
 /电磁式阻尼器深度强化学习/GRU-DDPG无时间感知训练/gru_savedata
 /电磁式阻尼器深度强化学习/GRU-TD3训练/savedata
 /电磁式阻尼器深度强化学习/归档
+/电磁式阻尼器深度强化学习/GRU-TD3训练（考虑反应时间）/savedata
