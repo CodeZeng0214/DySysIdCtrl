@@ -235,9 +235,10 @@ class Gru_TD3Agent(BaseTD3Agent):
     def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0,
                  actor_lr=1e-3, critic_lr=1e-3, gamma=0.99, tau=0.005,
                  policy_noise=0.2, noise_clip=0.5, policy_freq=2, sigma=0.2, clip_grad=False, 
-                 seq_len=10, gru_layers=1,
+                 seq_len=10, gru_layers=1, pre_seq_len=1,
                  aware_dt: bool = False,
                  delay_enabled: bool = False, delay_step: int = 5, delay_sigma: int = 2, aware_delay_time: bool = False):
+        self.pre_seq_len = pre_seq_len  # 预测时间步长度
         self.seq_len = seq_len  # 序列长度
         self.gru_layers = gru_layers  # GRU层数
         super().__init__(state_dim=state_dim, action_dim=action_dim, hidden_dim=hidden_dim, action_bound=action_bound,
@@ -250,14 +251,14 @@ class Gru_TD3Agent(BaseTD3Agent):
 
     def _init_nn(self):
         # GRU网络初始化
-        self.actor = Gru_Actor(self.state_dim, self.action_dim, self.hidden_dim, self.action_bound, self.seq_len, self.gru_layers).to(device)
-        self.critic1 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers).to(device)
-        self.critic2 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers).to(device)
-        
-        self.target_actor = Gru_Actor(self.state_dim, self.action_dim, self.hidden_dim, self.action_bound, self.seq_len, self.gru_layers).to(device)
-        self.target_critic1 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers).to(device)
-        self.target_critic2 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers).to(device)
-        
+        self.actor = Gru_Actor(self.state_dim, self.action_dim, self.hidden_dim, self.action_bound, self.seq_len, self.gru_layers, self.pre_seq_len).to(device)
+        self.critic1 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers, self.pre_seq_len).to(device)
+        self.critic2 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers, self.pre_seq_len).to(device)
+
+        self.target_actor = Gru_Actor(self.state_dim, self.action_dim, self.hidden_dim, self.action_bound, self.seq_len, self.gru_layers, self.pre_seq_len).to(device)
+        self.target_critic1 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers, self.pre_seq_len).to(device)
+        self.target_critic2 = Gru_Critic(self.state_dim, self.action_dim, self.hidden_dim, self.seq_len, self.gru_layers, self.pre_seq_len).to(device)
+
         # 复制参数到目标网络
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.target_critic1.load_state_dict(self.critic1.state_dict())

@@ -211,7 +211,7 @@ class ElectromagneticDamperEnv:
 
         # 创建仿真数据
         simu_datasets = Datasets()
-        simu_datasets.reset_history() # 重置数据集的单回合历史记录
+        simu_datasets.reset_episode_data() # 重置数据集的单回合历史记录
         simu_datasets.record_history(state=self.all_state.copy(), action=0.0, reward=0.0, dt=self.get_current_timestep(), time=self.time)
         if controller and controller.delay_enabled: delay = max(1, int(np.random.normal(controller.delay_step, controller.delay_sigma)))
         else: delay = 1
@@ -233,7 +233,7 @@ class ElectromagneticDamperEnv:
                     state = np.concatenate([state, np.array([delay_time])])
                     
                 self.state_history.append(state.copy())
-                action = controller.select_action(self.state_history, add_noise=False)  # 获取控制动作
+                action = controller.select_action(self.state_history, add_noise=False, delay=delay)  # 获取控制动作
                 
                 if controller.delay_enabled: delay = max(1, int(np.random.normal(controller.delay_step, controller.delay_sigma)))
                 else: delay = 1

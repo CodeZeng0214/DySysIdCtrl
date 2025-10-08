@@ -43,7 +43,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
     rewards_log_file = os.path.join(project_path, f"td3_rewards_log_{project_time}.csv") if project_path else None
     if rewards_log_file:
         with open(rewards_log_file, "w") as f:
-            f.write(f"{'episode':>8}, {'rewards':>12}, {'critic_loss':>12}, {'actor_loss':>12}, {'epsilon':>12}\n")
+            f.write(f"{'episode':>8}, {'rewards':>12}, {'critic_loss':>12}, {'actor_loss':>12}, {'epsilon':>12}, {'simu_reward':>12}\n")
     # 继承之前的数据
     if train_datasets.current_episode > 0:
         with open(rewards_log_file, "a") as f:
@@ -62,10 +62,11 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         epsilon = max(1.0 - episode / ((start_episode + n_episodes) * 0.7), 0.1)
         # 计算当前探索噪声的大小，使用指数衰减
         epsilon = 0.1 + (1.0 - 0.1) * np.exp(-0.01 * episode)
+        if episode >= n_episodes * 0.7: epsilon = 0 # 最后30%的轮次不使用探索噪声
 
         # 重置数据集的单回合历史记录
         train_datasets.current_episode = episode + 1
-        train_datasets.reset_history() 
+        train_datasets.reset_episode_data() 
         agent.reset_history() # 重置代理的状态历史
         train_datasets.record_history(state=env.all_state.copy(), action=0.0, reward=0.0, dt=env.get_current_timestep(), time=env.time)
         if agent.delay_enabled: delay = max(1, int(np.random.normal(agent.delay_step, agent.delay_sigma)))
@@ -87,7 +88,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
                 state = np.concatenate([state, np.array([delay_time])])
             
             env.state_history.append(state.copy())
-            action = float(agent.select_action(env.state_history, add_noise=True, epsilon=epsilon, rand_prob=rand_prob, delay=delay))
+            action = float(agent.select_action(env.state_history, add_noise=(epsilon is not 0), epsilon=epsilon, rand_prob=rand_prob, delay=delay))
 
             # 执行动作
             next_state, reward, done = env.step(action, dt=train_datasets.dt_history[-1])
@@ -127,14 +128,8 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
                                            episode_actor_loss / num_updates if num_updates > 0 else 0, 
                                            episode_critic_loss / num_updates if num_updates > 0 else 0)
 
-        # 保存csv数据文件
-        if rewards_log_file:
-            with open(rewards_log_file, "a") as f:
-                f.write(f"{episode+1:>8}, {episode_reward:>12.4f}, {train_datasets.episode_critic_losses[-1]:>12.6f}, {train_datasets.episode_actor_losses[-1]:>12.6f}, {epsilon:>12.4f}\n")
-
-        # 写入进度到日志
-        if (episode + 1) % print_interval == 0:
-            logging.info(f"轮次 {episode+1}: 累计奖励 = {episode_reward:.2f}")
+        c_datasets = env.run_simulation(controller=agent, show_bar=False)
+        simu_reward = c_datasets.reward_history.sum()
         
         # 保存检查点
         if (episode + 1) % save_interval == 0 and save_checkpoint_path:
@@ -144,7 +139,6 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
             train_datasets.save_datasets(agent, save_checkpoint_path)
 
             # 保存当前模型的测试数据的控制图
-            c_datasets = env.run_simulation(controller=agent, show_bar=False)
             c_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_checkpoint"
             os.makedirs(save_plot_path, exist_ok=True)
             plot_compare_no_control(nc_datasets, c_datasets, save_path=save_plot_path, use_time_noise=env.use_dt_noise)
@@ -153,4 +147,13 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
             train_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_datasets"
             plot_compare_no_control(nc_datasets, train_datasets, save_path=save_plot_path, use_time_noise=env.use_dt_noise)
             
+        # 保存csv数据文件
+        if rewards_log_file:
+            with open(rewards_log_file, "a") as f:
+                f.write(f"{episode+1:>8}, {episode_reward:>12.4f}, {train_datasets.episode_critic_losses[-1]:>12.6f}, {train_datasets.episode_actor_losses[-1]:>12.6f}, {epsilon:>12.4f}, {simu_reward:>12.4f}\n")
+
+        # 写入进度到日志
+        if (episode + 1) % print_interval == 0:
+            logging.info(f"轮次 {episode+1}: 累计奖励 = {episode_reward:.2f}")
+                
     return train_datasets

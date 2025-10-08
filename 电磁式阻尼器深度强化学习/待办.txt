@@ -1,2 +1,4 @@
 白噪声激励：Research on deep reinforcement learning control algorithm for active suspension considering uncertain time delay
 归一化状态，加快训练速度：Research on deep reinforcement learning control algorithm for active suspension considering uncertain time delay
+GRU网络结合TD3振动控制的网络怎样设计？
+为什么在不对动作添加噪声的情况下，会出现训练过程和模拟过程偏差很大的情况，不应该是一样的吗？

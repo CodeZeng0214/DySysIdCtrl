@@ -152,27 +152,27 @@ class Datasets:
         self.dt_history = np.append(self.dt_history, dt)
         self.time_history = np.append(self.time_history, time)
 
-    def reset_history(self):
+    def reset_episode_data(self):
         """重置单回合历史数据"""
         self.state_history = np.zeros((0, 6))  # 单轮次的状态历史
         self.reward_history = np.array([])
         self.action_history = np.array([])
         self.dt_history = np.array([])
         self.time_history = np.array([])
+        
+    def reset_episode_history(self):
+        """重置轮次历史，保留模型参数"""
+        self.reset_episode_data()
+        self.current_episode = 0
+        self.episode_rewards = np.array([])  # 轮次的累计奖励
+        self.episode_actor_losses = np.array([])  # 轮次的策略网络累计损失
+        self.episode_critic_losses = np.array([])  # 轮次的评估网络累计损失
 
     def record_episode_data(self, episode_reward, episode_actor_losses, episode_critic_losses):
         """记录回合累计数据"""
         self.episode_rewards = np.append(self.episode_rewards, episode_reward)
         self.episode_actor_losses = np.append(self.episode_actor_losses, episode_actor_losses)
         self.episode_critic_losses = np.append(self.episode_critic_losses, episode_critic_losses)
-
-    def reset_episode_data(self):
-        """重置单回合数据，用于下一回合"""
-        self.state_history = np.zeros((0, 6))
-        self.action_history = np.array([])
-        self.dt_history = np.array([])
-        self.time_history = np.array([])
-        self.reward_history = np.array([])
 
     def plot_episode_history(self, plot_state=[], plot_action=False, plot_reward=False, plot_dt=False, save_path=None, show=False):
         """绘制训练历史\n
