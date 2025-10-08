@@ -4,6 +4,7 @@ import numpy as np
 import random
 from collections import deque
 from typing import Tuple
+import torch.nn.functional as F  # 添加导入
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -17,20 +18,27 @@ class Gru_Actor(nn.Module):
     - action_bound: 动作范围，默认值为 5.0
     - seq_len: 输入序列长度，默认值为 10
     """
-    def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0, seq_len=10, num_layers=1):
+    def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0, seq_len=10, num_layers=1, pre_seq_len=1):
         super(Gru_Actor, self).__init__()
         self.hidden_dim = hidden_dim
         self.seq_len = seq_len
         self.num_layers = num_layers
         self.action_bound = action_bound
+        self.pre_seq_len = pre_seq_len  # 预测的时间步数
         
         # GRU层
         self.gru = nn.GRU(input_size=state_dim, hidden_size=hidden_dim, 
                          num_layers=num_layers, batch_first=True, dropout=0.1)
         
+        # 用于预测下一个状态的线性层
+        self.gru_predict = nn.Linear(hidden_dim, state_dim)  # 用于预测的线性层
+
+        # 添加注意力层
+        self.attention = nn.Linear(hidden_dim, 1)  # 计算每个时间步的注意力分数
+        
         # 输出层
         self.output_layer = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
+            nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, action_dim),
             nn.Tanh()  # 输出范围 [-1, 1]
@@ -44,11 +52,23 @@ class Gru_Actor(nn.Module):
                 nn.init.orthogonal_(param)
             elif 'bias' in name:
                 nn.init.constant_(param, 0)
-                
+
+        for name, param in self.attention.named_parameters():
+            if 'weight' in name:
+                nn.init.xavier_uniform_(param)
+            elif 'bias' in name:
+                nn.init.constant_(param, 0)
+
         for m in self.output_layer.modules():
             if isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
                 nn.init.constant_(m.bias, 0)
+
+        for m in self.gru_predict.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                nn.init.constant_(m.bias, 0)
+
         # 输出层使用小的均匀分布初始化
         nn.init.uniform_(self.output_layer[0].weight, -3e-3, 3e-3)
         nn.init.constant_(self.output_layer[0].bias, 0)
@@ -65,14 +85,50 @@ class Gru_Actor(nn.Module):
         batch_size = state_seq.size(0)
         
         # GRU前向传播
-        gru_out, _ = self.gru(state_seq)  # [batch_size, seq_len, hidden_dim]
-        
+        gru_y_out, gru_h_out = self.gru(state_seq)  # gru_y_out形状为 [batch_size, seq_len, hidden_dim]
+
         # 取最后一个时间步的输出
-        last_output = gru_out[:, -1, :]  # [batch_size, hidden_dim]
+        # context_vector = gru_out[:, -1, :]  # [batch_size, hidden_dim]
         
+        
+        # 预测接下来的pre_seq_len个时间步
+        state_predict_seq = torch.zeros((batch_size, self.pre_seq_len, state_seq.size(2)), device=state_seq.device) # 形状为 [batch_size, pre_seq_len, state_dim]
+        h_predict_seq = torch.zeros((batch_size, self.pre_seq_len, self.hidden_dim), device=state_seq.device) # 形状为 [batch_size, pre_seq_len, hidden_dim]
+        state_predict: torch.Tensor = self.gru_predict(gru_h_out).transpose(0, 1) # 形状变为 [batch_size, 1, state_dim]
+        h_predict = gru_h_out
+        # print("state_predict:", state_predict.shape)
+        # print("h_predict:", h_predict.shape)
+        for t in range(self.pre_seq_len):
+            state_predict_seq[:, t, :] = state_predict.squeeze(1)  # 保存预测的状态，state_predict形状为 [batch_size, state_dim]
+            h_predict_seq[:, t, :] = h_predict.squeeze(0)  # 保存预测的隐藏状态，h_predict形状为 [batch_size, hidden_dim]
+            _,h_predict = self.gru(state_predict, h_predict) # 更新隐藏状态，h_predict形状为 [batch_size, 1, hidden_dim]
+            state_predict = self.gru_predict(h_predict).transpose(0, 1) # 形状变为 [batch_size, 1, state_dim]
+            
+        # 提取前pre_seq_len个时间步的状态和隐藏状态
+        state_front_seq = state_seq[:, -self.pre_seq_len:, :]  # [batch_size, pre_seq_len, state_dim]
+        h_front_seq = gru_y_out[:, -self.pre_seq_len:, :]  # [batch_size, pre_seq_len, hidden_dim]
+        
+        # 合并前后序列
+        state_combined_seq = torch.cat((state_front_seq, state_predict_seq), dim=1)  # [batch_size, 2*pre_seq_len, state_dim]
+        h_combined_seq = torch.cat((h_front_seq, h_predict_seq), dim=1)  # [batch_size, 2*pre_seq_len, hidden_dim]
+        
+        # 计算注意力权重
+        attention_scores = self.attention(h_combined_seq).squeeze(-1)  # [batch_size, 2*pre_seq_len]
+        attention_weights = F.softmax(attention_scores, dim=-1)  # [batch_size, 2*pre_seq_len]
+
+
+        # 加权求和得到上下文向量
+        context_vector = torch.sum(state_combined_seq * attention_weights.unsqueeze(-1), dim=1)  # [batch_size, hidden_dim]
+
+
+        # # 选择最大注意力权重对应的时间步状态作为上下文向量
+        # max_attention_indices = torch.argmax(attention_weights, dim=-1)  # [batch_size]
+        # context_vector = state_combined_seq[torch.arange(batch_size), max_attention_indices]  # [batch_size, state_dim]
+
+
         # 通过输出层得到动作
-        action = self.output_layer(last_output) * self.action_bound
-        
+        action = self.output_layer(context_vector) * self.action_bound
+         
         return action
     
 class Gru_Critic(nn.Module):
@@ -84,21 +140,26 @@ class Gru_Critic(nn.Module):
     - hidden_dim: 隐藏层维度，默认值为 64
     - seq_len: 输入序列长度，默认值为 10
     """
-    def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, seq_len=10, num_layers=1):
+    def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, seq_len=10, num_layers=1, pre_seq_len=1):
         super(Gru_Critic, self).__init__()
         self.hidden_dim = hidden_dim
         self.seq_len = seq_len
         self.num_layers = num_layers
-        
+        self.pre_seq_len = pre_seq_len
+        self.action_dim = action_dim
         # GRU层处理状态序列
         self.gru = nn.GRU(input_size=state_dim, hidden_size=hidden_dim, 
                          num_layers=num_layers, batch_first=True, dropout=0.1)
+
+        # 用于预测下一个状态的线性层
+        self.gru_predict = nn.Linear(hidden_dim, state_dim)  # 用于预测的线性层
+
+        # 添加注意力层
+        self.attention = nn.Linear(hidden_dim, 1)  # 计算每个时间步的注意力分数
         
         # 融合层：将GRU输出和动作结合
         self.fusion_layer = nn.Sequential(
-            nn.Linear(hidden_dim + action_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
+            nn.Linear(state_dim + action_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
@@ -113,8 +174,19 @@ class Gru_Critic(nn.Module):
                 nn.init.orthogonal_(param)
             elif 'bias' in name:
                 nn.init.constant_(param, 0)
+        
+        for name, param in self.attention.named_parameters():
+            if 'weight' in name:
+                nn.init.xavier_uniform_(param)
+            elif 'bias' in name:
+                nn.init.constant_(param, 0)
                 
         for m in self.fusion_layer.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                nn.init.constant_(m.bias, 0)
+                
+        for m in self.gru_predict.modules():
             if isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
                 nn.init.constant_(m.bias, 0)
@@ -134,19 +206,55 @@ class Gru_Critic(nn.Module):
         batch_size = state_seq.size(0)
         
         # GRU前向传播
-        gru_out, _ = self.gru(state_seq)  # [batch_size, seq_len, hidden_dim]
+        gru_y_out, gru_h_out = self.gru(state_seq)  # [batch_size, seq_len, hidden_dim]
+        
         
         # 取最后一个时间步的输出
-        last_output = gru_out[:, -1, :]  # [batch_size, hidden_dim]
+        # context_vector = gru_out[:, -1, :]  # [batch_size, hidden_dim]
+
+
+        # 预测接下来的pre_seq_len个时间步
+        state_predict_seq = torch.zeros((batch_size, self.pre_seq_len, state_seq.size(2)), device=state_seq.device) # 形状为 [batch_size, pre_seq_len, state_dim]
+        h_predict_seq = torch.zeros((batch_size, self.pre_seq_len, self.hidden_dim), device=state_seq.device) # 形状为 [batch_size, pre_seq_len, hidden_dim]
+        state_predict: torch.Tensor = self.gru_predict(gru_h_out).transpose(0, 1) # 形状变为 [batch_size, 1, state_dim]
+        h_predict = gru_h_out
+        # print("state_predict:", state_predict.shape)
+        # print("h_predict:", h_predict.shape)
+        for t in range(self.pre_seq_len):
+            state_predict_seq[:, t, :] = state_predict.squeeze(1)  # 保存预测的状态，state_predict形状为 [batch_size, state_dim]
+            h_predict_seq[:, t, :] = h_predict.squeeze(0)  # 保存预测的隐藏状态，h_predict形状为 [batch_size, hidden_dim]
+            _,h_predict = self.gru(state_predict, h_predict) # 更新隐藏状态，h_predict形状为 [batch_size, 1, hidden_dim]
+            state_predict = self.gru_predict(h_predict).transpose(0, 1) # 形状变为 [batch_size, 1, state_dim]
+            
+        # 提取前pre_seq_len个时间步的状态和隐藏状态
+        state_front_seq = state_seq[:, -self.pre_seq_len:, :]  # [batch_size, pre_seq_len, state_dim]
+        h_front_seq = gru_y_out[:, -self.pre_seq_len:, :]  # [batch_size, pre_seq_len, hidden_dim]
+        
+        # 合并前后序列
+        state_combined_seq = torch.cat((state_front_seq, state_predict_seq), dim=1)  # [batch_size, 2*pre_seq_len, state_dim]
+        h_combined_seq = torch.cat((h_front_seq, h_predict_seq), dim=1)  # [batch_size, 2*pre_seq_len, hidden_dim]
+        
+        # 计算注意力权重
+        attention_scores = self.attention(h_combined_seq).squeeze(-1)  # [batch_size, 2*pre_seq_len]
+        attention_weights = F.softmax(attention_scores, dim=-1)  # [batch_size, 2*pre_seq_len]
+
+
+        # 加权求和得到上下文向量
+        context_vector = torch.sum(state_combined_seq * attention_weights.unsqueeze(-1), dim=1)  # [batch_size, hidden_dim]
+
+
+        # # 选择最大注意力权重对应的时间步状态作为上下文向量
+        # max_attention_indices = torch.argmax(attention_weights, dim=-1)  # [batch_size]
+        # context_vector = state_combined_seq[torch.arange(batch_size), max_attention_indices]  # [batch_size, state_dim]
         
         # 将状态特征和动作拼接
-        x = torch.cat([last_output, action], dim=-1)  # [batch_size, hidden_dim + action_dim]
+        x = torch.cat([context_vector, action], dim=-1)  # [batch_size, state_dim + action_dim]
         
         # 通过融合层得到Q值
         q_value = self.fusion_layer(x)
         
         return q_value
-
+    
 class Gru_ReplayBuffer:
     """## Gru_ReplayBuffer 经验回放池\n
     用于存储和采样经验，支持序列状态\n
@@ -200,6 +308,7 @@ class Gru_ReplayBuffer:
         state_seqs, actions, rewards, next_state_seqs, dones = zip(*batch)
 
         state_seqs = torch.tensor(np.array(state_seqs), dtype=torch.float32).to(device)  # [batch_size, seq_len, state_dim]
+        # print(state_seqs.shape)
         actions = torch.tensor(np.array(actions), dtype=torch.float32).reshape(-1, 1).to(device)  # [batch_size, action_dim]
         rewards = torch.tensor(np.array(rewards), dtype=torch.float32).reshape(-1, 1).to(device)  # [batch_size, 1]
         next_state_seqs = torch.tensor(np.array(next_state_seqs), dtype=torch.float32).to(device)  # [batch_size, seq_len, state_dim]
