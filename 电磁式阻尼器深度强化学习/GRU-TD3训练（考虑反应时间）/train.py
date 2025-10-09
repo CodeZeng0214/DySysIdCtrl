@@ -62,7 +62,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         epsilon = max(1.0 - episode / ((start_episode + n_episodes) * 0.7), 0.1)
         # 计算当前探索噪声的大小，使用指数衰减
         epsilon = 0.1 + (1.0 - 0.1) * np.exp(-0.01 * episode)
-        if episode >= n_episodes * 0.7: epsilon = 0 # 最后30%的轮次不使用探索噪声
+        if episode >= n_episodes * 0.8: epsilon = 0 # 最后20%的轮次不使用探索噪声
 
         # 重置数据集的单回合历史记录
         train_datasets.current_episode = episode + 1
