@@ -310,7 +310,7 @@ class Gru_ReplayBuffer:
         self.seq_len = seq_len
         self.state_history = deque(maxlen=seq_len)  # 用于维护状态历史
         
-    def add(self, state: np.ndarray, action: np.ndarray, reward: float, next_state: np.ndarray, done: bool):
+    def add(self, state: np.ndarray, action: float, reward: float, next_state: np.ndarray, done: bool):
         """添加经验到回放池
         Args:
             state: 当前状态，shape [state_dim]
@@ -331,6 +331,12 @@ class Gru_ReplayBuffer:
             next_state_seq = np.array(list(self.state_history)[1:] + [next_state])
             
             self.buffer.append((state_seq, action, reward, next_state_seq, done))
+            
+    def delete_last(self, num):
+        """删除最近添加的 num 条经验"""
+        for _ in range(num):
+            if self.buffer:
+                self.buffer.pop()
     
     def reset_history(self):
         """重置状态历史，在新的episode开始时调用"""
@@ -435,11 +441,10 @@ class ReplayBuffer:
     def __init__(self, capacity=100000, batch_size=64):
         self.buffer = deque(maxlen=capacity)
         self.batch_size = batch_size
-        
-    def add(self, state:np.ndarray, action:np.ndarray, reward:float, next_state:np.ndarray, done:bool): # 添加 done 参数
-        # state 和 next_state 是观测量，action 是动作值
-        self.buffer.append((state, action, reward, next_state, done)) # 存储 done
-        
+
+    def add(self, state:np.ndarray, action:float, reward:float, next_state:np.ndarray, done:bool):
+        self.buffer.append((state.copy(), action, reward, next_state.copy(), done))
+
     def sample(self)-> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]: # 返回类型添加 Tensor
         """随机采样一批经验\n
         返回：\n
