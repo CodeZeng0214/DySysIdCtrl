@@ -66,6 +66,7 @@ class BaseTD3Agent:
         self.target_actor: Actor | Gru_Actor = None
         self.target_critic1: Critic | Gru_Critic = None
         self.target_critic2: Critic | Gru_Critic = None
+        self.gru_predictor: GruPredictor = None
         raise NotImplementedError("需要在子类中初始化神经网络结构")
 
     def _init_optimizer(self):
@@ -97,6 +98,11 @@ class BaseTD3Agent:
         # 1. 从回放池中采样
         states, actions, rewards, next_states, dones = replay_buffer.sample()
         
+        # 如果使用GRU预测器，先预测状态
+        if self.gru_predictor is not None:
+            states = self.predict_states(states)
+            next_states = self.predict_states(next_states)
+
         with torch.no_grad():
             # 目标策略平滑正则化
             noise = (torch.randn_like(actions) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
@@ -168,8 +174,6 @@ class BaseTD3Agent:
             self.actor_optimizer.step()
             
             # 软更新目标网络
-            if hasattr(self, 'gru_predictor'):
-                self._soft_update(self.gru_predictor, self.target_gru_predictor)
             self._soft_update(self.actor, self.target_actor)
             self._soft_update(self.critic1, self.target_critic1)
             self._soft_update(self.critic2, self.target_critic2)
@@ -177,6 +181,60 @@ class BaseTD3Agent:
             actor_loss = actor_loss.item()
         
         return critic_loss.item(), actor_loss, (critic1_loss.item() + critic2_loss.item()) / 2
+    
+    def predict_states(self, state_seq: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """使用GRU预测未来状态序列，输出拼接后的状态序列和隐藏状态序列"""
+        # 使用共享的GRU预测器获取预测序列
+        with torch.no_grad():  # GRU预测器的输出不参与梯度计算
+            if self.aware_dt or self.aware_delay_time:  # 判断是否包含感知状态
+                gru_state_seq = torch.cat((state_seq[:,:,0].unsqueeze(2),state_seq[:,:,3].unsqueeze(2),state_seq[:,:,6:]), dim=2) # 处理状态序列，抛弃速度和加速度维度
+            else:
+                gru_state_seq = torch.cat((state_seq[:,:,0].unsqueeze(2),state_seq[:,:,3].unsqueeze(2)), dim=2) # 处理状态序列，抛弃速度和加速度维度
+
+            gru_state_fc_seq, h_fc_seq = self.gru_predictor.forward(gru_state_seq)  # [batch_size, fc_seq_len, state_dim], [batch_size, fc_seq_len, hidden_dim]
+
+            # 计算速度和加速度，拼接到状态序列
+            vel_fc_seq, acc_fc_seq = self.compute_derivatives(gru_state_fc_seq[:,:,0:2],gru_state_fc_seq[:,:,2] if self.aware_dt else None)
+            state_fc_seq = torch.cat((gru_state_fc_seq[:,:,0].unsqueeze(2), vel_fc_seq[:,:,0].unsqueeze(2), acc_fc_seq[:,:,0].unsqueeze(2), 
+                                      gru_state_fc_seq[:,:,1].unsqueeze(2), vel_fc_seq[:,:,1].unsqueeze(2), acc_fc_seq[:,:,1].unsqueeze(2), 
+                                      gru_state_fc_seq[:,:,2:]), dim=2)  # [batch_size, fc_seq_len, state_dim]
+
+            state_combined_seq = torch.cat((state_seq[:, -self.gru_predictor.fc_seq_len//2:, :], state_fc_seq), dim=1)  # [batch_size, 1.5*fc_seq_len, state_dim]
+            h_combined_seq = torch.cat((self.gru_predictor.gru_out[:, -self.gru_predictor.fc_seq_len//2:, :], h_fc_seq), dim=1)  # [batch_size, 1.5*fc_seq_len, hidden_dim]
+            
+            return state_combined_seq, h_combined_seq
+
+    def compute_derivatives(self, positions: torch.Tensor, dt_seq: torch.Tensor = None) -> Tuple[torch.Tensor, torch.Tensor]:
+        """通过数值微分计算速度和加速度
+        
+        Args:
+            positions: 位移序列 [batch_size, seq_len, position_dim]
+            dt_seq: 时间步长序列 [batch_size, seq_len-1] (可选)
+        
+        Returns:
+            velocities: 速度序列 [batch_size, seq_len, position_dim]
+            accelerations: 加速度序列 [batch_size, seq_len, position_dim]
+        """
+        batch_size, seq_len, pos_dim = positions.shape
+        
+        # 如果没有提供时间步长，使用默认值
+        if dt_seq is None:
+            dt_seq = torch.full((batch_size, seq_len - 1), 0.001, 
+                                device=positions.device)
+        
+        # 计算速度: v(t) = [x(t+1) - x(t)] / dt
+        velocities = torch.zeros_like(positions)
+        velocities[:, :-1, :] = (positions[:, 1:, :] - positions[:, :-1, :]) / dt_seq.unsqueeze(-1)
+        # 最后一个时间步的速度通过外推估计
+        velocities[:, -1, :] = velocities[:, -2, :]
+        
+        # 计算加速度: a(t) = [v(t+1) - v(t)] / dt
+        accelerations = torch.zeros_like(positions)
+        accelerations[:, :-1, :] = (velocities[:, 1:, :] - velocities[:, :-1, :]) / dt_seq.unsqueeze(-1)
+        # 最后一个时间步的加速度通过外推估计
+        accelerations[:, -1, :] = accelerations[:, -2, :]
+        
+        return velocities, accelerations
     
 ## TD3 代理
 class TD3Agent(BaseTD3Agent):
@@ -258,49 +316,31 @@ class Gru_TD3Agent(BaseTD3Agent):
                          delay_enabled=delay_enabled, delay_step=delay_step, delay_sigma=delay_sigma, aware_delay_time=aware_delay_time)
         self._init_nn()
         self._init_optimizer()
-
+    
     def _init_nn(self):
         # 创建共享的GRU预测器
+        gru_state_dim = 2 + int(self.aware_dt) + int(self.aware_delay_time)  # 状态维度 + 时间步长 + 延迟时间感知
         self.gru_predictor = GruPredictor(
-            state_dim=self.state_dim, hidden_dim=self.hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len
-            ).to(device)
-        
-        self.target_gru_predictor = GruPredictor(
-            state_dim=self.state_dim, hidden_dim=self.hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len
+            state_dim=gru_state_dim, hidden_dim=self.hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len
             ).to(device)
         
         # GRU网络初始化（传入共享的GRU预测器）
-        self.actor = Gru_Actor(
-            state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim, action_bound=self.action_bound, gru_predictor=self.gru_predictor
-        ).to(device)
+        self.actor = Gru_Actor(state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim, action_bound=self.action_bound).to(device)
         
-        self.critic1 = Gru_Critic(
-            state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim, gru_predictor=self.gru_predictor
-        ).to(device)
+        self.critic1 = Gru_Critic(state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim).to(device)
         
-        self.critic2 = Gru_Critic(
-            state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim, gru_predictor=self.gru_predictor
-        ).to(device)
+        self.critic2 = Gru_Critic(state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim).to(device)
         
         # 目标网络使用目标GRU预测器
-        self.target_actor = Gru_Actor(
-            state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim, action_bound=self.action_bound, gru_predictor=self.target_gru_predictor
-        ).to(device)
+        self.target_actor = Gru_Actor(state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim, action_bound=self.action_bound).to(device)
 
-        self.target_critic1 = Gru_Critic(
-            state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim, gru_predictor=self.target_gru_predictor
-        ).to(device)
+        self.target_critic1 = Gru_Critic(state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim).to(device)
 
-        self.target_critic2 = Gru_Critic(
-            state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim, gru_predictor=self.target_gru_predictor
-        ).to(device)
+        self.target_critic2 = Gru_Critic(state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim).to(device)
         
-        self.target_critic2 = Gru_Critic(
-            state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim, gru_predictor=self.target_gru_predictor
-        ).to(device)
+        self.target_critic2 = Gru_Critic(state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.hidden_dim).to(device)
 
         # 复制参数到目标网络
-        self.target_gru_predictor.load_state_dict(self.gru_predictor.state_dict())
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.target_critic1.load_state_dict(self.critic1.state_dict())
         self.target_critic2.load_state_dict(self.critic2.state_dict())
@@ -367,7 +407,9 @@ class Gru_TD3Agent(BaseTD3Agent):
         state_seq_tensor = torch.tensor(state_seq, dtype=torch.float32).unsqueeze(0).to(device)  # [1, seq_len, state_dim]
 
         with torch.no_grad():
-            action_tensor: torch.Tensor = self.actor(state_seq_tensor)
+            if self.gru_predictor is not None:
+                states = self.predict_states(state_seq_tensor)  # 使用GRU预测未来状态序列
+            action_tensor: torch.Tensor = self.actor(states)
             action_np: np.ndarray = action_tensor.cpu().detach().numpy()
             action = action_np.flatten()
             

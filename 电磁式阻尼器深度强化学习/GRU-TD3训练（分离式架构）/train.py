@@ -53,7 +53,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
     if train_datasets.current_episode > 0:
         with open(rewards_log_file, "a") as f:
             for i in range(len(train_datasets.episode_rewards)):
-                f.write(f"{i+1:>8}, {train_datasets.episode_rewards[i]:>12.4f}, {train_datasets.episode_simu_rewards[i]:>12.4f}, {train_datasets.episode_predictor_losses[i]:>12.6f}, {train_datasets.episode_actor_losses[i]:>12.6f}, {train_datasets.episode_critic_losses[i]:>12.6f}\n")
+                f.write(f"{i+1:>8}, {train_datasets.episode_rewards[i]:>12.4f}, {train_datasets.episode_simu_rewards[i]:>12.4f}, {train_datasets.episode_predictor_losses[i]:>12.9f}, {train_datasets.episode_actor_losses[i]:>12.4f}, {train_datasets.episode_critic_losses[i]:>12.4f}\n")
 
     # 训练循环
     for episode in tqdm(range(start_episode, n_episodes), desc="训练轮次"):
@@ -88,7 +88,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         step_count = 0
         while not done:
             # 选择动作
-            action = float(agent.select_action(env.state_history, add_noise=(epsilon is not 0), epsilon=epsilon, rand_prob=rand_prob, delay=delay))
+            action = float(agent.select_action(env.state_history, add_noise=(epsilon != 0), epsilon=epsilon, rand_prob=rand_prob, delay=delay))
 
             # 执行动作
             next_state, reward, done = env.step(action, dt=train_datasets.dt_history[-1])
@@ -108,13 +108,14 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
             
             # 更新预测器经验池和参数
             predictor_buffer.add_from_full_history(env.state_history)
-            if len(predictor_buffer) > min_buffer_size:
+            if len(predictor_buffer) > min_buffer_size//2:
                 agent.gru_predictor.unfreeze_gru()  # 解冻GRU参数
                 predictor_loss = agent.update_gru_predictor(predictor_buffer)
                 episode_predictor_loss += predictor_loss
-            
+                num_updates += 1
+                
             # 更新Actor和Critic网络
-            if len(replay_buffer) > min_buffer_size:
+            if len(replay_buffer) > min_buffer_size: # and num_updates % 1 == 0:
                 try:
                     agent.gru_predictor.freeze_gru()  # 冻结GRU参数
                     critic_loss, actor_loss, _ = agent.update(replay_buffer)
@@ -124,7 +125,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
                     raise e
                 episode_critic_loss += critic_loss
                 episode_actor_loss += actor_loss
-                num_updates += 1
+                
             
             episode_reward += reward
             step_count += 1
@@ -148,22 +149,23 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
 
             # 保存当前模型的测试数据的控制图
             os.makedirs(save_plot_path, exist_ok=True)
+            c_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_simu_datasets"
             plot_compare_no_control(nc_datasets, c_datasets, plot_state=[3], save_path=save_plot_path, use_time_noise=env.use_dt_noise)
 
             # 保存当前轮次的探索过程数据图
-            train_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_simu_datasets"
+            train_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_expl_datasets"
             plot_compare_no_control(nc_datasets, train_datasets, plot_state=[3], save_path=save_plot_path, use_time_noise=env.use_dt_noise)
 
         # 保存csv数据文件
         if rewards_log_file:
             with open(rewards_log_file, "a") as f:
                 avg_predictor_loss = episode_predictor_loss / num_updates if num_updates > 0 else 0
-                f.write(f"{episode+1:>8}, {episode_reward:>12.4f}, {train_datasets.episode_simu_rewards[-1]:>12.4f}, {avg_predictor_loss:>12.6f}, {train_datasets.episode_actor_losses[-1]:>12.6f}, {train_datasets.episode_critic_losses[-1]:>12.6f}, {epsilon:>8.4f}\n")
+                f.write(f"{episode+1:>8}, {episode_reward:>12.4f}, {train_datasets.episode_simu_rewards[-1]:>12.4f}, {avg_predictor_loss:>12.9f}, {train_datasets.episode_actor_losses[-1]:>12.4f}, {train_datasets.episode_critic_losses[-1]:>12.4f}, {epsilon:>8.4f}\n")
 
         # 写入进度到日志
         if (episode + 1) % print_interval == 0:
             logging.info(f"轮次 {episode+1}: 累计奖励 = {episode_reward:.2f}, 仿真奖励 = {episode_simu_reward:.2f}, "
-                         f"GRU预测损失 = {avg_predictor_loss:.6f}, Actor损失 = {train_datasets.episode_actor_losses[-1]:.6f}, Critic损失 = {train_datasets.episode_critic_losses[-1]:.6f}, epsilon = {epsilon:.4f}")
+                         f"GRU预测损失 = {avg_predictor_loss:.9f}, Actor损失 = {train_datasets.episode_actor_losses[-1]:.4f}, Critic损失 = {train_datasets.episode_critic_losses[-1]:.4f}, epsilon = {epsilon:.4f}")
 
     return train_datasets
 

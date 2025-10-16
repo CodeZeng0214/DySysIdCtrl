@@ -260,7 +260,7 @@ def plot_compare_no_control(nc_datasets:Datasets, c_datasets:Datasets, plot_stat
                     plot_title=f'{c_datasets.checkpoint_name} 状态 {STATES_NAME[state_idx]} 对比', legends=['无控制', 'TD3控制'], 
                     xlabel='时间 (s)', ylabel=f'状态 {STATES_NAME[state_idx]}', save_path=save_path, show=show)
 
-    c_datasets.plot_episode_history(plot_state=plot_state, plot_action=True, plot_reward=True, plot_dt=use_time_noise, save_path=save_path, show=show)
+    c_datasets.plot_episode_history(plot_state=False, plot_action=True, plot_reward=True, plot_dt=use_time_noise, save_path=save_path, show=show)
 
 def plot_state_comparison(results_no_control, results_td3, save_path=None):
     """比较不同控制策略下的状态轨迹
