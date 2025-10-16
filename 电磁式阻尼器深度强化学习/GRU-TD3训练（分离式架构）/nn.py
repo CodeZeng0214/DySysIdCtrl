@@ -116,9 +116,9 @@ class Gru_Actor(nn.Module):
         self.state_dim = state_dim
         
         # 添加注意力层（用于处理预测的状态序列）
-        self.attention = nn.Sequential(nn.Linear(hidden_dim, 1),
-                                        nn.ReLU())  # 计算每个时间步的注意力分数
-        
+        self.attention = nn.Sequential(nn.Linear(state_dim+hidden_dim, 1),
+                                        nn.Tanh())  # 计算每个时间步的注意力分数
+
         # 输出层
         self.output_layer = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
@@ -130,11 +130,10 @@ class Gru_Actor(nn.Module):
         self._init_weights()
         
     def _init_weights(self):
-        for name, param in self.attention.named_parameters():
-            if 'weight' in name:
-                nn.init.xavier_uniform_(param)
-            elif 'bias' in name:
-                nn.init.constant_(param, 0)
+        for m in self.attention.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                nn.init.constant_(m.bias, 0)
 
         for m in self.output_layer.modules():
             if isinstance(m, nn.Linear):
@@ -160,7 +159,7 @@ class Gru_Actor(nn.Module):
 
         # 使用预测的状态序列进行注意力计算
         # 计算注意力权重
-        attention_scores = self.attention(h_combined_seq).squeeze(-1)  # [batch_size, 1.5*fc_seq_len]
+        attention_scores = self.attention(torch.cat((h_combined_seq, state_combined_seq), dim=2)).squeeze(-1)  # [batch_size, 1.5*fc_seq_len]
         attention_weights = F.softmax(attention_scores, dim=-1)  # [batch_size, 1.5*fc_seq_len]
 
         # 加权求和得到上下文状态向量
@@ -188,24 +187,23 @@ class Gru_Critic(nn.Module):
         self.state_dim = state_dim
         
         # 添加注意力层（用于处理预测的状态序列）
-        self.attention = nn.Sequential(nn.Linear(hidden_dim, 1),
-                                        nn.ReLU())
+        self.attention = nn.Sequential(nn.Linear(state_dim+hidden_dim, 1),
+                                        nn.Tanh())  # 计算每个时间步的注意力分数
 
         # 融合层：将注意力加权后的状态特征和动作结合
         self.fusion_layer = nn.Sequential(
             nn.Linear(state_dim + action_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
+            nn.Linear(hidden_dim, hidden_dim)
         )
         
         self._init_weights()
     
     def _init_weights(self):
-        for name, param in self.attention.named_parameters():
-            if 'weight' in name:
-                nn.init.xavier_uniform_(param)
-            elif 'bias' in name:
-                nn.init.constant_(param, 0)
+        for m in self.attention.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                nn.init.constant_(m.bias, 0)
                 
         for m in self.fusion_layer.modules():
             if isinstance(m, nn.Linear):
@@ -232,7 +230,7 @@ class Gru_Critic(nn.Module):
 
         # 使用预测的状态序列进行注意力计算
         # 计算注意力权重
-        attention_scores = self.attention(h_combined_seq).squeeze(-1)  # [batch_size, 1.5*fc_seq_len]
+        attention_scores = self.attention(torch.cat((h_combined_seq, state_combined_seq), dim=2)).squeeze(-1)  # [batch_size, 1.5*fc_seq_len]
         attention_weights = F.softmax(attention_scores, dim=-1)  # [batch_size, 1.5*fc_seq_len]
 
         # 加权求和得到上下文向量
@@ -337,18 +335,13 @@ class GruPredictorBuffer:
         Args:
             full_state_history: 完整的状态历史列表（无时延的真实状态）
         """
-        # 需要至少 pre_seq_len 个状态
-        min_length = self.fc_seq_len
-
-        if len(full_state_history) < 2 *min_length:
+        # 需要至少 self.seq_len + self.fc_seq_len 个状态
+        min_length = self.seq_len + self.fc_seq_len
+        
+        if len(full_state_history) < min_length:
             return
         fc_seq = np.array(full_state_history[-self.fc_seq_len:])
-
-        if len(full_state_history) > self.seq_len + self.fc_seq_len:
-            # 如果历史长度不足，则从头开始取
-            pre_seq = np.array(full_state_history[:self.fc_seq_len])
-        else:
-            pre_seq = np.array(full_state_history[-(self.seq_len + self.fc_seq_len):-self.fc_seq_len])
+        pre_seq = np.array(full_state_history[-(self.seq_len + self.fc_seq_len):-self.fc_seq_len])
 
         # 处理状态序列，抛弃速度和加速度维度
         pre_seq = np.delete(pre_seq, [1, 2, 4, 5], axis=1)

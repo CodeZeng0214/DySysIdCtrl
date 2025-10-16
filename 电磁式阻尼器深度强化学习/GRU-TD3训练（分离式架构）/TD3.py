@@ -205,11 +205,15 @@ class BaseTD3Agent:
             return state_combined_seq, h_combined_seq
 
     def compute_derivatives(self, positions: torch.Tensor, dt_seq: torch.Tensor = None) -> Tuple[torch.Tensor, torch.Tensor]:
-        """通过数值微分计算速度和加速度
+        """通过数值微分计算速度和加速度（改进版）
+        
+        使用策略：
+        - 速度：中心差分（内部） + 线性外推（边界）
+        - 加速度：基于速度的中心差分 + 外推
         
         Args:
             positions: 位移序列 [batch_size, seq_len, position_dim]
-            dt_seq: 时间步长序列 [batch_size, seq_len-1] (可选)
+            dt_seq: 时间步长序列 [batch_size, seq_len] (可选)
         
         Returns:
             velocities: 速度序列 [batch_size, seq_len, position_dim]
@@ -219,20 +223,137 @@ class BaseTD3Agent:
         
         # 如果没有提供时间步长，使用默认值
         if dt_seq is None:
-            dt_seq = torch.full((batch_size, seq_len - 1), 0.001, 
-                                device=positions.device)
+            dt = 0.001
+            dt_tensor = torch.full((batch_size, seq_len), dt, device=positions.device)
+        else:
+            dt_tensor = dt_seq
+            dt = dt_tensor.mean().item()
         
-        # 计算速度: v(t) = [x(t+1) - x(t)] / dt
+        # ========== 方法1：中心差分 + 边界外推（推荐用于速度） ==========
         velocities = torch.zeros_like(positions)
-        velocities[:, :-1, :] = (positions[:, 1:, :] - positions[:, :-1, :]) / dt_seq.unsqueeze(-1)
-        # 最后一个时间步的速度通过外推估计
-        velocities[:, -1, :] = velocities[:, -2, :]
         
-        # 计算加速度: a(t) = [v(t+1) - v(t)] / dt
+        if seq_len >= 3:
+            # 内部点：使用中心差分 v(i) = [x(i+1) - x(i-1)] / (2*dt)
+            # 精度: O(dt^2)
+            for i in range(1, seq_len - 1):
+                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
+                velocities[:, i, :] = (positions[:, i+1, :] - positions[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
+            
+            # 起始点：前向差分 v(0) = [x(1) - x(0)] / dt
+            velocities[:, 0, :] = (positions[:, 1, :] - positions[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
+            
+            # 终止点：后向差分 v(n) = [x(n) - x(n-1)] / dt
+            velocities[:, -1, :] = (positions[:, -1, :] - positions[:, -2, :]) / dt_tensor[:, -1].unsqueeze(-1)
+            
+        elif seq_len == 2:
+            # 序列太短，只能用前向差分
+            velocities[:, 0, :] = (positions[:, 1, :] - positions[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
+            velocities[:, 1, :] = velocities[:, 0, :]
+        else:
+            # 只有一个点，速度为0
+            velocities[:, 0, :] = 0
+        
+        # ========== 加速度：基于速度序列的中心差分 ==========
         accelerations = torch.zeros_like(positions)
-        accelerations[:, :-1, :] = (velocities[:, 1:, :] - velocities[:, :-1, :]) / dt_seq.unsqueeze(-1)
-        # 最后一个时间步的加速度通过外推估计
-        accelerations[:, -1, :] = accelerations[:, -2, :]
+        
+        if seq_len >= 3:
+            # 内部点：中心差分 a(i) = [v(i+1) - v(i-1)] / (2*dt)
+            for i in range(1, seq_len - 1):
+                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
+                accelerations[:, i, :] = (velocities[:, i+1, :] - velocities[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
+            
+            # 起始点：前向差分
+            accelerations[:, 0, :] = (velocities[:, 1, :] - velocities[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
+            
+            # 终止点：后向差分
+            accelerations[:, -1, :] = (velocities[:, -1, :] - velocities[:, -2, :]) / dt_tensor[:, -1].unsqueeze(-1)
+            
+        elif seq_len == 2:
+            accelerations[:, 0, :] = (velocities[:, 1, :] - velocities[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
+            accelerations[:, 1, :] = accelerations[:, 0, :]
+        else:
+            accelerations[:, 0, :] = 0
+        
+        return velocities, accelerations
+
+
+    def compute_derivatives_v2(self, positions: torch.Tensor, dt_seq: torch.Tensor = None) -> Tuple[torch.Tensor, torch.Tensor]:
+        """通过数值微分计算速度和加速度（高阶外推版本）
+        
+        使用策略：
+        - 速度：中心差分 + 二阶外推
+        - 加速度：中心差分 + 二阶外推
+        
+        适用于：长序列、高精度要求的场景
+        
+        Args:
+            positions: 位移序列 [batch_size, seq_len, position_dim]
+            dt_seq: 时间步长序列 [batch_size, seq_len] (可选)
+        
+        Returns:
+            velocities: 速度序列 [batch_size, seq_len, position_dim]
+            accelerations: 加速度序列 [batch_size, seq_len, position_dim]
+        """
+        batch_size, seq_len, pos_dim = positions.shape
+        
+        if dt_seq is None:
+            dt = 0.001
+            dt_tensor = torch.full((batch_size, seq_len), dt, device=positions.device)
+        else:
+            dt_tensor = dt_seq
+        
+        velocities = torch.zeros_like(positions)
+        
+        if seq_len >= 4:
+            # 内部点：中心差分
+            for i in range(1, seq_len - 1):
+                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
+                velocities[:, i, :] = (positions[:, i+1, :] - positions[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
+            
+            # 起始点：二阶前向外推
+            # v(0) ≈ (-3*x(0) + 4*x(1) - x(2)) / (2*dt)
+            velocities[:, 0, :] = (-3*positions[:, 0, :] + 4*positions[:, 1, :] - positions[:, 2, :]) / (2*dt_tensor[:, 0].unsqueeze(-1))
+            
+            # 终止点：二阶后向外推
+            # v(n) ≈ (3*x(n) - 4*x(n-1) + x(n-2)) / (2*dt)
+            velocities[:, -1, :] = (3*positions[:, -1, :] - 4*positions[:, -2, :] + positions[:, -3, :]) / (2*dt_tensor[:, -1].unsqueeze(-1))
+            
+        elif seq_len >= 3:
+            # 中心差分
+            for i in range(1, seq_len - 1):
+                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
+                velocities[:, i, :] = (positions[:, i+1, :] - positions[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
+            velocities[:, 0, :] = (positions[:, 1, :] - positions[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
+            velocities[:, -1, :] = (positions[:, -1, :] - positions[:, -2, :]) / dt_tensor[:, -1].unsqueeze(-1)
+        else:
+            # 序列太短，简单处理
+            if seq_len >= 2:
+                velocities[:, 0, :] = (positions[:, 1, :] - positions[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
+                velocities[:, 1, :] = velocities[:, 0, :]
+        
+        # 加速度：使用相同策略
+        accelerations = torch.zeros_like(positions)
+        
+        if seq_len >= 4:
+            # 内部点：中心差分
+            for i in range(1, seq_len - 1):
+                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
+                accelerations[:, i, :] = (velocities[:, i+1, :] - velocities[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
+            
+            # 边界：二阶外推
+            accelerations[:, 0, :] = (-3*velocities[:, 0, :] + 4*velocities[:, 1, :] - velocities[:, 2, :]) / (2*dt_tensor[:, 0].unsqueeze(-1))
+            accelerations[:, -1, :] = (3*velocities[:, -1, :] - 4*velocities[:, -2, :] + velocities[:, -3, :]) / (2*dt_tensor[:, -1].unsqueeze(-1))
+            
+        elif seq_len >= 3:
+            for i in range(1, seq_len - 1):
+                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
+                accelerations[:, i, :] = (velocities[:, i+1, :] - velocities[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
+            accelerations[:, 0, :] = (velocities[:, 1, :] - velocities[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
+            accelerations[:, -1, :] = (velocities[:, -1, :] - velocities[:, -2, :]) / dt_tensor[:, -1].unsqueeze(-1)
+        else:
+            if seq_len >= 2:
+                accelerations[:, 0, :] = (velocities[:, 1, :] - velocities[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
+                accelerations[:, 1, :] = accelerations[:, 0, :]
         
         return velocities, accelerations
     
@@ -386,25 +507,21 @@ class Gru_TD3Agent(BaseTD3Agent):
         """选择动作，支持探索"""
 
         # 如果历史长度不够，使用零填充或重复当前状态
-        if len(state_history) < (self.seq_len + delay - 1):
+        required_len = self.seq_len + delay - 1
+        if len(state_history) < required_len:
             # 用当前状态填充不足的部分
-            if len(state_history) < delay:
-                # 如果历史长度连delay都不够，用起始状态填充
-                padded_history = [state_history[0]] * (self.seq_len + delay - 1)
-            else:
-                # 修复delay=1时的切片问题
-                if delay == 1:
-                    padded_history = np.concatenate([[state_history[0]] * (self.seq_len - len(state_history)), state_history])
-                else:
-                    padded_history = np.concatenate([[state_history[0]] * ((self.seq_len + delay-1) - len(state_history)), state_history[:-(delay-1)]])
+            padding_len = required_len - len(state_history)
+            padded_history = [state_history[0]] * padding_len + list(state_history)
         else:
-            # 保持最近的seq_len个状态
-            if delay == 1:
-                padded_history = state_history[-self.seq_len:]  # 当delay=1时，直接取最后seq_len个元素
-            else:
-                padded_history = state_history[-self.seq_len-(delay-1):-(delay-1)]        # 构建状态序列
-        state_seq = np.array(padded_history)  # [seq_len, state_dim]
-        state_seq_tensor = torch.tensor(state_seq, dtype=torch.float32).unsqueeze(0).to(device)  # [1, seq_len, state_dim]
+            padded_history = list(state_history)
+        
+        # 取延迟后的序列
+        if delay == 1:
+            state_seq = padded_history[-self.seq_len:]
+        else:
+            state_seq = padded_history[-self.seq_len-delay+1:-delay+1]
+
+        state_seq_tensor = torch.tensor(np.array(state_seq), dtype=torch.float32).unsqueeze(0).to(device)  # [1, seq_len, state_dim]
 
         with torch.no_grad():
             if self.gru_predictor is not None:
