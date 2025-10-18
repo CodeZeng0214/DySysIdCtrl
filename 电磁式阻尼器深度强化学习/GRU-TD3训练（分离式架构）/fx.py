@@ -3,6 +3,40 @@ from typing import Callable
 from scipy.linalg import expm
 action_bound = 5
 
+def smooth_reward(tolerance=0.0002):
+    """平滑、有引导性的奖励函数"""
+    def reward_func(obs, action, next_obs):
+        x2 = obs[3]
+        next_x2 = next_obs[3]
+        
+        # 1. 二次型位移惩罚（平滑）
+        normalized_pos = next_x2 / tolerance
+        position_penalty = -5.0 * (normalized_pos ** 2) if abs(normalized_pos) <= 1 else -10.0
+        
+        # 2. 改善奖励
+        improvement = (abs(x2) - abs(next_x2)) / tolerance
+        improvement_reward = 3.0 * np.tanh(improvement)  # 使用tanh限制范围
+        
+        # 3. 目标区域奖励（高斯型）
+        if abs(next_x2) <= tolerance:
+            target_reward = 2.0 * np.exp(-10 * (normalized_pos ** 2))
+        else:
+            target_reward = 0
+        
+        # 4. 动作惩罚
+        action_penalty = -0.2 * (action / 5.0) ** 2
+        
+        return float(position_penalty + improvement_reward + target_reward + action_penalty)
+    
+    return reward_func
+
+def simple_reward(tolerance=0.0002):
+    def reward_func(obs, action, next_obs):
+        next_x2 = next_obs[3]
+        # 只用位移的负值作为奖励（越小越好）
+        return -abs(next_x2) / tolerance # - 0.1 * abs(action) / 5.0
+    return reward_func
+
 def enhanced_reward_func(obs:np.ndarray, action:np.ndarray, next_obs:np.ndarray)-> float:
     """增强型奖励函数"""
     x1, v1, a1 = obs[:3]

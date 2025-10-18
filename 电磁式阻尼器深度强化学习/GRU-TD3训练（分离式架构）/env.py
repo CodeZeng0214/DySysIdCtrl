@@ -122,7 +122,7 @@ class ElectromagneticDamperEnv:
         """获取直接扰动力"""
         if self.f_func is None:
             return np.zeros((1, 1))  # 如果没有扰动力函数，返回零矩阵
-        return np.array(self.f_func(self.time).copy()).reshape(-1, 1)  # 返回扰动力
+        return np.array(self.f_func(self.time)).copy().reshape(-1, 1)  # 返回扰动力
 
     def set_observation_indices(self, obs_indices: List[int], log:bool=True):
         """设置观测状态的索引"""

@@ -70,18 +70,28 @@ class GruPredictor(nn.Module):
         # 预测第一个未来状态
         current_h = h_n  # [num_layers, batch_size, hidden_dim]
         current_state = self.fc_predict(current_h[-1]).unsqueeze(1)  # [batch_size, 1, state_dim]
-        current_state_seq = state_seq
 
         for t in range(self.fc_seq_len):
             predicted_states.append(current_state)
             hidden_states.append(current_h[-1].unsqueeze(1))  # [batch_size, 1, hidden_dim]
 
-            # 使用过去所有的状态序列+预测的状态序列作为下一步输入
-            current_state_seq = torch.cat((current_state_seq, current_state), dim=1)
-            _, next_h = self.gru(current_state_seq)
+            # 使用预测的状态作为下一步输入
+            _, next_h = self.gru(current_state, current_h)
             next_state = self.fc_predict(next_h[-1]).unsqueeze(1)
             
             current_state, current_h = next_state, next_h
+
+        # current_state_seq = state_seq
+        # for t in range(self.fc_seq_len):
+        #     predicted_states.append(current_state)
+        #     hidden_states.append(current_h[-1].unsqueeze(1))  # [batch_size, 1, hidden_dim]
+
+        #     # 使用过去所有的状态序列+预测的状态序列作为下一步输入
+        #     current_state_seq = torch.cat((current_state_seq, current_state), dim=1)
+        #     _, next_h = self.gru(current_state_seq)
+        #     next_state = self.fc_predict(next_h[-1]).unsqueeze(1)
+        #
+        #     current_state, current_h = next_state, next_h
         
         state_fc_seq = torch.cat(predicted_states, dim=1)  # [batch_size, fc_seq_len, state_dim]
         h_fc_seq = torch.cat(hidden_states, dim=1)  # [batch_size, fc_seq_len, hidden_dim]
@@ -116,12 +126,15 @@ class Gru_Actor(nn.Module):
         self.state_dim = state_dim
         
         # 添加注意力层（用于处理预测的状态序列）
+        self.embedding = nn.Linear(hidden_dim, hidden_dim)
         self.attention = nn.Sequential(nn.Linear(state_dim+hidden_dim, 1),
                                         nn.Tanh())  # 计算每个时间步的注意力分数
 
         # 输出层
         self.output_layer = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, action_dim),
             nn.Tanh()  # 输出范围 [-1, 1]
@@ -159,7 +172,7 @@ class Gru_Actor(nn.Module):
 
         # 使用预测的状态序列进行注意力计算
         # 计算注意力权重
-        attention_scores = self.attention(torch.cat((h_combined_seq, state_combined_seq), dim=2)).squeeze(-1)  # [batch_size, 1.5*fc_seq_len]
+        attention_scores = self.attention(torch.cat((self.embedding(h_combined_seq), state_combined_seq), dim=2)).squeeze(-1)  # [batch_size, 1.5*fc_seq_len]
         attention_weights = F.softmax(attention_scores, dim=-1)  # [batch_size, 1.5*fc_seq_len]
 
         # 加权求和得到上下文状态向量
@@ -187,6 +200,7 @@ class Gru_Critic(nn.Module):
         self.state_dim = state_dim
         
         # 添加注意力层（用于处理预测的状态序列）
+        self.embedding = nn.Linear(hidden_dim, hidden_dim)
         self.attention = nn.Sequential(nn.Linear(state_dim+hidden_dim, 1),
                                         nn.Tanh())  # 计算每个时间步的注意力分数
 
@@ -194,7 +208,9 @@ class Gru_Critic(nn.Module):
         self.fusion_layer = nn.Sequential(
             nn.Linear(state_dim + action_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim)
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
         )
         
         self._init_weights()
@@ -230,7 +246,7 @@ class Gru_Critic(nn.Module):
 
         # 使用预测的状态序列进行注意力计算
         # 计算注意力权重
-        attention_scores = self.attention(torch.cat((h_combined_seq, state_combined_seq), dim=2)).squeeze(-1)  # [batch_size, 1.5*fc_seq_len]
+        attention_scores = self.attention(torch.cat((self.embedding(h_combined_seq), state_combined_seq), dim=2)).squeeze(-1)  # [batch_size, 1.5*fc_seq_len]
         attention_weights = F.softmax(attention_scores, dim=-1)  # [batch_size, 1.5*fc_seq_len]
 
         # 加权求和得到上下文向量
