@@ -2,4 +2,5 @@
 归一化状态，加快训练速度：Research on deep reinforcement learning control algorithm for active suspension considering uncertain time delay
 GRU网络结合TD3振动控制的网络怎样设计？
 时延强化学习控制仿真逻辑好像不太对：不能把包含时延信息的时延状态序列直接作为输入，因为不能及时的获取时延状态的时延时间
+归一化尝试
 

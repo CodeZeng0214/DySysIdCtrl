@@ -35,9 +35,9 @@ class Datasets:
         self.current_episode = 0
         self.episode_rewards = np.array([])  # 轮次的累计奖励
         self.episode_simu_rewards = np.array([])  # 轮次的仿真累计奖励
-        self.episode_predictor_losses = np.array([])  # 轮次的预测器累计损失
         self.episode_actor_losses = np.array([])  # 轮次的策略网络累计损失
         self.episode_critic_losses = np.array([])  # 轮次的评估网络累计损失
+        self.episode_epsilons = np.array([])  # 轮次的探索率历史
 
     def save_datasets(self, agent: Union[TD3Agent, Gru_TD3Agent], save_dir):
         """保存数据集"""
@@ -56,33 +56,37 @@ class Datasets:
             "current_episode": self.current_episode,
             "episode_rewards": self.episode_rewards,
             "episode_simu_rewards": self.episode_simu_rewards,
-            "episode_predictor_losses": self.episode_predictor_losses,
+            "episode_epsilons": self.episode_epsilons,
             "episode_actor_losses": self.episode_actor_losses,
             "episode_critic_losses": self.episode_critic_losses,
-            # 保存模型参数
-            'gru_predictor': agent.gru_predictor.state_dict() if isinstance(agent, Gru_TD3Agent) else None,
-            'actor': agent.actor.state_dict(),
-            'critic1': agent.critic1.state_dict(),
-            'critic2': agent.critic2.state_dict(),
-            'target_actor': agent.target_actor.state_dict(),
-            'target_critic1': agent.target_critic1.state_dict(),
-            'target_critic2': agent.target_critic2.state_dict(),
-            'actor_optimizer': agent.actor_optimizer.state_dict(),
-            'critic1_optimizer': agent.critic1_optimizer.state_dict(),
-            'critic2_optimizer': agent.critic2_optimizer.state_dict(),
-            'total_it': agent.total_it
+            # # 保存模型参数
+            'agent': agent,
+            # 'gru_predictor': agent.gru_predictor.state_dict() if isinstance(agent, Gru_TD3Agent) else None,
+            # 'gru_predictor2': agent.gru_predictor2.state_dict() if isinstance(agent, Gru_TD3Agent) else None,
+            # 'target_gru_predictor': agent.target_gru_predictor.state_dict() if isinstance(agent, Gru_TD3Agent) else None,
+            # 'target_gru_predictor2': agent.target_gru_predictor2.state_dict() if isinstance(agent, Gru_TD3Agent) else None,
+            # 'actor': agent.actor.state_dict(),
+            # 'critic1': agent.critic1.state_dict(),
+            # 'critic2': agent.critic2.state_dict(),
+            # 'target_actor': agent.target_actor.state_dict(),
+            # 'target_critic1': agent.target_critic1.state_dict(),
+            # 'target_critic2': agent.target_critic2.state_dict(),
+            # 'actor_optimizer': agent.actor_optimizer.state_dict(),
+            # 'critic1_optimizer': agent.critic1_optimizer.state_dict(),
+            # 'critic2_optimizer': agent.critic2_optimizer.state_dict(),
+            # 'total_it': agent.total_it
         }, os.path.join(save_dir, f"{self.checkpoint_name}.pth"))
         logging.info(f"保存检查点: {os.path.join(save_dir, f'{self.checkpoint_name}.pth')}")
 
-    def load_datasets(self, agent: Union[TD3Agent, Gru_TD3Agent], save_dir):
+    def load_datasets(self, save_dir):
         """加载数据集"""
         checkpoint_files = find_checkpoint_files(save_dir)
-        
+        load_agent = None
         load_previous_model = False
         if checkpoint_files: 
             load_previous_model = input("是否加载先前的训练模型? (y/n): ").strip().lower() == 'y' or ''
         else:
-            return 0
+            return 0, None
 
         if load_previous_model:
             logging.info(f"准备加载检查点文件")
@@ -129,32 +133,40 @@ class Datasets:
                 self.delay_time = datasets.get("delay_time", np.array([]))
                 self.episode_rewards = datasets.get("episode_rewards", np.array([]))
                 self.episode_simu_rewards = datasets.get("episode_simu_rewards", np.array([]))
-                self.episode_predictor_losses = datasets.get("episode_predictor_losses", np.array([]))
+                self.episode_epsilons = datasets.get("episode_epsilons", np.array([]))
                 self.episode_actor_losses = datasets.get("episode_actor_losses", np.array([]))
                 self.episode_critic_losses = datasets.get("episode_critic_losses", np.array([]))
 
-                # 加载模型参数
+                # # 加载模型参数
                 try:
-                    agent.gru_predictor.load_state_dict(datasets["gru_predictor"]) if isinstance(agent, Gru_TD3Agent) and datasets["gru_predictor"] is not None else None
-                    agent.actor.load_state_dict(datasets["actor"])
-                    agent.critic1.load_state_dict(datasets["critic1"])
-                    agent.critic2.load_state_dict(datasets["critic2"])
-                    agent.target_actor.load_state_dict(datasets["target_actor"])
-                    agent.target_critic1.load_state_dict(datasets["target_critic1"])
-                    agent.target_critic2.load_state_dict(datasets["target_critic2"])
-                    agent.actor_optimizer.load_state_dict(datasets["actor_optimizer"])
-                    agent.critic1_optimizer.load_state_dict(datasets["critic1_optimizer"])
-                    agent.critic2_optimizer.load_state_dict(datasets["critic2_optimizer"])
-                    agent.total_it = datasets["total_it"]
+                    load_agent = datasets["agent"]
                 except Exception as e:
                     print(f"加载模型参数时发生错误: {e}")
                     logging.error(f"加载模型参数时发生错误: {e}")
+                # try:
+                #     agent.gru_predictor.load_state_dict(datasets["gru_predictor"]) if isinstance(agent, Gru_TD3Agent) and datasets["gru_predictor"] is not None else None
+                #     agent.gru_predictor2.load_state_dict(datasets["gru_predictor2"]) if isinstance(agent, Gru_TD3Agent) and datasets["gru_predictor2"] is not None else None
+                #     agent.target_gru_predictor.load_state_dict(datasets["target_gru_predictor"]) if isinstance(agent, Gru_TD3Agent) and datasets["target_gru_predictor"] is not None else None
+                #     agent.target_gru_predictor2.load_state_dict(datasets["target_gru_predictor2"]) if isinstance(agent, Gru_TD3Agent) and datasets["target_gru_predictor2"] is not None else None
+                #     agent.actor.load_state_dict(datasets["actor"])
+                #     agent.critic1.load_state_dict(datasets["critic1"])
+                #     agent.critic2.load_state_dict(datasets["critic2"])
+                #     agent.target_actor.load_state_dict(datasets["target_actor"])
+                #     agent.target_critic1.load_state_dict(datasets["target_critic1"])
+                #     agent.target_critic2.load_state_dict(datasets["target_critic2"])
+                #     agent.actor_optimizer.load_state_dict(datasets["actor_optimizer"])
+                #     agent.critic1_optimizer.load_state_dict(datasets["critic1_optimizer"])
+                #     agent.critic2_optimizer.load_state_dict(datasets["critic2_optimizer"])
+                #     agent.total_it = datasets["total_it"]
+                # except Exception as e:
+                #     print(f"加载模型参数时发生错误: {e}")
+                #     logging.error(f"加载模型参数时发生错误: {e}")
                 print(f"成功加载检查点: {self.checkpoint_name}，当前回合: {self.current_episode}")
                 logging.info(f"成功加载检查点: {self.checkpoint_name}, 当前回合: {self.current_episode}")
             else:
                 print("未找到可加载的检查点文件")
                 logging.info("未找到可加载的检查点")
-        return self.current_episode
+        return self.current_episode, load_agent
 
     def record_history(self, state: np.ndarray, action: float, reward: float, dt: float, time: float, delay_time: float=0):
         """记录单个回合的当前时间步数据"""
@@ -179,17 +191,17 @@ class Datasets:
         self.current_episode = 0
         self.episode_rewards = np.array([])  # 轮次的累计奖励
         self.episode_simu_rewards = np.array([])  # 轮次的仿真累计奖励
-        self.episode_predictor_losses = np.array([])  # 轮次的预测器累计损失
+        self.episode_epsilons = np.array([])  # 轮次的预测器累计损失
         self.episode_actor_losses = np.array([])  # 轮次的策略网络累计损失
         self.episode_critic_losses = np.array([])  # 轮次的评估网络累计损失
 
-    def record_episode_data(self, episode_reward, episode_sim_reward, episode_predictor_losses, episode_actor_losses, episode_critic_losses):
+    def record_episode_data(self, episode_reward, episode_sim_reward, episode_actor_losses, episode_critic_losses, epsilon):
         """记录回合累计数据"""
         self.episode_rewards = np.append(self.episode_rewards, episode_reward)
         self.episode_simu_rewards = np.append(self.episode_simu_rewards, episode_sim_reward)
-        self.episode_predictor_losses = np.append(self.episode_predictor_losses, episode_predictor_losses)
         self.episode_actor_losses = np.append(self.episode_actor_losses, episode_actor_losses)
         self.episode_critic_losses = np.append(self.episode_critic_losses, episode_critic_losses)
+        self.episode_epsilons = np.append(self.episode_epsilons, epsilon)
 
     def plot_episode_history(self, plot_state=[], plot_action=False, plot_reward=False, plot_dt=False, plot_delay_time=False, save_path=None, show=False):
         """绘制训练历史\n
@@ -236,8 +248,8 @@ class Datasets:
                       plot_title=f'{self.checkpoint_name} 仿真奖励历史', legends=['仿真奖励'], 
                       xlabel='回合', ylabel='仿真奖励', save_path=save_path, show=show)
             
-        if plot_predictor_losses and self.episode_predictor_losses.size > 0:
-            plot_data(x_values_list=np.arange(start=np.count_nonzero(self.episode_predictor_losses == 0), stop=len(self.episode_predictor_losses)), y_values_list=self.episode_predictor_losses, 
+        if plot_predictor_losses and self.episode_epsilons.size > 0:
+            plot_data(x_values_list=np.arange(start=np.count_nonzero(self.episode_epsilons == 0), stop=len(self.episode_epsilons)), y_values_list=self.episode_epsilons, 
                       plot_title=f'{self.checkpoint_name} 预测器损失历史', legends=['预测器损失'], 
                       xlabel='回合', ylabel='损失', save_path=save_path, show=show)
             

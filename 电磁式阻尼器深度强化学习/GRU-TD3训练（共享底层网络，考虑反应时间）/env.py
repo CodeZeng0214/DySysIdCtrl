@@ -14,11 +14,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ElectromagneticDamperEnv:
     """二自由度电磁阻尼器系统仿真环境"""
-    def __init__(self, A:np.ndarray, B:np.ndarray, C:np.ndarray, D:np.ndarray, E:np.ndarray, Ts:float=0.001, T:float=10, 
+    def __init__(self, A:np.ndarray, B:np.ndarray, C:np.ndarray, D:np.ndarray, E:np.ndarray, F:np.ndarray=None, Ts:float=0.001, T:float=10, 
                  z_func:Callable=None, r_func:Callable=None, f_func:Callable=None,
                  state0:np.ndarray=None, obs_indices: List[int] = None, x1_limit:float=None,
                  use_dt_noise:bool=False, dt_noise_std:float=0.01,
-                 F=None):                
+                 ):                
         """
         ## 初始化环境参数\n
         Xdot = Ax + Bu + E*z\n
@@ -34,7 +34,6 @@ class ElectromagneticDamperEnv:
         self.C = C  # 连续输出状态转移矩阵
         self.D = D  # 连续控制传递矩阵 
         self.E = E  # 地基扰动转移矩阵
-        self.F = F  # 直接扰动力转移矩阵
         self.F = F if F is not None else np.array([[0.0], [0.0], [0.0], [0.0]]) # 直接扰动力的输入矩阵
         self.z_func:Callable = z_func # 地基扰动函数
         self.r_func:Callable = r_func # 奖励函数

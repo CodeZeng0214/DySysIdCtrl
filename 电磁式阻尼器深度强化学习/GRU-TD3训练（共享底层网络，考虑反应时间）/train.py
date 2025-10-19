@@ -5,24 +5,22 @@ from datetime import datetime
 import os
 import logging
 from TD3 import TD3Agent, Gru_TD3Agent
-from nn import ReplayBuffer, Gru_ReplayBuffer, GruPredictorBuffer
+from nn import ReplayBuffer, Gru_ReplayBuffer
 from env import ElectromagneticDamperEnv
 from af import Datasets, plot_compare_no_control   
 
 def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent], 
-              replay_buffer: Union[ReplayBuffer, Gru_ReplayBuffer], predictor_buffer: GruPredictorBuffer = None, 
+              replay_buffer: Union[ReplayBuffer, Gru_ReplayBuffer], 
               n_episodes=200, min_buffer_size=1000, print_interval=5, save_interval=5, 
               project_path=None, save_checkpoint_path=None, save_plot_path=None, 
               rand_prob=0,
               train_datasets:Datasets=None,
-              td3_update_freq=1, gru_update_freq=1
               )->Datasets:
     """## 训练TD3代理（支持GRU预测器独立训练）
     参数\n
     - env: 环境对象\n
     - agent: TD3代理对象\n
     - replay_buffer: 经验回放池对象\n
-    - predictor_buffer: GRU预测器专用回放池，默认值为 None（仅用于Gru_TD3Agent）\n
     - n_episodes: 训练轮次，默认值为 200\n
     - min_buffer_size: 最小回放池大小，默认值为 1000\n
     - print_interval: 打印间隔，默认值为 5\n
@@ -30,8 +28,6 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
     - save_path: 训练项目保存路径，默认值为 None\n
     - rand_prob: 随机动作概率\n
     - datasets: 数据集对象，默认值为 None\n
-    - td3_update_freq: TD3更新频率（每一轮更新多少次），默认值为 1\n
-    - gru_update_freq: GRU预测器更新频率（每一轮更新多少次），默认值为 1\n
     """
     nc_datasets = env.run_simulation(controller=None, show_bar=False) # 无控制的仿真数据
     
@@ -50,12 +46,12 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
     rewards_log_file = os.path.join(project_path, f"td3_rewards_log_{project_time}.csv") if project_path else None
     if rewards_log_file:
         with open(rewards_log_file, "w") as f:
-            f.write(f"{'episode':>8}, {'rewards':>12}, {'simu_reward':>12}, {'pred_loss':>12}, {'actor_loss':>12}, {'critic_loss':>12}, {'epsilon':>8}\n")
+            f.write(f"{'episode':>8}, {'rewards':>12}, {'simu_reward':>12}, {'actor_loss':>12}, {'critic_loss':>12}, {'epsilon':>8}\n")
     # 继承之前的数据
     if train_datasets.current_episode > 0:
         with open(rewards_log_file, "a") as f:
             for i in range(len(train_datasets.episode_rewards)):
-                f.write(f"{i+1:>8}, {train_datasets.episode_rewards[i]:>12.4f}, {train_datasets.episode_simu_rewards[i]:>12.4f}, {train_datasets.episode_predictor_losses[i]:>12.9f}, {train_datasets.episode_actor_losses[i]:>12.4f}, {train_datasets.episode_critic_losses[i]:>12.4f}\n")
+                f.write(f"{i+1:>8}, {train_datasets.episode_rewards[i]:>12.4f}, {train_datasets.episode_simu_rewards[i]:>12.4f}, {train_datasets.episode_actor_losses[i]:>12.4f}, {train_datasets.episode_critic_losses[i]:>12.4f}, {epsilon:>8.4f}\n")
 
     # 训练循环
     for episode in tqdm(range(start_episode, n_episodes), desc="训练轮次"):
@@ -63,9 +59,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         episode_reward = 0
         episode_critic_loss = 0
         episode_actor_loss = 0
-        episode_predictor_loss = 0  # GRU预测器损失
         td3_num_updates = 0
-        gru_num_updates = 0
         
         # 计算当前探索噪声的大小，使用线性衰减
         epsilon = max(1.0 - episode / ((start_episode + n_episodes) * 0.7), 0.1)
@@ -109,35 +103,22 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
             # 将下一扩展状态更新为当前扩展状态
             state = next_state
             
-            # 更新预测器经验池和参数
-            # predictor_buffer.add_from_full_history(env.state_history)
-            # if len(predictor_buffer) > min_buffer_size//2:
-            #     for _ in range(gru_update_freq):
-            #         agent.gru_predictor.unfreeze_gru()  # 解冻GRU参数
-            #         predictor_loss = agent.update_gru_predictor(predictor_buffer)
-            #         episode_predictor_loss += predictor_loss
-            #         gru_num_updates += 1
-                
             # 更新Actor和Critic网络
-            if len(replay_buffer) > min_buffer_size and td3_num_updates % td3_update_freq == 0:
-                for _ in range(td3_update_freq):
-                    try:
-                        # agent.gru_predictor.freeze_gru()  # 冻结GRU参数
-                        critic_loss, actor_loss, _ = agent.update(replay_buffer)
-                        td3_num_updates += 1
-                    except Exception as e:
-                        print(f"更新网络时发生错误: {e}")
-                        logging.error(f"更新网络时发生错误: {e}")
-                        raise e
+            if len(replay_buffer) > min_buffer_size:
+                try:
+                    critic_loss, actor_loss, _ = agent.update(replay_buffer)
+                    td3_num_updates += 1
+                except Exception as e:
+                    print(f"更新网络时发生错误: {e}")
+                    logging.error(f"更新网络时发生错误: {e}")
+                    raise e
                 episode_critic_loss += critic_loss
                 episode_actor_loss += actor_loss
                 
-            
             episode_reward += reward
             step_count += 1
         
         # 计算本轮次的平均损失
-        episode_predictor_loss = episode_predictor_loss / gru_num_updates if gru_num_updates > 0 else 0
         episode_actor_loss = episode_actor_loss / td3_num_updates if td3_num_updates > 0 else 0
         episode_critic_loss = episode_critic_loss / td3_num_updates if td3_num_updates > 0 else 0
 
@@ -146,7 +127,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         episode_simu_reward = c_datasets.reward_history.sum()
         
         # 记录本轮次的累计数据
-        train_datasets.record_episode_data(episode_reward, episode_simu_reward, episode_predictor_loss, episode_actor_loss, episode_critic_loss)
+        train_datasets.record_episode_data(episode_reward, episode_simu_reward, episode_actor_loss, episode_critic_loss, epsilon)
 
         # 保存检查点
         if ((episode + 1) % save_interval == 0 and save_checkpoint_path): #  or (episode_reward >= 0 and episode_simu_reward >= 0):
@@ -166,12 +147,12 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         # 保存csv数据文件
         if rewards_log_file:
             with open(rewards_log_file, "a") as f:
-                f.write(f"{episode+1:>8}, {episode_reward:>12.4f}, {train_datasets.episode_simu_rewards[-1]:>12.4f}, {episode_predictor_loss:>12.9f}, {train_datasets.episode_actor_losses[-1]:>12.4f}, {train_datasets.episode_critic_losses[-1]:>12.4f}, {epsilon:>8.4f}\n")
+                f.write(f"{episode+1:>8}, {episode_reward:>12.4f}, {train_datasets.episode_simu_rewards[-1]:>12.4f}, {train_datasets.episode_actor_losses[-1]:>12.4f}, {train_datasets.episode_critic_losses[-1]:>12.4f}, {epsilon:>8.4f}\n")
 
         # 写入进度到日志
         if (episode + 1) % print_interval == 0:
             logging.info(f"轮次 {episode+1}: 累计奖励 = {episode_reward:.2f}, 仿真奖励 = {episode_simu_reward:.2f}, "
-                         f"GRU预测损失 = {episode_predictor_loss:.9f}, Actor损失 = {train_datasets.episode_actor_losses[-1]:.4f}, Critic损失 = {train_datasets.episode_critic_losses[-1]:.4f}, epsilon = {epsilon:.4f}")
+                         f"Actor损失 = {train_datasets.episode_actor_losses[-1]:.4f}, Critic损失 = {train_datasets.episode_critic_losses[-1]:.4f}, epsilon = {epsilon:.4f}")
 
     return train_datasets
 
