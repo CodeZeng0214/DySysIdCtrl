@@ -253,8 +253,6 @@ class Gru_Actor(nn.Module):
                 nn.init.constant_(m.bias, 0)
                 
         # 输出层使用小的均匀分布初始化
-        nn.init.uniform_(self.output_layer[0].weight, -3e-3, 3e-3)
-        nn.init.constant_(self.output_layer[0].bias, 0)
         nn.init.uniform_(self.output_layer[2].weight, -3e-3, 3e-3)
         nn.init.constant_(self.output_layer[2].bias, 0)
 

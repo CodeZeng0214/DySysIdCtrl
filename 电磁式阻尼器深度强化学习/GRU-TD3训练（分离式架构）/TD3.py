@@ -12,9 +12,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ## TD3代理基类
 class BaseTD3Agent:
     def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0,
-                 actor_lr=1e-3, critic_lr=1e-3, gamma=0.99, tau=0.005, 
-                 policy_noise=0.2, noise_clip=0.5, policy_freq=2, policy_sigma=0.2, clip_grad=False,
-                 aware_dt: bool = False,
+                 actor_lr=1e-3, critic_lr=1e-3, gamma=0.99, tau=0.005, action_sigma=0.2,
+                 policy_noise=0.2, noise_clip=0.5, policy_freq=2, clip_grad=False,
+                 aware_dt: bool = False, Ts = 0.001,
                  delay_enabled: bool = False, delay_step: int = 5, delay_sigma: int = 2, aware_delay_time: bool = False):
         """初始化TD3代理\n
         - state_dim 状态维度
@@ -25,10 +25,10 @@ class BaseTD3Agent:
         - critic_lr Critic学习率
         - gamma 折扣因子
         - tau 软更新参数
+        - action_sigma: 选择动作时的最大噪声
         - policy_noise 目标策略平滑正则化噪声
         - noise_clip 噪声裁剪范围
         - policy_freq 策略更新频率
-        - policy_sigma 探索噪声标准差
         - clip_grad 是否使用梯度裁剪
         - delay_enabled: 是否启用动作延迟
         - delay_step: 延迟步数
@@ -43,12 +43,13 @@ class BaseTD3Agent:
         self.critic_lr = critic_lr # Critic网络学习率
         self.gamma = gamma # 折扣因子
         self.tau = tau # 软更新参数
+        self.action_sigma = action_sigma # 选择动作时的最大噪声
         self.policy_noise = policy_noise # 目标策略平滑正则化噪声
         self.noise_clip = noise_clip # 噪声裁剪范围
         self.policy_freq = policy_freq # 策略更新频率
-        self.policy_sigma = policy_sigma # 探索噪声标准差
         self.clip_grad = clip_grad # 是否使用梯度裁剪
         self.aware_dt = aware_dt # 是否使用时间步长作为状态的一部分
+        self.Ts = Ts # 时间步长
         self.delay_enabled = delay_enabled # 是否启用动作延迟
         self.delay_step = delay_step # 延迟步数
         self.delay_sigma = delay_sigma # 延迟步数的标准差
@@ -100,13 +101,13 @@ class BaseTD3Agent:
         
         # 如果使用GRU预测器，先预测状态
         if self.gru_predictor is not None:
-            states = self.predict_states(states)
-            next_states = self.predict_states(next_states)
+            states = self.gru_predictor.forward(states)
+            next_states = self.gru_predictor.forward(next_states)
 
         with torch.no_grad():
             # 目标策略平滑正则化
-            noise = (torch.randn_like(actions) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
-            next_actions = (self.target_actor(next_states) + noise).clamp(-self.action_bound, self.action_bound)
+            noise = (torch.ones_like(actions).data.normal_(0, self.policy_noise)).clamp(-self.noise_clip, self.noise_clip)
+            next_actions = (self.target_actor.forward(next_states) + noise).clamp(-self.action_bound, self.action_bound)
             
             # 计算目标Q值，取两个Critic的最小值
             target_q1 = self.target_critic1(next_states, next_actions)
@@ -140,7 +141,7 @@ class BaseTD3Agent:
         if self.total_it % self.policy_freq == 0:
             # 更新Actor网络
             policy_actions = self.actor(states)
-            actor_loss = -self.critic1(states, policy_actions).mean()
+            actor_loss = -self.critic1.forward(states, policy_actions).mean()
             
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
@@ -163,11 +164,11 @@ class BaseTD3Agent:
             # 检查梯度是否爆炸
             if self.total_it % 1000 == 0 and total_grad_norm > 10:
                 pass # 打印梯度信息
-                #print(f"⚠️ 警告: Actor梯度过高! 梯度范数: {total_grad_norm}")
+                print(f"⚠️ 警告: Actor梯度过高! 梯度范数: {total_grad_norm}")
             # 检查梯度是否为零
             if self.total_it % 1000 == 0 and total_grad_norm < 1e-8:
                 pass # 打印梯度信息
-                #print(f"⚠️ 警告: Actor梯度几乎为零! 梯度范数: {total_grad_norm}")
+                print(f"⚠️ 警告: Actor梯度几乎为零! 梯度范数: {total_grad_norm}")
             
             if self.clip_grad:
                 torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=10)
@@ -182,193 +183,18 @@ class BaseTD3Agent:
         
         return critic_loss.item(), actor_loss, (critic1_loss.item() + critic2_loss.item()) / 2
     
-    def predict_states(self, state_seq: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        """使用GRU预测未来状态序列，输出拼接后的状态序列和隐藏状态序列"""
-        # 使用共享的GRU预测器获取预测序列
-        with torch.no_grad():  # GRU预测器的输出不参与梯度计算
-            if self.aware_dt or self.aware_delay_time:  # 判断是否包含感知状态
-                gru_state_seq = torch.cat((state_seq[:,:,0].unsqueeze(2),state_seq[:,:,3].unsqueeze(2),state_seq[:,:,6:]), dim=2) # 处理状态序列，抛弃速度和加速度维度
-            else:
-                gru_state_seq = torch.cat((state_seq[:,:,0].unsqueeze(2),state_seq[:,:,3].unsqueeze(2)), dim=2) # 处理状态序列，抛弃速度和加速度维度
-
-            gru_state_fc_seq, h_fc_seq = self.gru_predictor.forward(gru_state_seq)  # [batch_size, fc_seq_len, state_dim], [batch_size, fc_seq_len, hidden_dim]
-
-            # 计算速度和加速度，拼接到状态序列
-            vel_fc_seq, acc_fc_seq = self.compute_derivatives(gru_state_fc_seq[:,:,0:2],gru_state_fc_seq[:,:,2] if self.aware_dt else None)
-            state_fc_seq = torch.cat((gru_state_fc_seq[:,:,0].unsqueeze(2), vel_fc_seq[:,:,0].unsqueeze(2), acc_fc_seq[:,:,0].unsqueeze(2), 
-                                      gru_state_fc_seq[:,:,1].unsqueeze(2), vel_fc_seq[:,:,1].unsqueeze(2), acc_fc_seq[:,:,1].unsqueeze(2), 
-                                      gru_state_fc_seq[:,:,2:]), dim=2)  # [batch_size, fc_seq_len, state_dim]
-
-            state_combined_seq = torch.cat((state_seq[:, -self.gru_predictor.fc_seq_len//2:, :], state_fc_seq), dim=1)  # [batch_size, 1.5*fc_seq_len, state_dim]
-            h_combined_seq = torch.cat((self.gru_predictor.gru_out[:, -self.gru_predictor.fc_seq_len//2:, :], h_fc_seq), dim=1)  # [batch_size, 1.5*fc_seq_len, hidden_dim]
-            
-            return state_combined_seq, h_combined_seq
-
-    def compute_derivatives(self, positions: torch.Tensor, dt_seq: torch.Tensor = None) -> Tuple[torch.Tensor, torch.Tensor]:
-        """通过数值微分计算速度和加速度（改进版）
-        
-        使用策略：
-        - 速度：中心差分（内部） + 线性外推（边界）
-        - 加速度：基于速度的中心差分 + 外推
-        
-        Args:
-            positions: 位移序列 [batch_size, seq_len, position_dim]
-            dt_seq: 时间步长序列 [batch_size, seq_len] (可选)
-        
-        Returns:
-            velocities: 速度序列 [batch_size, seq_len, position_dim]
-            accelerations: 加速度序列 [batch_size, seq_len, position_dim]
-        """
-        batch_size, seq_len, pos_dim = positions.shape
-        
-        # 如果没有提供时间步长，使用默认值
-        if dt_seq is None:
-            dt = 0.001
-            dt_tensor = torch.full((batch_size, seq_len), dt, device=positions.device)
-        else:
-            dt_tensor = dt_seq
-            dt = dt_tensor.mean().item()
-        
-        # ========== 方法1：中心差分 + 边界外推（推荐用于速度） ==========
-        velocities = torch.zeros_like(positions)
-        
-        if seq_len >= 3:
-            # 内部点：使用中心差分 v(i) = [x(i+1) - x(i-1)] / (2*dt)
-            # 精度: O(dt^2)
-            for i in range(1, seq_len - 1):
-                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
-                velocities[:, i, :] = (positions[:, i+1, :] - positions[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
-            
-            # 起始点：前向差分 v(0) = [x(1) - x(0)] / dt
-            velocities[:, 0, :] = (positions[:, 1, :] - positions[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
-            
-            # 终止点：后向差分 v(n) = [x(n) - x(n-1)] / dt
-            velocities[:, -1, :] = (positions[:, -1, :] - positions[:, -2, :]) / dt_tensor[:, -1].unsqueeze(-1)
-            
-        elif seq_len == 2:
-            # 序列太短，只能用前向差分
-            velocities[:, 0, :] = (positions[:, 1, :] - positions[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
-            velocities[:, 1, :] = velocities[:, 0, :]
-        else:
-            # 只有一个点，速度为0
-            velocities[:, 0, :] = 0
-        
-        # ========== 加速度：基于速度序列的中心差分 ==========
-        accelerations = torch.zeros_like(positions)
-        
-        if seq_len >= 3:
-            # 内部点：中心差分 a(i) = [v(i+1) - v(i-1)] / (2*dt)
-            for i in range(1, seq_len - 1):
-                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
-                accelerations[:, i, :] = (velocities[:, i+1, :] - velocities[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
-            
-            # 起始点：前向差分
-            accelerations[:, 0, :] = (velocities[:, 1, :] - velocities[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
-            
-            # 终止点：后向差分
-            accelerations[:, -1, :] = (velocities[:, -1, :] - velocities[:, -2, :]) / dt_tensor[:, -1].unsqueeze(-1)
-            
-        elif seq_len == 2:
-            accelerations[:, 0, :] = (velocities[:, 1, :] - velocities[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
-            accelerations[:, 1, :] = accelerations[:, 0, :]
-        else:
-            accelerations[:, 0, :] = 0
-        
-        return velocities, accelerations
-
-
-    def compute_derivatives_v2(self, positions: torch.Tensor, dt_seq: torch.Tensor = None) -> Tuple[torch.Tensor, torch.Tensor]:
-        """通过数值微分计算速度和加速度（高阶外推版本）
-        
-        使用策略：
-        - 速度：中心差分 + 二阶外推
-        - 加速度：中心差分 + 二阶外推
-        
-        适用于：长序列、高精度要求的场景
-        
-        Args:
-            positions: 位移序列 [batch_size, seq_len, position_dim]
-            dt_seq: 时间步长序列 [batch_size, seq_len] (可选)
-        
-        Returns:
-            velocities: 速度序列 [batch_size, seq_len, position_dim]
-            accelerations: 加速度序列 [batch_size, seq_len, position_dim]
-        """
-        batch_size, seq_len, pos_dim = positions.shape
-        
-        if dt_seq is None:
-            dt = 0.001
-            dt_tensor = torch.full((batch_size, seq_len), dt, device=positions.device)
-        else:
-            dt_tensor = dt_seq
-        
-        velocities = torch.zeros_like(positions)
-        
-        if seq_len >= 4:
-            # 内部点：中心差分
-            for i in range(1, seq_len - 1):
-                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
-                velocities[:, i, :] = (positions[:, i+1, :] - positions[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
-            
-            # 起始点：二阶前向外推
-            # v(0) ≈ (-3*x(0) + 4*x(1) - x(2)) / (2*dt)
-            velocities[:, 0, :] = (-3*positions[:, 0, :] + 4*positions[:, 1, :] - positions[:, 2, :]) / (2*dt_tensor[:, 0].unsqueeze(-1))
-            
-            # 终止点：二阶后向外推
-            # v(n) ≈ (3*x(n) - 4*x(n-1) + x(n-2)) / (2*dt)
-            velocities[:, -1, :] = (3*positions[:, -1, :] - 4*positions[:, -2, :] + positions[:, -3, :]) / (2*dt_tensor[:, -1].unsqueeze(-1))
-            
-        elif seq_len >= 3:
-            # 中心差分
-            for i in range(1, seq_len - 1):
-                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
-                velocities[:, i, :] = (positions[:, i+1, :] - positions[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
-            velocities[:, 0, :] = (positions[:, 1, :] - positions[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
-            velocities[:, -1, :] = (positions[:, -1, :] - positions[:, -2, :]) / dt_tensor[:, -1].unsqueeze(-1)
-        else:
-            # 序列太短，简单处理
-            if seq_len >= 2:
-                velocities[:, 0, :] = (positions[:, 1, :] - positions[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
-                velocities[:, 1, :] = velocities[:, 0, :]
-        
-        # 加速度：使用相同策略
-        accelerations = torch.zeros_like(positions)
-        
-        if seq_len >= 4:
-            # 内部点：中心差分
-            for i in range(1, seq_len - 1):
-                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
-                accelerations[:, i, :] = (velocities[:, i+1, :] - velocities[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
-            
-            # 边界：二阶外推
-            accelerations[:, 0, :] = (-3*velocities[:, 0, :] + 4*velocities[:, 1, :] - velocities[:, 2, :]) / (2*dt_tensor[:, 0].unsqueeze(-1))
-            accelerations[:, -1, :] = (3*velocities[:, -1, :] - 4*velocities[:, -2, :] + velocities[:, -3, :]) / (2*dt_tensor[:, -1].unsqueeze(-1))
-            
-        elif seq_len >= 3:
-            for i in range(1, seq_len - 1):
-                dt_avg = (dt_tensor[:, i-1] + dt_tensor[:, i]) / 2
-                accelerations[:, i, :] = (velocities[:, i+1, :] - velocities[:, i-1, :]) / (2 * dt_avg.unsqueeze(-1))
-            accelerations[:, 0, :] = (velocities[:, 1, :] - velocities[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
-            accelerations[:, -1, :] = (velocities[:, -1, :] - velocities[:, -2, :]) / dt_tensor[:, -1].unsqueeze(-1)
-        else:
-            if seq_len >= 2:
-                accelerations[:, 0, :] = (velocities[:, 1, :] - velocities[:, 0, :]) / dt_tensor[:, 0].unsqueeze(-1)
-                accelerations[:, 1, :] = accelerations[:, 0, :]
-        
-        return velocities, accelerations
-    
 ## TD3 代理
 class TD3Agent(BaseTD3Agent):
     def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0,
                  actor_lr=1e-3, critic_lr=1e-3, gamma=0.99, tau=0.005,
-                 policy_noise=0.2, noise_clip=0.5, policy_freq=2, sigma=0.2, clip_grad=False,
-                 aware_dt: bool = False,
+                 policy_noise=0.2, noise_clip=0.5, policy_freq=2, policy_noise_std=0.2, clip_grad=False,
+                 aware_dt: bool = False, Ts: float = 0.001,
                  delay_enabled: bool = False, delay_step: int = 5, delay_sigma: int = 2, aware_delay_time: bool = False):
         # 初始化参数
         super().__init__(state_dim=state_dim, action_dim=action_dim, hidden_dim=hidden_dim, action_bound=action_bound,
                  actor_lr=actor_lr, critic_lr=critic_lr, gamma=gamma, tau=tau,
-                 policy_noise=policy_noise, noise_clip=noise_clip, policy_freq=policy_freq, policy_sigma=sigma, clip_grad=clip_grad,
-                 aware_dt=aware_dt,
+                 policy_noise=policy_noise, noise_clip=noise_clip, policy_freq=policy_freq, explor_noise_std=policy_noise_std, clip_grad=clip_grad,
+                 aware_dt=aware_dt, Ts=Ts,
                  delay_enabled=delay_enabled, delay_step=delay_step, delay_sigma=delay_sigma, aware_delay_time=aware_delay_time)
         self._init_nn()
         self._init_optimizer()
@@ -404,7 +230,7 @@ class TD3Agent(BaseTD3Agent):
             action = action_np.flatten()
             
         if add_noise:
-            noise = np.random.normal(0, self.action_bound * self.policy_sigma * epsilon, size=self.action_dim)
+            noise = np.random.normal(0, self.action_bound * self.action_sigma * epsilon, size=self.action_dim)
             action += noise
             if np.random.random() < rand_prob:
                 action = np.random.uniform(-self.action_bound, self.action_bound, self.action_dim)
@@ -415,10 +241,10 @@ class TD3Agent(BaseTD3Agent):
 class Gru_TD3Agent(BaseTD3Agent):
     def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0,
                  actor_lr=1e-3, critic_lr=1e-3, gru_predictor_lr=1e-3,gamma=0.99, tau=0.005,
-                 policy_noise=0.2, noise_clip=0.5, policy_freq=2, sigma=0.2, clip_grad=False, 
+                 policy_noise=0.2, noise_clip=0.5, policy_freq=2, action_sigma=0.2, clip_grad=False, 
                  seq_len=10, gru_layers=1, fc_seq_len=1,
-                 aware_dt: bool = False,
-                 delay_enabled: bool = False, delay_step: int = 5, delay_sigma: int = 2, aware_delay_time: bool = False,
+                 aware_dt: bool = False, Ts = 0.001, aware_delay_time: bool = False,
+                 delay_enabled: bool = False, delay_step: int = 5, delay_sigma: int = 2 
                  ):
         """初始化GRU-TD3代理（分离式架构）
         
@@ -431,9 +257,9 @@ class Gru_TD3Agent(BaseTD3Agent):
         self.gru_predictor_lr = gru_predictor_lr  # GRU预测器学习率
         
         super().__init__(state_dim=state_dim, action_dim=action_dim, hidden_dim=hidden_dim, action_bound=action_bound,
-                         actor_lr=actor_lr, critic_lr=critic_lr, gamma=gamma, tau=tau,
-                         policy_noise=policy_noise, noise_clip=noise_clip, policy_freq=policy_freq, policy_sigma=sigma, clip_grad=clip_grad,
-                         aware_dt=aware_dt,
+                         actor_lr=actor_lr, critic_lr=critic_lr, gamma=gamma, tau=tau, action_sigma=action_sigma,
+                         policy_noise=policy_noise, noise_clip=noise_clip, policy_freq=policy_freq, clip_grad=clip_grad,
+                         aware_dt=aware_dt, Ts=Ts,
                          delay_enabled=delay_enabled, delay_step=delay_step, delay_sigma=delay_sigma, aware_delay_time=aware_delay_time)
         self._init_nn()
         self._init_optimizer()
@@ -442,7 +268,8 @@ class Gru_TD3Agent(BaseTD3Agent):
         # 创建共享的GRU预测器
         gru_state_dim = 2 + int(self.aware_dt) + int(self.aware_delay_time)  # 状态维度 + 时间步长 + 延迟时间感知
         self.gru_predictor = GruPredictor(
-            state_dim=gru_state_dim, hidden_dim=self.hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len
+            state_dim=gru_state_dim, hidden_dim=self.hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
+            aware_delay_time=self.aware_delay_time, aware_dt=self.aware_dt
             ).to(device)
         
         # GRU网络初始化（传入共享的GRU预测器）
@@ -486,14 +313,14 @@ class Gru_TD3Agent(BaseTD3Agent):
             return 0.0
         
         # 采样训练数据
-        delayed_seqs, true_future_seqs = predictor_buffer.sample()
+        pre_seqs, true_delay_state = predictor_buffer.sample()
         
         # 前向传播
-        predicted_seqs, _ = self.gru_predictor(delayed_seqs)
+        fc_delay_state = self.gru_predictor.forward(pre_seqs)
         
         # 计算MSE损失
-        predictor_loss = F.mse_loss(predicted_seqs, true_future_seqs)
-        
+        predictor_loss = F.mse_loss(self.gru_predictor.del_vel_acc(fc_delay_state.unsqueeze(0)).squeeze(0), true_delay_state)
+
         # 反向传播
         self.gru_predictor_optimizer.zero_grad()
         predictor_loss.backward()
@@ -525,13 +352,13 @@ class Gru_TD3Agent(BaseTD3Agent):
 
         with torch.no_grad():
             if self.gru_predictor is not None:
-                states = self.predict_states(state_seq_tensor)  # 使用GRU预测未来状态序列
-            action_tensor: torch.Tensor = self.actor(states)
-            action_np: np.ndarray = action_tensor.cpu().detach().numpy()
+                state = self.gru_predictor.forward(state_seq_tensor)  # 使用GRU预测未来状态序列
+            action_tensor = self.actor.forward(state)
+            action_np = action_tensor.cpu().detach().numpy()
             action = action_np.flatten()
             
         if add_noise:
-            noise = np.random.normal(0, self.action_bound * self.policy_sigma * epsilon, size=self.action_dim)
+            noise = np.random.normal(0, self.action_bound * self.action_sigma * epsilon, size=self.action_dim)
             action += noise
             if np.random.random() < rand_prob:
                 action = np.random.uniform(-self.action_bound, self.action_bound, self.action_dim)
