@@ -29,13 +29,13 @@ def smooth_reward(tolerance=0.0002):
             target_reward = 0
         
         # 4. 动作惩罚
-        action_penalty = -3.0 * (action / 5.0) ** 2
+        action_penalty = -5.0 * (action / 5.0)** 2
         
         # 5. 相反动作奖励
         if np.sign(a2) != np.sign(action):
-            action_penalty += 2.0
+            action_penalty += 1.0
         
-        return float(position_penalty + improvement_reward + target_reward + action_penalty)
+        return float(position_penalty + improvement_reward + target_reward + action_penalty) / 10
     
     return reward_func
 

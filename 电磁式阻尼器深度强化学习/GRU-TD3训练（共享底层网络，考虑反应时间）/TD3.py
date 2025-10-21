@@ -6,7 +6,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
 from typing import Tuple, Union, List
-from nn import Actor, Critic, ReplayBuffer, Gru_Actor, Gru_Critic, Gru_ReplayBuffer, GruPredictor
+from nn import Actor, Critic, GruPredictor_norm, ReplayBuffer, Gru_Actor, Gru_Critic, Gru_ReplayBuffer, GruPredictor_diff
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -74,8 +74,8 @@ class BaseTD3Agent:
         self.target_actor: Actor | Gru_Actor = None
         self.target_critic1: Critic | Gru_Critic = None
         self.target_critic2: Critic | Gru_Critic = None
-        self.gru_predictor: GruPredictor = None
-        self.target_gru_predictor: GruPredictor = None
+        self.gru_predictor: GruPredictor_diff = None
+        self.target_gru_predictor: GruPredictor_diff = None
         raise NotImplementedError("需要在子类中初始化神经网络结构")
 
     def _init_optimizer(self):
@@ -209,22 +209,17 @@ class BaseTD3Agent:
                 # 详细模式：打印每个参数的梯度
                 if verbose:
                     print(f"  📍 {name}: shape={param.shape}, grad_norm={grad_norm:.6f}")
-                    logging.info(f"  {name}: shape={param.shape}, grad_norm={grad_norm:.6f}")
+                    logging.info(f"  📍 {name}: shape={param.shape}, grad_norm={grad_norm:.6f}")
         
         total_grad_norm = total_grad_norm ** 0.5
         
         # 2. 打印总体统计
-        print(f"\n🔍 本轮第{self.total_it}次更新， {model.__class__.__name__} 梯度检查报告:")
-        logging.info(f"\n🔍 {model.__class__.__name__} 梯度检查报告:")
-        print(f"  ├─ 总梯度范数: {total_grad_norm:.6f}")
-        logging.info(f"  ├─ 总梯度范数: {total_grad_norm:.6f}")
-        print(f"  ├─ 参数数量: {param_count}")
-        logging.info(f"  ├─ 参数数量: {param_count}")
-        print(f"  └─ 层数: {len(layer_stats)}")
-        logging.info(f"  └─ 层数: {len(layer_stats)}")
+        # print(f"\n🔍 本轮第{self.total_it}次更新， {model.__name__} 梯度检查报告:")
+        logging.info(f"🔍 本轮第{self.total_it}次更新， {model.__class__.__name__} 梯度检查报告:")
+        # print(f"  └─总梯度范数: {total_grad_norm:.6f}")
+        logging.info(f"  └─ 总梯度范数: {total_grad_norm:.6f}")
 
         # 3. 打印各层统计
-        print("\n📊 各层梯度统计:")
         for layer_name, stats in layer_stats.items():
             grad_norms = stats['grad_norms']
             avg_grad = np.mean(grad_norms)
@@ -238,33 +233,40 @@ class BaseTD3Agent:
             elif max_grad < threshold_low:
                 status = "⚪ 过低"
             
-            print(f"  {status} {layer_name}:")
-            print(f"      ├─ 平均梯度: {avg_grad:.6e}")
-            print(f"      ├─ 最大梯度: {max_grad:.6e}")
-            print(f"      ├─ 最小梯度: {min_grad:.6e}")
-            print(f"      └─ 参数: {stats['param_names']}")
+            # print(f"  {status} {layer_name}:")
+            # print(f"      ├─ 平均梯度: {avg_grad:.6e}")
+            # print(f"      ├─ 最大梯度: {max_grad:.6e}")
+            # print(f"      ├─ 最小梯度: {min_grad:.6e}")
+            # print(f"      └─ 参数: {stats['param_names']}")
+            if verbose:
+                # print("\n📊 各层梯度统计:")
+                logging.info("📊 各层梯度统计:")
+                logging.info(f"{status} {layer_name} , 参数: {stats['param_names']} : ")
+                logging.info(f"- 平均: {avg_grad:.6e}, 最大: {max_grad:.6e}, 最小: {min_grad:.6e}")
             
-            logging.info(f"{layer_name} - 平均: {avg_grad:.6e}, 最大: {max_grad:.6e}, 最小: {min_grad:.6e}")
-        
         # 4. 检查梯度是否异常
-        print("\n⚠️  异常检测:")
+        # print("\n⚠️  异常检测:")
         if total_grad_norm > threshold_high:
-            msg = f"❌ 梯度爆炸! 总梯度范数: {total_grad_norm:.6f} (阈值: {threshold_high})"
-            print(msg)
+            msg = f"❌❌❌ 梯度爆炸! 总梯度范数: {total_grad_norm:.6f} (阈值: {threshold_high})"
+            # print(msg)
             logging.warning(msg)
             
             # 找出梯度最大的层
             max_layer = max(layer_stats.items(), key=lambda x: np.max(x[1]['grad_norms']))
-            print(f"   └─ 最大梯度来自: {max_layer[0]} (梯度范数: {np.max(max_layer[1]['grad_norms']):.6f})")
+            # print(f"   └─ 最大梯度来自: {max_layer[0]} (梯度范数: {np.max(max_layer[1]['grad_norms']):.6f})")
+            logging.warning(f"   └─ 最大梯度来自: {max_layer[0]} (梯度范数: {np.max(max_layer[1]['grad_norms']):.6f})")
             
         elif total_grad_norm < threshold_low:
-            msg = f"❌ 梯度消失! 总梯度范数: {total_grad_norm:.6e} (阈值: {threshold_low})"
-            print(msg)
+            msg = f"❌❌❌ 梯度消失! 总梯度范数: {total_grad_norm:.6e} (阈值: {threshold_low})"
+            # print(msg)
             logging.warning(msg)
         else:
-            print("✅ 梯度正常")
-        
-        print("-" * 60)
+            # print("✅ 梯度正常")
+            pass
+            logging.info("✅ 梯度正常")
+
+        # print("-" * 60)
+        logging.info("-" * 60)
         
         return {
             'total_grad_norm': total_grad_norm,
@@ -355,28 +357,29 @@ class Gru_TD3Agent(BaseTD3Agent):
     
     def _init_nn(self):
         # 创建共享的GRU预测器
-        gru_state_dim = 2 + int(self.aware_dt) + int(self.aware_delay_time)  # 状态维度 + 时间步长 + 延迟时间感知
-        self.gru_predictor = GruPredictor(
+        # gru_state_dim = 2 + int(self.aware_dt) + int(self.aware_delay_time)  # 状态维度 + 时间步长 + 延迟时间感知
+        gru_state_dim = self.state_dim
+        self.gru_predictor = GruPredictor_norm(
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.gru_predictor1 = GruPredictor(
+        self.gru_predictor1 = GruPredictor_norm(
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.gru_predictor2 = GruPredictor(
+        self.gru_predictor2 = GruPredictor_norm(
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.target_gru_predictor = GruPredictor(
+        self.target_gru_predictor = GruPredictor_norm(
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.target_gru_predictor1 = GruPredictor(
+        self.target_gru_predictor1 = GruPredictor_norm(
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.target_gru_predictor2 = GruPredictor(
+        self.target_gru_predictor2 = GruPredictor_norm(
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
