@@ -436,11 +436,13 @@ class Gru_TD3Agent(BaseTD3Agent):
         
         # 详细打印各层参数
         print("\n📊 Actor网络参数详情:")
+        logging.info("📊 Actor网络参数详情:")
         for name, param in self.actor.named_parameters():
             print(f"  - {name}: {param.shape} ({param.numel():,} 个元素)")
             logging.info(f"  - {name}: {param.shape} ({param.numel():,} 个元素)")
         
         print("\n📊 GRU预测器参数详情:")
+        logging.info("📊 GRU预测器参数详情:")
         for name, param in self.gru_predictor.named_parameters():
             print(f"  - {name}: {param.shape} ({param.numel():,} 个元素)")
             logging.info(f"  - {name}: {param.shape} ({param.numel():,} 个元素)")

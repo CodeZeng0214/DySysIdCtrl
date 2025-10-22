@@ -51,7 +51,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
     if train_datasets.current_episode > 0:
         with open(rewards_log_file, "a") as f:
             for i in range(len(train_datasets.episode_rewards)):
-                f.write(f"{i+1:>8}, {train_datasets.episode_rewards[i]:>12.4f}, {train_datasets.episode_simu_rewards[i]:>12.4f}, {train_datasets.episode_actor_losses[i]:>12.4f}, {train_datasets.episode_critic_losses[i]:>12.4f}, {epsilon:>8.4f}\n")
+                f.write(f"{i+1:>8}, {train_datasets.episode_rewards[i]:>12.4f}, {train_datasets.episode_simu_rewards[i]:>12.4f}, {train_datasets.episode_actor_losses[i]:>12.4f}, {train_datasets.episode_critic_losses[i]:>12.4f}, {train_datasets.episode_epsilons[i]:>8.4f}\n")
 
     # 训练循环
     for episode in tqdm(range(start_episode, n_episodes), desc="训练轮次"):

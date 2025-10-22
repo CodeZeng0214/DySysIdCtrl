@@ -12,30 +12,30 @@ def smooth_reward(tolerance=0.0002):
         next_a2 = next_obs[5]
         
         # 1. 二次型位移惩罚（平滑）
-        normalized_pos = next_x2 / tolerance
+        normalized_pos = abs(next_x2) / tolerance
         if abs(normalized_pos) <= 1:
-            position_penalty = -3.0 * (normalized_pos ** 2)
+            position_penalty = -1.0 * (normalized_pos)
         else:
-            position_penalty = - 3.0 * (1 + np.log10(abs(next_x2) / tolerance))
+            position_penalty = - 1.0 * np.log10(normalized_pos)
 
         # 2. 改善奖励q
         improvement = (abs(x2) - abs(next_x2)) / tolerance
-        improvement_reward = 3.0 * np.tanh(improvement)  # 使用tanh限制范围q
+        improvement_reward = 1.0 * np.tanh(improvement)  # 使用tanh限制范围q
         
         # 3. 目标区域奖励（高斯型）
         if abs(next_x2) <= tolerance:
-            target_reward = 2.0 * np.exp(-10 * (normalized_pos ** 2))
+            target_reward = 1.0 * np.exp(-10 * (normalized_pos ** 2))
         else:
             target_reward = 0
         
         # 4. 动作惩罚
-        action_penalty = -5.0 * (action / 5.0)** 2
+        action_penalty = -1.0 * (abs(action) / action_bound)**2
         
         # 5. 相反动作奖励
         if np.sign(a2) != np.sign(action):
             action_penalty += 1.0
         
-        return float(position_penalty + improvement_reward + target_reward + action_penalty) / 10
+        return float(position_penalty + improvement_reward + target_reward + action_penalty) / 2
     
     return reward_func
 

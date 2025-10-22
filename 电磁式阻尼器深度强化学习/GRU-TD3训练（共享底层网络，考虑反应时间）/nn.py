@@ -240,7 +240,7 @@ class GruPredictor_norm(nn.Module):
         # GRU层
         self.gru_norm = nn.LayerNorm(state_dim)
         self.gru = nn.GRU(input_size=state_dim, hidden_size=hidden_dim, 
-                         num_layers=num_layers, batch_first=True, dropout=0.1 if num_layers > 1 else 0)
+                         num_layers=num_layers, batch_first=True, dropout=0.1)
         
         # 用于预测下一个状态的线性层
         self.fc_predict = nn.Sequential(nn.Linear(hidden_dim, hidden_dim),
@@ -346,7 +346,7 @@ class Gru_Actor(nn.Module):
     - seq_len: 输入序列长度，默认值为 10
     - gru_predictor: 共享的GRU预测器（必需参数）
     """
-    def __init__(self, gru_predictor: GruPredictor_diff, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0):
+    def __init__(self, gru_predictor: GruPredictor_norm, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0):
         super(Gru_Actor, self).__init__()
         self.hidden_dim = hidden_dim
         self.action_bound = action_bound
@@ -401,7 +401,7 @@ class Gru_Critic(nn.Module):
     - seq_len: 输入序列长度，默认值为 10
     - gru_predictor: 共享的GRU预测器（必需参数）
     """
-    def __init__(self, gru_predictor: GruPredictor_diff, state_dim=1, action_dim=1, hidden_dim=64):
+    def __init__(self, gru_predictor: GruPredictor_norm, state_dim=1, action_dim=1, hidden_dim=64):
         super(Gru_Critic, self).__init__()
         self.hidden_dim = hidden_dim
         self.action_dim = action_dim
@@ -411,6 +411,7 @@ class Gru_Critic(nn.Module):
         self.state_norm = nn.LayerNorm(state_dim)
         # 融合层：将注意力加权后的状态特征和动作结合
         self.fusion_layer = nn.Sequential(
+            nn.LayerNorm(state_dim + action_dim),
             nn.Linear(state_dim + action_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
