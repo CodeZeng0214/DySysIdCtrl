@@ -1,5 +1,6 @@
 ## TD3 算法定义的函数
 
+import logging
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
@@ -117,12 +118,14 @@ class BaseTD3Agent:
         
         self.critic1_optimizer.zero_grad()
         critic1_loss.backward()
+        if self.total_it % 100 == 0: self.check_grad(self.critic1)
         if self.clip_grad:
             torch.nn.utils.clip_grad_norm_(self.critic1.parameters(), max_norm=10)
         self.critic1_optimizer.step()
         
         self.critic2_optimizer.zero_grad()
         critic2_loss.backward()
+        if self.total_it % 100 == 0: self.check_grad(self.critic2)
         if self.clip_grad:
             torch.nn.utils.clip_grad_norm_(self.critic2.parameters(), max_norm=10)
         self.critic2_optimizer.step()
@@ -139,29 +142,7 @@ class BaseTD3Agent:
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
             
-            # 打印梯度信息（调试用）
-            total_grad_norm = 0
-            param_count = 0
-            for name, param in self.actor.named_parameters():
-                if param.grad is not None:
-                    grad_norm = param.grad.data.norm(2)
-                    total_grad_norm += grad_norm.item() ** 2
-                    param_count += 1
-                    if self.total_it % 1000 == 0:  # 每1000次打印一次
-                        pass # 打印梯度信息
-                        #print(f"  {name}: grad_norm={grad_norm:.6f}")
-            total_grad_norm = total_grad_norm ** (1. / 2)
-            if self.total_it % 1000 == 0:
-                pass # 打印梯度信息
-                #print(f"🔍 Actor总梯度范数: {total_grad_norm:.6f}, 参数数量: {param_count}")
-            # 检查梯度是否爆炸
-            if self.total_it % 1000 == 0 and total_grad_norm > 10:
-                pass # 打印梯度信息
-                #print(f"⚠️ 警告: Actor梯度过高! 梯度范数: {total_grad_norm}")
-            # 检查梯度是否为零
-            if self.total_it % 1000 == 0 and total_grad_norm < 1e-8:
-                pass # 打印梯度信息
-                #print(f"⚠️ 警告: Actor梯度几乎为零! 梯度范数: {total_grad_norm}")
+            if self.total_it % 100 == 0: self.check_grad(self.actor)
             
             if self.clip_grad:
                 torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=10)
@@ -175,6 +156,109 @@ class BaseTD3Agent:
             actor_loss = actor_loss.item()
         
         return critic_loss.item(), actor_loss, (critic1_loss.item() + critic2_loss.item()) / 2
+
+    def check_grad(self, model: torch.nn.Module, verbose=False, threshold_high=10.0, threshold_low=1e-8):
+        """检查模型的梯度情况，支持迭代检查各层
+        
+        Args:
+            model: 要检查的模型
+            verbose: 是否打印详细的每层梯度信息
+            threshold_high: 梯度过高的阈值
+            threshold_low: 梯度过低的阈值
+        """
+        total_grad_norm = 0
+        param_count = 0
+        layer_stats = {}  # 存储各层统计信息
+        
+        # 1. 迭代检查各层梯度
+        for name, param in model.named_parameters():
+            if param.grad is not None:
+                grad_norm = param.grad.data.norm(2).item()
+                total_grad_norm += grad_norm ** 2
+                param_count += 1
+                
+                # 提取层名（去掉参数类型后缀）
+                layer_name = '.'.join(name.split('.')[:-1]) if '.' in name else name
+                
+                # 统计各层梯度
+                if layer_name not in layer_stats:
+                    layer_stats[layer_name] = {
+                        'grad_norms': [],
+                        'param_names': [],
+                        'param_shapes': []
+                    }
+                
+                layer_stats[layer_name]['grad_norms'].append(grad_norm)
+                layer_stats[layer_name]['param_names'].append(name)
+                layer_stats[layer_name]['param_shapes'].append(tuple(param.shape))
+                
+                # 详细模式：打印每个参数的梯度
+                if verbose:
+                    print(f"  📍 {name}: shape={param.shape}, grad_norm={grad_norm:.6f}")
+                    logging.info(f"  📍 {name}: shape={param.shape}, grad_norm={grad_norm:.6f}")
+        
+        total_grad_norm = total_grad_norm ** 0.5
+        
+        # 2. 打印总体统计
+        # print(f"\n🔍 本轮第{self.total_it}次更新， {model.__name__} 梯度检查报告:")
+        logging.info(f"🔍 本轮第{self.total_it}次更新， {model.__class__.__name__} 梯度检查报告:")
+        # print(f"  └─总梯度范数: {total_grad_norm:.6f}")
+        logging.info(f"  └─ 总梯度范数: {total_grad_norm:.6f}")
+
+        # 3. 打印各层统计
+        for layer_name, stats in layer_stats.items():
+            grad_norms = stats['grad_norms']
+            avg_grad = np.mean(grad_norms)
+            max_grad = np.max(grad_norms)
+            min_grad = np.min(grad_norms)
+            
+            # 判断异常状态
+            status = "✅"
+            if max_grad > threshold_high:
+                status = "🔴 过高"
+            elif max_grad < threshold_low:
+                status = "⚪ 过低"
+            
+            # print(f"  {status} {layer_name}:")
+            # print(f"      ├─ 平均梯度: {avg_grad:.6e}")
+            # print(f"      ├─ 最大梯度: {max_grad:.6e}")
+            # print(f"      ├─ 最小梯度: {min_grad:.6e}")
+            # print(f"      └─ 参数: {stats['param_names']}")
+            if verbose:
+                # print("\n📊 各层梯度统计:")
+                logging.info("📊 各层梯度统计:")
+                logging.info(f"{status} {layer_name} , 参数: {stats['param_names']} : ")
+                logging.info(f"- 平均: {avg_grad:.6e}, 最大: {max_grad:.6e}, 最小: {min_grad:.6e}")
+            
+        # 4. 检查梯度是否异常
+        # print("\n⚠️  异常检测:")
+        if total_grad_norm > threshold_high:
+            msg = f"❌❌❌ 梯度爆炸! 总梯度范数: {total_grad_norm:.6f} (阈值: {threshold_high})"
+            # print(msg)
+            logging.warning(msg)
+            
+            # 找出梯度最大的层
+            max_layer = max(layer_stats.items(), key=lambda x: np.max(x[1]['grad_norms']))
+            # print(f"   └─ 最大梯度来自: {max_layer[0]} (梯度范数: {np.max(max_layer[1]['grad_norms']):.6f})")
+            logging.warning(f"   └─ 最大梯度来自: {max_layer[0]} (梯度范数: {np.max(max_layer[1]['grad_norms']):.6f})")
+            
+        elif total_grad_norm < threshold_low:
+            msg = f"❌❌❌ 梯度消失! 总梯度范数: {total_grad_norm:.6e} (阈值: {threshold_low})"
+            # print(msg)
+            logging.warning(msg)
+        else:
+            # print("✅ 梯度正常")
+            pass
+            logging.info("✅ 梯度正常")
+
+        # print("-" * 60)
+        logging.info("-" * 60)
+        
+        return {
+            'total_grad_norm': total_grad_norm,
+            'param_count': param_count,
+            'layer_stats': layer_stats
+        }
     
 ## TD3 代理
 class TD3Agent(BaseTD3Agent):

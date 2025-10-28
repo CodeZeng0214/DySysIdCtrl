@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Callable
 from scipy.linalg import expm
-action_bound = 5
+action_bound = 1
 
 def smooth_reward(tolerance=0.0002):
     """平滑、有引导性的奖励函数"""
@@ -43,7 +43,17 @@ def simple_reward(tolerance=0.0002):
     def reward_func(obs, action, next_obs):
         next_x2 = next_obs[3]
         # 只用位移的负值作为奖励（越小越好）
-        return -abs(next_x2) / tolerance # - 0.1 * abs(action) / 5.0
+        # return -abs(next_x2) / tolerance # - 0.1 * abs(action) / 5.0
+            # 方法A: Tanh压缩 (保持连续性)
+        # raw_reward = -abs(next_x2) / tolerance
+        # reward = np.tanh(raw_reward)  # 压缩到 [-1, 1]
+        
+        # # 或方法B: 分段线性
+        # reward = np.clip(raw_reward, -1, 1)
+        
+        # # 或方法C: 指数衰减
+        # reward = -1 + np.exp(-abs(next_x2)/tolerance)  # [-1, 0]
+        return -1 + np.exp(-abs(next_x2)/tolerance)
     return reward_func
 
 def enhanced_reward_func(obs:np.ndarray, action:np.ndarray, next_obs:np.ndarray)-> float:

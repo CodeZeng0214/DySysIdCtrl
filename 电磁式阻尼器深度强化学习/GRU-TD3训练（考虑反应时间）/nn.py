@@ -159,7 +159,7 @@ class Gru_Critic(nn.Module):
         
         # 融合层：将GRU输出和动作结合
         self.fusion_layer = nn.Sequential(
-            nn.Linear(hidden_dim + action_dim, hidden_dim),
+            nn.Linear(state_dim + action_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
@@ -208,14 +208,11 @@ class Gru_Critic(nn.Module):
         # GRU前向传播
         gru_y_out, gru_h_out = self.gru(state_seq)  # [batch_size, seq_len, hidden_dim]
         # gru_h_out 形状为 [num_layers, batch_size, hidden_dim]
-        context_vector = gru_h_out.squeeze(0)  # [batch_size, hidden_dim]
-        # 通过融合层得到Q值
-        x = torch.cat([context_vector, action], dim=-1)  # [batch_size, hidden_dim + action_dim]
+        # context_vector = gru_h_out.squeeze(0)  # [batch_size, hidden_dim]
         
         
         # 取最后一个时间步的输出
-        # context_vector = gru_out[:, -1, :]  # [batch_size, hidden_dim]
-
+        context_vector = gru_y_out[:, -1, :]  # [batch_size, hidden_dim]
 
         # # 预测接下来的pre_seq_len个时间步
         # state_predict_seq = torch.zeros((batch_size, self.pre_seq_len, state_seq.size(2)), device=state_seq.device) # 形状为 [batch_size, pre_seq_len, state_dim]
@@ -243,16 +240,18 @@ class Gru_Critic(nn.Module):
         # attention_weights = F.softmax(attention_scores, dim=-1)  # [batch_size, 1.5*pre_seq_len]
 
 
-        # # 加权求和得到上下文向量
+        # 加权求和得到上下文向量
         # context_vector = torch.sum(state_combined_seq * attention_weights.unsqueeze(-1), dim=1)  # [batch_size, hidden_dim]
+
 
 
         # # # 选择最大注意力权重对应的时间步状态作为上下文向量
         # # max_attention_indices = torch.argmax(attention_weights, dim=-1)  # [batch_size]
         # # context_vector = state_combined_seq[torch.arange(batch_size), max_attention_indices]  # [batch_size, state_dim]
         
+        
         # # 将状态特征和动作拼接
-        # x = torch.cat([context_vector, action], dim=-1)  # [batch_size, state_dim + action_dim]
+        x = torch.cat([context_vector, action], dim=-1)  # [batch_size, state_dim + action_dim]
         
         # 通过融合层得到Q值
         q_value = self.fusion_layer(x)

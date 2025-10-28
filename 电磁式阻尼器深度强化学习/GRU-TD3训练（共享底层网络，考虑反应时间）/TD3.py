@@ -330,7 +330,8 @@ class TD3Agent(BaseTD3Agent):
         
 ## 基于GRU的TD3代理（分离式架构）
 class Gru_TD3Agent(BaseTD3Agent):
-    def __init__(self, state_dim=1, action_dim=1, mlp_hidden_dim=128, gru_hidden_dim=64, action_bound=5.0,
+    def __init__(self, norm: bool = False, simple_nn: bool = False,
+                 state_dim=1, action_dim=1, mlp_hidden_dim=128, gru_hidden_dim=64, action_bound=5.0,
                  actor_lr=5e-4, critic_lr=1e-3, gru_predictor_lr=1e-3, clip_grad=False, gamma=0.99, tau=0.005,
                  policy_noise=0.2, noise_clip=0.5, policy_freq=2, action_sigma=0.2, 
                  aware_dt: bool = False, aware_delay_time: bool = False,
@@ -352,56 +353,56 @@ class Gru_TD3Agent(BaseTD3Agent):
         self.fc_seq_len = fc_seq_len  # 预测时间步长度
         self.gru_predictor_lr = gru_predictor_lr  # GRU预测器学习率
 
-        self._init_nn()
+        self._init_nn(norm=norm, simple_nn=simple_nn)
         self._init_optimizer()
     
-    def _init_nn(self):
+    def _init_nn(self, norm: bool = False, simple_nn: bool = False):
         # 创建共享的GRU预测器
         # gru_state_dim = 2 + int(self.aware_dt) + int(self.aware_delay_time)  # 状态维度 + 时间步长 + 延迟时间感知
         gru_state_dim = self.state_dim
-        self.gru_predictor = GruPredictor_norm(
+        self.gru_predictor = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.gru_predictor1 = GruPredictor_norm(
+        self.gru_predictor1 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.gru_predictor2 = GruPredictor_norm(
+        self.gru_predictor2 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.target_gru_predictor = GruPredictor_norm(
+        self.target_gru_predictor = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.target_gru_predictor1 = GruPredictor_norm(
+        self.target_gru_predictor1 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.target_gru_predictor2 = GruPredictor_norm(
+        self.target_gru_predictor2 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
 
         # GRU网络初始化（传入共享的GRU预测器）
-        self.actor = Gru_Actor(self.gru_predictor, 
+        self.actor = Gru_Actor(self.gru_predictor, norm=norm, simple_nn=simple_nn,
                                state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim, action_bound=self.action_bound).to(device)
 
-        self.critic1 = Gru_Critic(self.gru_predictor1, 
+        self.critic1 = Gru_Critic(self.gru_predictor1, norm=norm, simple_nn=simple_nn,
                                   state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim).to(device)
 
-        self.critic2 = Gru_Critic(self.gru_predictor2, 
+        self.critic2 = Gru_Critic(self.gru_predictor2, norm=norm, simple_nn=simple_nn,
                                   state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim).to(device)
 
         # 目标网络使用目标GRU预测器
-        self.target_actor = Gru_Actor(self.target_gru_predictor, 
+        self.target_actor = Gru_Actor(self.target_gru_predictor, norm=norm, simple_nn=simple_nn,
                                        state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim, action_bound=self.action_bound).to(device)
 
-        self.target_critic1 = Gru_Critic(self.target_gru_predictor1, 
+        self.target_critic1 = Gru_Critic(self.target_gru_predictor1, norm=norm, simple_nn=simple_nn,
                                          state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim).to(device)
 
-        self.target_critic2 = Gru_Critic(self.target_gru_predictor2, 
+        self.target_critic2 = Gru_Critic(self.target_gru_predictor2, norm=norm, simple_nn=simple_nn,
                                          state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim).to(device)
 
         # 复制参数到目标网络
@@ -474,9 +475,9 @@ class Gru_TD3Agent(BaseTD3Agent):
             action = action_np.flatten()
             
         if add_noise:
-            noise = np.random.normal(0, self.action_bound * self.action_sigma * epsilon, size=self.action_dim)
+            noise = np.random.normal(0, self.action_sigma * epsilon, size=self.action_dim)
             action += noise
             if np.random.random() < rand_prob:
                 action = np.random.uniform(-self.action_bound, self.action_bound, self.action_dim)
 
-        return float(np.clip(action, -self.action_bound, self.action_bound))
+        return float(np.clip(action, -1, 1))

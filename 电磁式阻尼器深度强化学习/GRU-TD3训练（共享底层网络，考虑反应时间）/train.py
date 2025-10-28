@@ -70,6 +70,7 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         # 重置数据集的单回合历史记录
         train_datasets.current_episode = episode + 1
         train_datasets.reset_episode_data() 
+        replay_buffer.reset_history()
 
         # 记录初始状态
         # 获取延迟时间步长
@@ -86,12 +87,13 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         while not done:
             # 选择动作
             action = float(agent.select_action(env.state_history, add_noise=(epsilon != 0), epsilon=epsilon, rand_prob=rand_prob, delay=delay))
-
+            if episode + 1 <= 2: action = 0.0
+            
             # 执行动作
             next_state, reward, done = env.step(action, dt=train_datasets.dt_history[-1])
             
             # 记录现在时间步的数据
-            train_datasets.record_history(state=env.all_state.copy(), action=action, reward=reward, dt=env.get_current_timestep(), time=env.time, 
+            train_datasets.record_history(state=state[:6].copy(), action=action, reward=reward, dt=env.get_current_timestep(), time=env.time, 
                                         delay_time=state[-1] if agent.delay_enabled else 0.0)
 
             # 获取下一个扩展状态
