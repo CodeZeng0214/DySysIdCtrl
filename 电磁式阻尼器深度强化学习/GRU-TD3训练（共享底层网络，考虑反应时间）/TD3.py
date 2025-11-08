@@ -390,20 +390,20 @@ class Gru_TD3Agent(BaseTD3Agent):
                                state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim, action_bound=self.action_bound).to(device)
 
         self.critic1 = Gru_Critic(self.gru_predictor1, norm=norm, simple_nn=simple_nn,
-                                  state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim).to(device)
+                                  state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim, gru_hidden_dim=self.gru_hidden_dim).to(device)
 
         self.critic2 = Gru_Critic(self.gru_predictor2, norm=norm, simple_nn=simple_nn,
-                                  state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim).to(device)
+                                  state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim, gru_hidden_dim=self.gru_hidden_dim).to(device)
 
         # 目标网络使用目标GRU预测器
         self.target_actor = Gru_Actor(self.target_gru_predictor, norm=norm, simple_nn=simple_nn,
                                        state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim, action_bound=self.action_bound).to(device)
 
         self.target_critic1 = Gru_Critic(self.target_gru_predictor1, norm=norm, simple_nn=simple_nn,
-                                         state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim).to(device)
+                                         state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim, gru_hidden_dim=self.gru_hidden_dim).to(device)
 
         self.target_critic2 = Gru_Critic(self.target_gru_predictor2, norm=norm, simple_nn=simple_nn,
-                                         state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim).to(device)
+                                         state_dim=self.state_dim, action_dim=self.action_dim, hidden_dim=self.mlp_hidden_dim, gru_hidden_dim=self.gru_hidden_dim).to(device)
 
         # 复制参数到目标网络
         self.target_actor.load_state_dict(self.actor.state_dict())
@@ -467,17 +467,30 @@ class Gru_TD3Agent(BaseTD3Agent):
             state_seq = padded_history[-self.seq_len-delay+1:-delay+1]
 
         state_seq_tensor = torch.tensor(np.array(state_seq), dtype=torch.float32).unsqueeze(0).to(device)  # [1, seq_len, state_dim]
-
+        
         with torch.no_grad():
-            state = state_seq_tensor
-            action_tensor: torch.Tensor = self.actor(state)
+            action_tensor: torch.Tensor = self.actor(state_seq_tensor)
             action_np: np.ndarray = action_tensor.cpu().detach().numpy()
             action = action_np.flatten()
             
         if add_noise:
-            noise = np.random.normal(0, self.action_sigma * epsilon, size=self.action_dim)
+            noise = np.random.normal(0, self.action_bound * self.action_sigma * epsilon, size=self.action_dim)
             action += noise
             if np.random.random() < rand_prob:
                 action = np.random.uniform(-self.action_bound, self.action_bound, self.action_dim)
 
-        return float(np.clip(action, -1, 1))
+        return float(np.clip(action, -self.action_bound, self.action_bound))
+    
+        # with torch.no_grad():
+        #     state = state_seq_tensor
+        #     action_tensor: torch.Tensor = self.actor(state)
+        #     action_np: np.ndarray = action_tensor.cpu().detach().numpy()
+        #     action = action_np.flatten()
+            
+        # if add_noise:
+        #     noise = np.random.normal(0, self.action_sigma * epsilon, size=self.action_dim)
+        #     action += noise
+        #     if np.random.random() < rand_prob:
+        #         action = np.random.uniform(-self.action_bound, self.action_bound, self.action_dim)
+
+        # return float(np.clip(action, -1, 1))
