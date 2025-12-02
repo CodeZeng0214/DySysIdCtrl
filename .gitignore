@@ -52,3 +52,5 @@
 /电磁式阻尼器深度强化学习/GRU-TD3训练（考虑反应时间）/savedata
 /电磁式阻尼器深度强化学习/GRU-TD3训练（分离式架构）/savedata
 /电磁式阻尼器深度强化学习/GRU-TD3训练（共享底层网络，考虑反应时间）/savedata
+pyproject.toml
+.python-version
