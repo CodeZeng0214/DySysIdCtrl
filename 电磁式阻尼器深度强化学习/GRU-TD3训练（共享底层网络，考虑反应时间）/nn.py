@@ -227,7 +227,7 @@ class GruPredictor_norm(nn.Module):
     - num_layers: GRU层数，默认值为 1
     - pre_seq_len: 预测的未来时间步数，默认值为 5
     """
-    def __init__(self, norm=False, simple_nn=False,
+    def __init__(self, norm=False, simple_nn=False,freeze_gru=False,
                  state_dim=6, hidden_dim=64, num_layers=1, fc_seq_len=5,
                  aware_dt=False, aware_delay_time=False):
         super(GruPredictor_norm, self).__init__()
@@ -253,6 +253,10 @@ class GruPredictor_norm(nn.Module):
         self.attention = nn.Sequential(nn.Linear(hidden_dim, 1))  # 计算每个时间步的注意力分数
 
         self._init_weights()
+        
+        # 冻结GRU参数
+        if freeze_gru:
+            self.freeze_gru()
 
     def forward(self, state_seq: torch.Tensor, critic: bool=False) -> torch.Tensor:
         """前向传播
@@ -335,14 +339,24 @@ class GruPredictor_norm(nn.Module):
                 nn.init.xavier_uniform_(m.weight)
                 nn.init.constant_(m.bias, 0)
                 
-    def unfreeze_gru(self):
+    def unfreeze_all(self):
         """解冻GRU预测器，用于微调"""
         for param in self.parameters():
             param.requires_grad = True
     
-    def freeze_gru(self):
+    def unfreeze_gru(self):
+        """解冻GRU预测器，用于微调"""
+        for param in self.gru.parameters():
+            param.requires_grad = True
+    
+    def freeze_all(self):
         """冻结GRU预测器"""
         for param in self.parameters():
+            param.requires_grad = False
+            
+    def freeze_gru(self):
+        """冻结GRU预测器"""
+        for param in self.gru.parameters():
             param.requires_grad = False
             
 class Gru_Actor(nn.Module):
@@ -435,7 +449,8 @@ class Gru_Critic(nn.Module):
         # 融合层：将注意力加权后的状态特征和动作结合
         self.fusion_layer = nn.Sequential(
             # nn.LayerNorm(gru_hidden_dim + action_dim),
-            nn.Linear(gru_hidden_dim + action_dim, hidden_dim),
+            # nn.Linear(gru_hidden_dim + action_dim, hidden_dim),
+            nn.Linear(state_dim + action_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.LayerNorm(hidden_dim) if norm else nn.Identity(),

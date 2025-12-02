@@ -86,14 +86,14 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
         step_count = 0
         while not done:
             # 选择动作
-            action = float(agent.select_action(env.state_history, add_noise=(epsilon != 0), epsilon=epsilon, rand_prob=rand_prob, delay=delay))
+            action = float(agent.select_action(env.ob_state_history, add_noise=(epsilon != 0), epsilon=epsilon, rand_prob=rand_prob, delay=delay))
             if episode + 1 <= 2: action = 0.0
             
             # 执行动作
             next_state, reward, done = env.step(action, dt=train_datasets.dt_history[-1])
             
             # 记录现在时间步的数据
-            train_datasets.record_history(state=state[:6].copy(), action=action, reward=reward, dt=env.get_current_timestep(), time=env.time, 
+            train_datasets.record_history(state=env.all_state.copy(), action=action, reward=reward, dt=env.get_current_timestep(), time=env.time, 
                                         delay_time=state[-1] if agent.delay_enabled else 0.0)
 
             # 获取下一个扩展状态
@@ -140,11 +140,11 @@ def train_td3(env: ElectromagneticDamperEnv, agent: Union[TD3Agent, Gru_TD3Agent
             # 保存当前模型的测试数据的控制图
             os.makedirs(save_plot_path, exist_ok=True)
             c_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_simu_datasets"
-            plot_compare_no_control(nc_datasets, c_datasets, plot_state=[3], save_path=save_plot_path, use_time_noise=env.use_dt_noise)
+            plot_compare_no_control(nc_datasets, c_datasets, plot_state=[3], save_path=save_plot_path, plot_dt=env.use_dt_noise)
 
             # 保存当前轮次的探索过程数据图
             train_datasets.checkpoint_name = f"{project_time}_ep{episode+1}_expl_datasets"
-            plot_compare_no_control(nc_datasets, train_datasets, plot_state=[3], save_path=save_plot_path, use_time_noise=env.use_dt_noise)
+            plot_compare_no_control(nc_datasets, train_datasets, plot_state=[3], save_path=save_plot_path, plot_dt=env.use_dt_noise)
 
         # 保存csv数据文件
         if rewards_log_file:
@@ -176,6 +176,6 @@ def extend_and_save_state(agent: Gru_TD3Agent, train_datasets: Datasets, env: El
         state = np.concatenate([state, np.array([delay_time])])
 
     # 添加到状态历史
-    env.state_history.append(state.copy())
+    env.ob_state_history.append(state.copy())
     
     return state.copy()

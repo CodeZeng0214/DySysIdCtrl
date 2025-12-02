@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Callable
 from scipy.linalg import expm
-action_bound = 1
+action_bound = 5
 
 def smooth_reward(tolerance=0.0002):
     """平滑、有引导性的奖励函数"""
@@ -115,7 +115,7 @@ def tolerance_if_rf(tolerance: float = 1e-3) -> Callable:
         # 动作过大的惩罚
         reward += -(abs(float(action)) / action_bound)
         
-        return reward
+        return float(np.clip(reward / 4.0, -1.0, 1.0))
     return reward_func
 
 def tolerance_exp_rf(tolerance: float = 1e-3) -> Callable:

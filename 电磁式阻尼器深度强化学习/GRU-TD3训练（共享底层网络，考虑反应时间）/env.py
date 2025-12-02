@@ -17,7 +17,7 @@ class ElectromagneticDamperEnv:
     def __init__(self, A:np.ndarray, B:np.ndarray, C:np.ndarray, D:np.ndarray, E:np.ndarray, F:np.ndarray=None, Ts:float=0.001, T:float=10, 
                  z_func:Callable=None, r_func:Callable=None, f_func:Callable=None,
                  state0:np.ndarray=None, obs_indices: List[int] = None, x1_limit:float=None,
-                 use_dt_noise:bool=False, dt_noise_std:float=0.01,
+                 use_dt_noise:bool=False, dt_noise_std:float=0.01, tolerance:float=1e-3
                  ):                
         """
         ## 初始化环境参数\n
@@ -86,7 +86,7 @@ class ElectromagneticDamperEnv:
             # self.state[1] = np.random.uniform(-0.5, 0.5)  # 随机初始速度
         else:
             self.all_state = self.all_state0.copy()
-        self.state_history = []  # 清空状态历史记录
+        self.ob_state_history = []  # 清空状态历史记录
             
         self.time = 0.0
         if z_func is not None:
@@ -231,8 +231,8 @@ class ElectromagneticDamperEnv:
                     delay_time = np.sum(padding_dt_history[-delay:])
                     state = np.concatenate([state, np.array([delay_time])])
                     
-                self.state_history.append(state.copy())
-                action = controller.select_action(self.state_history, add_noise=False, delay=delay)  # 获取控制动作
+                self.ob_state_history.append(state.copy())
+                action = controller.select_action(self.ob_state_history, add_noise=False, delay=delay)  # 获取控制动作
                 
                 if controller.delay_enabled: delay = max(1, int(np.random.normal(controller.delay_step, controller.delay_sigma)))
                 else: delay = 1

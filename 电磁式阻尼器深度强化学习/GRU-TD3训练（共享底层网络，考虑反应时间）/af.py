@@ -60,7 +60,8 @@ class Datasets:
             "episode_actor_losses": self.episode_actor_losses,
             "episode_critic_losses": self.episode_critic_losses,
             # # 保存模型参数
-            'agent': agent,
+            # 'agent': agent,
+            'modelnn': agent.modelnn,
             # 'gru_predictor': agent.gru_predictor.state_dict() if isinstance(agent, Gru_TD3Agent) else None,
             # 'gru_predictor2': agent.gru_predictor2.state_dict() if isinstance(agent, Gru_TD3Agent) else None,
             # 'target_gru_predictor': agent.target_gru_predictor.state_dict() if isinstance(agent, Gru_TD3Agent) else None,
@@ -78,15 +79,14 @@ class Datasets:
         }, os.path.join(save_dir, f"{self.checkpoint_name}.pth"))
         logging.info(f"保存检查点: {os.path.join(save_dir, f'{self.checkpoint_name}.pth')}")
 
-    def load_datasets(self, save_dir):
-        """加载数据集"""
+    def load_datasets(self, save_dir, agent:Union[TD3Agent, Gru_TD3Agent])-> int:
+        """加载训练数据和模型参数"""
         checkpoint_files = find_checkpoint_files(save_dir)
-        load_agent = None
         load_previous_model = False
         if checkpoint_files: 
             load_previous_model = input("是否加载先前的训练模型? (y/n): ").strip().lower() == 'y' or ''
         else:
-            return 0, None
+            return 0
 
         if load_previous_model:
             logging.info(f"准备加载检查点文件")
@@ -139,11 +139,10 @@ class Datasets:
 
                 # # 加载模型参数
                 try:
-                    load_agent = datasets["agent"]
-                except Exception as e:
-                    print(f"加载模型参数时发生错误: {e}")
-                    logging.error(f"加载模型参数时发生错误: {e}")
-                # try:
+                    # load_agent: Union[None, TD3Agent, Gru_TD3Agent] = datasets["agent"] # 废掉的方法，此方法会导致agent的参数被覆盖
+                    modelnn: List[torch.nn.Module] = datasets["modelnn"]
+                    for model, state_dict in zip(agent.modelnn, modelnn):
+                        model.load_state_dict(state_dict.state_dict())
                 #     agent.gru_predictor.load_state_dict(datasets["gru_predictor"]) if isinstance(agent, Gru_TD3Agent) and datasets["gru_predictor"] is not None else None
                 #     agent.gru_predictor2.load_state_dict(datasets["gru_predictor2"]) if isinstance(agent, Gru_TD3Agent) and datasets["gru_predictor2"] is not None else None
                 #     agent.target_gru_predictor.load_state_dict(datasets["target_gru_predictor"]) if isinstance(agent, Gru_TD3Agent) and datasets["target_gru_predictor"] is not None else None
@@ -158,15 +157,15 @@ class Datasets:
                 #     agent.critic1_optimizer.load_state_dict(datasets["critic1_optimizer"])
                 #     agent.critic2_optimizer.load_state_dict(datasets["critic2_optimizer"])
                 #     agent.total_it = datasets["total_it"]
-                # except Exception as e:
-                #     print(f"加载模型参数时发生错误: {e}")
-                #     logging.error(f"加载模型参数时发生错误: {e}")
+                except Exception as e:
+                    print(f"加载模型参数时发生错误: {e}")
+                    logging.error(f"加载模型参数时发生错误: {e}")
                 print(f"成功加载检查点: {self.checkpoint_name}，当前回合: {self.current_episode}")
                 logging.info(f"成功加载检查点: {self.checkpoint_name}, 当前回合: {self.current_episode}")
             else:
                 print("未找到可加载的检查点文件")
                 logging.info("未找到可加载的检查点")
-        return self.current_episode, load_agent
+        return self.current_episode
 
     def record_history(self, state: np.ndarray, action: float, reward: float, dt: float, time: float, delay_time: float=0):
         """记录单个回合的当前时间步数据"""
@@ -263,7 +262,7 @@ class Datasets:
                       plot_title=f'{self.checkpoint_name} Critic损失历史', legends=['Critic损失'], 
                       xlabel='回合', ylabel='损失', save_path=save_path, show=show)
 
-def plot_compare_no_control(nc_datasets:Datasets, c_datasets:Datasets, plot_state=False, save_path=None, use_time_noise=False, show=False):
+def plot_compare_no_control(nc_datasets:Datasets, c_datasets:Datasets, plot_state=False, save_path=None, plot_dt=False, plot_delay_time=False, show=False):
     """绘制与无控制的状态比较图"""
     if plot_state and nc_datasets.state_history.size > 0 and c_datasets.state_history.size > 0:
         for state_idx in plot_state:
@@ -272,7 +271,7 @@ def plot_compare_no_control(nc_datasets:Datasets, c_datasets:Datasets, plot_stat
                     plot_title=f'{c_datasets.checkpoint_name} 状态 {STATES_NAME[state_idx]} 对比', legends=['无控制', 'TD3控制'], 
                     xlabel='时间 (s)', ylabel=f'状态 {STATES_NAME[state_idx]}', save_path=save_path, show=show)
 
-    c_datasets.plot_episode_history(plot_state=False, plot_action=True, plot_reward=True, plot_dt=use_time_noise, save_path=save_path, show=show)
+    c_datasets.plot_episode_history(plot_state=False, plot_action=True, plot_reward=True, plot_dt=plot_dt, plot_delay_time=plot_delay_time, save_path=save_path, show=show)
 
 def plot_state_comparison(results_no_control, results_td3, save_path=None):
     """比较不同控制策略下的状态轨迹

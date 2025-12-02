@@ -39,6 +39,8 @@ class BaseTD3Agent:
         - delay_sigma 延迟步数的标准差
         """
         # 初始化参数
+        self.freeze_gru = False  # 是否冻结GRU参数
+        
         self.state_dim = state_dim # 状态维度
         self.action_dim = action_dim # 动作维度
         self.mlp_hidden_dim = mlp_hidden_dim # mlp隐藏层维度
@@ -117,7 +119,9 @@ class BaseTD3Agent:
             target_q2 = self.target_critic2(next_states, next_actions)
             target_q = torch.min(target_q1, target_q2)
             target_value = rewards + self.gamma * target_q * (1 - dones)
-            
+        
+        self._freeze_gru()
+        
         # 2. 更新两个Critic网络
         current_q1 = self.critic1(states, actions)
         current_q2 = self.critic2(states, actions)
@@ -127,16 +131,16 @@ class BaseTD3Agent:
         
         self.critic1_optimizer.zero_grad()
         critic1_loss.backward()
-        if self.total_it % 100 == 0: self.check_grad(self.critic1)
+        if self.total_it % 100 == 0: self.check_grad(self.critic1,threshold_high=int(self.clip_grad) if self.clip_grad else 10.0)
         if self.clip_grad:
-            torch.nn.utils.clip_grad_norm_(self.critic1.parameters(), max_norm=10)
+            torch.nn.utils.clip_grad_norm_(self.critic1.parameters(), max_norm=int(self.clip_grad) if self.clip_grad else 10.0)
         self.critic1_optimizer.step()
         
         self.critic2_optimizer.zero_grad()
         critic2_loss.backward()
-        if self.total_it % 100 == 0: self.check_grad(self.critic2)
+        if self.total_it % 100 == 0: self.check_grad(self.critic2,threshold_high=int(self.clip_grad) if self.clip_grad else 10.0)
         if self.clip_grad:
-            torch.nn.utils.clip_grad_norm_(self.critic2.parameters(), max_norm=10)
+            torch.nn.utils.clip_grad_norm_(self.critic2.parameters(), max_norm=int(self.clip_grad) if self.clip_grad else 10.0)
         self.critic2_optimizer.step()
         
         critic_loss = (critic1_loss + critic2_loss) / 2
@@ -152,10 +156,10 @@ class BaseTD3Agent:
             actor_loss.backward()
 
             # 打印梯度信息（调试用）
-            if self.total_it % 100 == 0: self.check_grad(self.actor)
+            if self.total_it % 100 == 0: self.check_grad(self.actor,threshold_high=int(self.clip_grad) if self.clip_grad else 10.0)
             
             if self.clip_grad:
-                torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=10)
+                torch.nn.utils.clip_grad_norm_(self.actor.parameters(), max_norm=int(self.clip_grad) if self.clip_grad else 10.0)
             
             # # 冻结gru_predictor共享的参数
             # if self.gru_predictor is not None: self.gru_predictor.freeze_gru()
@@ -170,6 +174,18 @@ class BaseTD3Agent:
             actor_loss = actor_loss.item()
         
         return critic_loss.item(), actor_loss, (critic1_loss.item() + critic2_loss.item()) / 2
+  
+    def _freeze_gru(self):
+        if self.gru_predictor is not None and self.freeze_gru:
+            self.actor.gru_predictor.freeze_gru()
+            self.target_actor.gru_predictor.freeze_gru()
+            self.critic1.gru_predictor.freeze_gru()
+            self.target_critic1.gru_predictor.freeze_gru()
+            self.critic2.gru_predictor.freeze_gru()
+            self.target_critic2.gru_predictor.freeze_gru()
+        else:
+            pass
+
     
     def check_grad(self, model: torch.nn.Module, verbose=False, threshold_high=10.0, threshold_low=1e-8):
         """检查模型的梯度情况，支持迭代检查各层
@@ -330,7 +346,7 @@ class TD3Agent(BaseTD3Agent):
         
 ## 基于GRU的TD3代理（分离式架构）
 class Gru_TD3Agent(BaseTD3Agent):
-    def __init__(self, norm: bool = False, simple_nn: bool = False,
+    def __init__(self, norm: bool = False, simple_nn: bool = False,freeze_gru: bool = False,
                  state_dim=1, action_dim=1, mlp_hidden_dim=128, gru_hidden_dim=64, action_bound=5.0,
                  actor_lr=5e-4, critic_lr=1e-3, gru_predictor_lr=1e-3, clip_grad=False, gamma=0.99, tau=0.005,
                  policy_noise=0.2, noise_clip=0.5, policy_freq=2, action_sigma=0.2, 
@@ -352,6 +368,7 @@ class Gru_TD3Agent(BaseTD3Agent):
         self.seq_len = seq_len  # 序列长度
         self.fc_seq_len = fc_seq_len  # 预测时间步长度
         self.gru_predictor_lr = gru_predictor_lr  # GRU预测器学习率
+        self.freeze_gru = freeze_gru  # 是否冻结GRU参数
 
         self._init_nn(norm=norm, simple_nn=simple_nn)
         self._init_optimizer()
@@ -360,27 +377,27 @@ class Gru_TD3Agent(BaseTD3Agent):
         # 创建共享的GRU预测器
         # gru_state_dim = 2 + int(self.aware_dt) + int(self.aware_delay_time)  # 状态维度 + 时间步长 + 延迟时间感知
         gru_state_dim = self.state_dim
-        self.gru_predictor = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
+        self.gru_predictor = GruPredictor_norm(norm=norm, simple_nn=simple_nn,freeze_gru=self.freeze_gru,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.gru_predictor1 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
+        self.gru_predictor1 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,freeze_gru=self.freeze_gru,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.gru_predictor2 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
+        self.gru_predictor2 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,freeze_gru=self.freeze_gru,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.target_gru_predictor = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
+        self.target_gru_predictor = GruPredictor_norm(norm=norm, simple_nn=simple_nn,freeze_gru=self.freeze_gru,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.target_gru_predictor1 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
+        self.target_gru_predictor1 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,freeze_gru=self.freeze_gru,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
-        self.target_gru_predictor2 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,
+        self.target_gru_predictor2 = GruPredictor_norm(norm=norm, simple_nn=simple_nn,freeze_gru=self.freeze_gru,
             state_dim=gru_state_dim, hidden_dim=self.gru_hidden_dim, num_layers=self.gru_layers, fc_seq_len=self.fc_seq_len,
             aware_dt=self.aware_dt, aware_delay_time=self.aware_delay_time
             ).to(device)
@@ -409,6 +426,9 @@ class Gru_TD3Agent(BaseTD3Agent):
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.target_critic1.load_state_dict(self.critic1.state_dict())
         self.target_critic2.load_state_dict(self.critic2.state_dict())
+        
+        self.modelnn: List[torch.nn.Module] = [self.actor, self.critic1, self.critic2, self.target_actor, self.target_critic1, self.target_critic2,
+                        self.gru_predictor, self.target_gru_predictor, self.gru_predictor1, self.target_gru_predictor1, self.gru_predictor2, self.target_gru_predictor2]
 
     def _init_optimizer(self):
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=self.actor_lr)
