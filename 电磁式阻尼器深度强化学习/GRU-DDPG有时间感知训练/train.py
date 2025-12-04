@@ -73,12 +73,7 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
             action = agent.select_action(obs, epsilon=epsilon,rand_prob=rand_prob)
             
             # 执行动作 (传入单个动作值)
-            # 兼容新的step接口
-            result = env.step(action)
-            if len(result) == 4:
-                next_obs, reward, done, _ = result
-            else:
-                next_obs, reward, done = result
+            next_obs, reward, done = env.step(action)
             
             # 存储经验 (存储观测值)
             replay_buffer.add(obs, action, reward, next_obs, done) # 传递 done
@@ -206,7 +201,7 @@ def train_gru_ddpg(env: ElectromagneticDamperEnv, agent: GruDDPGAgent, replay_bu
     # 训练循环
     for episode in tqdm(range(start_episode, n_episodes), desc="GRU DDPG训练轮次"):
         env.reset() # 重置环境
-        agent.reset_state_history() # 重置代理的状态历史
+        agent.reset_history() # 重置代理的状态历史
         replay_buffer.reset_history() # 重置回放池的状态历史
         
         episode_reward = 0
@@ -220,22 +215,17 @@ def train_gru_ddpg(env: ElectromagneticDamperEnv, agent: GruDDPGAgent, replay_bu
         done = False
         while not done:
             # 获取当前观测值
+            current_dt = env.get_current_timestep()  # 获取当前时间步长
             obs = env.get_observation()
             
-            # 获取当前时间步长（如果环境支持时间噪声）
-            dt = env.get_current_timestep()
-            
             # 选择动作（GRU版本会维护状态历史）
-            action = agent.select_action(obs, epsilon=epsilon, rand_prob=rand_prob, dt=dt)
-            
+            action = agent.select_action(obs, epsilon=epsilon, rand_prob=rand_prob, dt=current_dt)
+
             # 执行动作
-            next_obs, reward, done, actual_dt = env.step(action, dt=dt)
+            next_obs, reward, done, current_dt = env.step(action, dt=current_dt)
             
             # 存储经验到GRU回放池
-            if hasattr(replay_buffer, 'use_time_input') and replay_buffer.use_time_input:
-                replay_buffer.add(obs, action, reward, next_obs, done, actual_dt)
-            else:
-                replay_buffer.add(obs, action, reward, next_obs, done)
+            replay_buffer.add(obs, action, reward, next_obs, done, current_dt) # 传递 done 和时间步长
             
             episode_reward += reward
             
@@ -292,7 +282,7 @@ def train_gru_ddpg(env: ElectromagneticDamperEnv, agent: GruDDPGAgent, replay_bu
             
             # 运行一次仿真并绘制结果
             # 注意：测试时需要重置代理的状态历史
-            agent.reset_state_history()
+            agent.reset_history()
             test_data = env.run_simulation(controller=agent)
             plot_test_data(save_plot_path=save_plot_path, data=test_data, show=False, name=agent.model_name, nc_data=nc_data)
             save_msg = f"已保存GRU模型数据: {checkpoint_name}"
