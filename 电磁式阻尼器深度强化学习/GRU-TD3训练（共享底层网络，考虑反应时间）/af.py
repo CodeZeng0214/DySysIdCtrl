@@ -119,7 +119,7 @@ class Datasets:
                 logging.info(f"加载检查点: {self.checkpoint_name}")
 
                 # 加载模型并获取训练状态
-                datasets = torch.load(os.path.join(save_dir, f"{self.checkpoint_name}.pth"), map_location=device)
+                datasets = torch.load(os.path.join(save_dir, f"{self.checkpoint_name}.pth"), map_location=device, weights_only=False)
                 print(f"✅ 检查点文件加载成功")
                 logging.info(f"✅ 检查点文件加载成功")
 
