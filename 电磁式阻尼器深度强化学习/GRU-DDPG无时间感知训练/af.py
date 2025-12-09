@@ -218,14 +218,23 @@ def plot_data(figsize=(10, 6), plot_title=None, data_sets=None, x_values=None, c
     # 判断是否提供x轴参数，若没有则设置为默认的自然数序列，长度为数据集长度
     if x_values is None:
         x_values = np.arange(len(data_sets[0]))
-    
+        
     # 绘制每一个数据集
     for i, data in enumerate(data_sets):
         # 指定绘制数据集的线段属性，没有则默认
+        if isinstance(x_values[0], list):
+            x_value = x_values[i]
+        else:
+            x_value = x_values
+        
+        if len(x_value) != len(data_sets[i]):
+            print("x_values的长度与数据集长度不匹配，绘图失败")
+            return
+        
         color = colors[i] if colors else None
         label = legends[i] if legends else None
         line_style = line_styles[i] if line_styles else '-'
-        plt.plot(x_values, data, color=color, label=label, linestyle=line_style)
+        plt.plot(x_value, data, color=color, label=label, linestyle=line_style)
 
     # 开启x和y的标签
     if xlabel: plt.xlabel(xlabel, fontsize = 14)
@@ -267,7 +276,7 @@ def plot_test_data(save_plot_path:str, data, show:bool=True, name:str='',nc_data
     plot_data(plot_title=f"{name}位移",
           xlabel="时间 (s)",
           ylabel="状态",
-          x_values=data['times'],
+          x_values=[data['times'], nc_data['times']] if nc_data else data['times'],
           data_sets=x_datas,
           save_path=save_plot_path,
           legends=x_legends,

@@ -1,0 +1,810 @@
+第 45 卷 第 6 期 系统工程与电子技术 Vol. 45 No. 6
+
+2023 年 6 月 Systems Engineering and Electronics June2023
+
+〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
+
+文章编号：1001-506X(2023)06-1702-10 网址：www. sys-ele. com
+
+基于深度强化学习算法的无人机智能规避决策
+
+吴冯国1 , 陶 伟2 , 李 辉1 ,3 , * , 张建伟1 ,3 , 郑成辰3
+
+(1. 四川大学视觉合成图形图像技术国防重点学科实验室， 四川 成都 610065 ;
+
+2. 中国舰船研究设计中心，湖北 武汉 430064 ; 3. 四川大学计算机学院， 四川 成都 610065)
+
+摘 要：为提升无人机在复杂空战场景中的存活率，基于公开无人机空战博弈仿真平台，使用强化学习 方法生成机动策略，以深度双 Q 网络(double deep Q-network, DDQN) 和深度确定性策略梯度(deep deterministic policy gradient, DDPG) 算法为基础，提出单元状态序 列( unit state sequence, USS) , 并 采 用 门 控 循 环 单 元(gated recur- rent unit, GRU) 融合 USS 中的态势特征，增加复杂空战场景下的状态特征识别能力和算法收敛能力 。 实验结果表明，智能体在面对采用标准比例导引算法的导弹攻击时，取得了 98%的规避导弹存活率，使 无 人 机 在 多 发 导 弹同时攻击的复杂场景中，也能够取得 88%的存活率，对比传统的简单机动模式，无人机的存活率大幅提高 。
+
+关键词：深度强化学习；无人机；单元状态序列 ；门控循环单元
+
+中图分类号：E 926 ; TP 181 ; V 211 文献标志码：A DOI:10.12305/j . issn. 1001-506X. 2023 . 06 . 14
+
+UAV intelligent avoidance decisions based on deep reinforcement
+
+learning algorithm
+
+WU Fengguo1 , TAO Wei2 , LI Hui1 , 3 , * , ZHANG Jianwei1 , 3 , ZHENG Chengchen3 (1 . National Key Laboratory of Fundamental Science on Synthetic Vision , SichuanUniversity , Chengdu610065 , China ; 2 . China Ship Development and Design Center , Wuhan 430064 , China ;
+
+3 . Schoolof Computer Science , SichuanUniversity , Chengdu610065 , China)
+
+Abstract : In order to improve the survival rate of unmanned aerial vehicles (UAVs) in complex air combat scenarios , based on the open UAVs air intelligence game simulation platform , a reinforcement learning method is used to generate maneuver strategies. Based on the deep double Q network (DDQN) and deep deterministic policy gradient (DDPG) algorithms , an unit state sequence ( USS) is proposed in this paper , and the gated recurrent unit (GRU) is used to fuse the situation features in USS , with the propose to increase the ability of state features recognition and algorithm convergence in complex air combat scenarios. The experimental results show that when faced with missile attacks using standard proportional guidance algorithm , the agent achieves a survival rate of 98% for missiles evading , and in complex scenarios where multiple missiles attack simultaneously , it can also achieve a survival rate of 88% . Compared with the traditional simple maneuvering modes , the survival rate of UAVs is significantly improved.
+
+Keywords : deep reinforcement learning (DRL); unmanned aerial vehicles ( UAVs); unit state sequence (USS); gated recurrent unit (GRU)
+
+0 引 言 ， ，
+
+断提升 超视距空战已经在现代空战中占据主导地位[1] 空
+
+空导弹也早已成为打击空中单位的主要武器 。无人机作为
+
+现代空战环境错 综 复 杂，空 空 导 弹 和 机 载 雷 达 性 能 不 空中战场的理想作战 目 标 之 一，被 普 遍 运 用 到 军 事 领 域 当
+
+收稿日期：2022 04 02 ； 修回 日期：2022 10 14 ； 网络优先出版日期：2022 11 14 。
+
+网络优先出版地址：https: ∥kns. cnki. net/kcms/detail/11 . 2422 . TN. 20221114 . 1420 . 002 . html
+
+基金项目：“十三五”全军共用信息系统装备预研项目(31505550302) 资助课题
+
+*通讯作者．
+
+引用格式：吴冯国，陶伟，李辉，等．基于深度强化学习算法的无人机智能规避决策[J] . 系统工程与电子技术，2023 , 45(6) : 1702-1711 .
+
+Reference format : WU F G , TAO W , LI H , et al. UAV intelligent avoidance decisions based on deep reinforcement learning algorithm[J] . Systems Engineering and Electronics , 2023 , 45(6) : 1702-1711 .
+
+第 6 期 吴冯国等：基于深度强化学习算法的无人机智能规避决策 · 1703 ·
+
+〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
+
+中[2] 。利用无人机 可 持 续 大 机 动 的 飞 行 特 点，采 取 高 效 的机动策略以提高无人机对导弹的规避 、逃逸成功率，对提升无人机的空战生存能力而言至关重要[3] 。
+
+无人机规避空空 导 弹 问 题 一 直 都 是 空 战 的 研 究 热 点 。王怀威等[4] 采用蒙特卡罗方法验证了无人机实施常规盘旋机动规避导弹的效果 。Imado等[5] 利用微分对策法研究导弹与无人机差速博弈的问题 。另外，还有诸多针对导弹的规避方式[6  10] 、规避效能评估[11  13] 以及无人机最优或次优规避策略解析解[14  16] 等方面的研究 。 以上方法依赖于完备的空战对战模型以求解在单枚导弹打击情况下的最优机动策略，当导弹数量变化时，模型很难理解，而且建立空战对战模型本身就是一个非常复杂的过程，需要使用大量微分函数结合积分函数，才能表征无人机与导弹状态属性的转移规律 。
+
+深度强 化 学 习 (deep reinforcement learning , DRL) 算法在马尔可夫决策过程( Markov decision process , MDP) 基础上，采用端到端学 习 方 式，以 态 势 信 息 为 输 入，直 接 利 用神经网络获取输出，控制智能体作出决策，被广泛应用于自动化控制 当 中[17 22] 。 范 鑫 磊 等[23] 将 深 度 确 定 性 策 略 梯 度(deep deterministic policy gradient , DDPG) 算 法[24] 应 用 于无人机规避导弹训练，在 简 易 模 型 下 对 固 定 态 势 攻 击 的 空空导弹进行 仿 真 验 证 。 宋 宏 川 等[25] 针 对 导 弹 制 导 规 则 设计成型奖励，用 DDPG算 法 训 练 无 人 机 规 避 正 面 来 袭 的 导弹，对比典型规避策略，训练出了仅次于置尾下降机动的逃逸策略 。
+
+上述研究表明，无 人 机 能 够 通 过 特 定 的 机 动 方 式 来 规避空空导弹的打击，而 深 度 强 化 学 习 算 法 可 以 训 练 出 自 动规避空空 导 弹 的 智 能 体 。 总 体 而 言，以 往 研 究 大 多 基 于 单枚导弹打击场景 。但是在超视距空战中，多枚导弹从不同方向锁定无人机并发动协同攻击的情况屡见不鲜 。在这种情形下，DRL算法会存在状态空间维度大，状态信息维度不断变化，神经网络输入维度难以固定，算法收敛性能差等问题 。
+
+针对以上问 题，本 文 提 出 一 种 基 于 单 元 状 态 序 列( unit state sequence , USS) 的强化 学 习 算 法(reinforcement learning method based on USS , SSRL)。 在该算法中，首先，将导弹和无人机进行一对一的特征编码，形成特征单元；其次，根据距离优先级对所 有 编 码 后 的 特 征 单 元 进 行 排 序，组 合 成 一 个USS；然后，使用门控循环单元(gated recurrent unit , GRU) 对USS 中的特征 单 元 进 行 特 征 融 合，提 取 其 中 的 隐 藏 特 征 信息；最后，将隐藏特征信息看作该时刻的状态信息，并将信息传入强化学习算法的神经网络 。将该算法分别应用于深度双 Q网络(double deep Q-network , DDQN) [26] 和 DDPG算法上，在公开无人机空战博弈仿真平台上进行训练 。仿真结果表明，由 SSRL算法训练的智能体能够学到连续规避机动策略，控制无人机进行规避导弹机动，增加导弹脱靶量，提升无人机连续规避导弹的成功率 。
+
+1 相关理论
+
+1.1 MDP
+
+强化学习训练过程类似于人类学 习 ，即 智 能 体 在 不 断
+
+探索和获取外界反馈中学习能够获得的最 大 利 益 ，通 常 被建 模成 MDP[27] 。 MDP 由状态空间 S、动作空间A、状态转移函数 P 和奖 励 函 数 R 组 成：状 态 空 间 是 所 有 可 能 的 状态集合；动作空间是所有可能的动作集合；状态转移函数则描述了在当前状态下采取某个动作后到达下一个状态的概率；奖励函数用于描述 在 当 前 状 态 下 采 取 该 行 动 所 获 得 的奖励[28] 。
+
+1.2 DDQN算法
+
+强化学习任务通 常 是 时 间 序 列 决 策 问 题，与 训 练 数 据高度相关 。文献[29] 引 入 经 验 重 放 机 制，降 低 数 据 之 间 的相关性，使样本可重复利用，提高学习效率 。DDQN算法使用两个神经网络，将动作选择和值函数估计进行解耦，评估网络 Q用于环境交互，用于动作选择的公式如下：
+
+amax (s′ ;θ) =arg max Q(s′ , a′ ;θ) (1)
+
+a′
+
+目标网络 Q′用于估计下 个 状 态 值 函 数，通 过 最 小 化 损失函数，更新评估网络参数，使训练过程更加稳定：
+
+L(θμ ) =E[(yi -Q(si, ai |θμ )) 2 ] (2)式中：yi 代表目标值，即：
+
+yi =Ri+1 +γQ(Si+1 , arg mx Q(Si+1 , a ;θi ) ;θi )
+
+1.3 DDPG算法
+
+DDPG算法基于确定性策略梯度[30] (deterministic pol- icy gradient , DPG) 算法，并将 DDQN 中的双重网络机制应用到 ActorCritic框 架，分 别 使 用 参 数 为 θμ 、θμ′ 、θQ 和θQ′ 的深度神经网络拟合策略评估函数 μ、策略目标函 数 μ′ 、动 作值评估函数 Q和动作值目标函数 Q′ 。
+
+策略评估函数负责与环境交互，从 环 境 中 获 取 状 态 S、奖励r、结束标识 d , 进行动作选择如下：
+
+ai =μ(si |θμ ) +Ni (3)
+
+式中：Ni 为动作噪声，对噪声使用模拟退火[31] 以避免陷 入局部最优，同时增加了算法的探索能力 。
+
+智能体通过最小化损失公式，以更新值评估网络参数： 
+
+式中：yi 为目标动作值 。 即：
+
+yi =ri +γQ′(si+1,μ′ (si+1 ∣θμ′ )∣θQ′ ) (5)
+
+根据 DPG算法的理论证明策略函数关于 θμ 的 梯 度 等价于动作值函 数 关 于 Q(s , a|θQ ) 的 期 望 梯 度，使 得 可 以 以梯度更新策略评估网络：
+
+
+
+因此，策略评估网络按照此方向更新网络参数：
+
+
+
+动作值网络参数在更新过程中又用于计算策略网络的梯度，软更新方式为
+
+· 1704 · 系统工程与电子技术 第 45 卷
+
+〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
+
+
+
+烆
+
+以减少学习过程中动作值网络可能出现的不稳定性 。
+
+1.4 GRU 网络
+
+循环神经网络( recurrent neural network , RNN) [32] 能够处理时序型输入，以序列 x在 t 时刻 的 数 据xt 和 前 t-1时刻神经网络 的 输 出 ht-1 作 为 输 入，输 出 yt 和 ht , ht 又 作为之后的输入 。这种结构能结合历史信息，具有前瞻能力 。 GRU[33] 是改进的 RNN , 其网络结构如图 1 所 示，更 新 门 zt和重置门rt 将 新 的 数 据 与 历 史 信 息 相 结 合 并 选 择 遗 忘 某些历史信息 。GRU 网络能够解决传统 RNN在长期记忆和反向传 播 中 梯 度 消 失 的 问 题，与 长 短 期 记 忆 (long-short term memory , LSTM) 网络收敛效果相当，并且在训练速度上有很大程度的提升 。
+
+yt
+
+A
+
+h
+
+ht
+
+t- 1
+
+A A
+
+l - Z
+
+t
+
+
+
+r Z
+
+A
+
+t t
+
+
+
+
+
+ht
+
+A A
+
+tanh
+
+A
+
+A
+
+
+
+
+
+t
+
+图 1 GRU 网络
+
+Fig.1 GRU network
+
+2 SSRL算法
+
+在超视距空战 中 ，通 常 以 机 载 雷 达 、地 面 雷 达 及 红 外瞄准跟踪装置等进 行 目 标 探 测 ，其 战 场 范 围 太 大 ，作 战 的实体数目难以确定 ，经 常 以 多 机 、多 目 标 协 同 作 战 方 式 出现 [34] 。 当无人机 面 临 多 枚 导 弹 的 协 同 打 击 时 ，环 境 中 的实体数量会发生动态变化 ，神经网络在训练 时 需 要 按 照 最大实体数目输入全 部 环 境 信 息 ，实 体 信 息 默 认 值 为 零 ，存在的实体按实际 状 态 值 进 行 填 充 。 这 种 方 式 适 用 于 实 体数目确定的场景 ，且并非所有的环境信息都 会 对 当 前 智 能体的决策产生影 响 。 如 何 有 效 地 获 取 空 战 环 境 中 的 态 势特征 ，筛选出更加 重 要 的 状 态 信 息[35 36] , 对 提 升 训 练 效 果而言十分重要 。
+
+USS编码方式能够有效解决这个问题 。在自然语言处理中，不同的单词被转换成等长的稠密向量，用于区分各个单词之间的差异，而 RNN能够从词向量模型中提取特征信息 。借鉴词向量编码 的 优 势，考 虑 将 智 能 体 与 单 个 目 标 视为一组特征 映 射，进 行 状 态 编 码，提 取 其 中 的 重 要 态 势 特征，并将其编码为状态单元 。该时刻 的 USS 由 多 个 状 态 单元组成，利用 GRU 网络 高 效 训 练 和 融 合 序 列 信 息 的 能 力，
+
+从 USS 中提取隐藏特征，用于强化学 习 。 这 种 特 征 提 取 方法在理论上可以结合到在单实体对多目标（可变）的任意场景中，属 于 通 用 解 决 方 案 。 本 文 将 USS 结 合 到 DDQN 和DDPG算法中，在超 视 距 空 战 中 连 续 规 避 导 弹 的 场 景 下 进行实验 。
+
+2.1 USS
+
+单元状态序列的编码过程如下 。
+
+步骤 1 从仿 真 环 境 中 获 取 无 人 机 观 测 信 息 Of 和 导弹的观测信息 O , O=(o1 , o2 , … , on ) 。
+
+步骤 2 将无人机与每一枚敌方空 空 导 弹 的 观 测 信 息沿水平面 和 垂 直 平 面 分 别 进 行 分 解，并 使 用 天 线 偏 转 角( antenna train angle , ATA) 和航向交叉角(heading crossing angle , HCA) 描 述 其 朝 向 和 位 置 差 异 。 ATAh 和 HCAh 分别表示水平面的天线偏转角和航向交叉角，如图 2 所示 。
+
+
+HCAh
+
+ATAh
+
+图 2 水平面态势分解
+
+Fig.2 Horizontal plane situation decomposition
+
+ATAv 和 HCAv 分别表示无人机运动垂直切 面 的 天 线偏转角和航向交叉角，β表示飞机俯仰角，βm 表 示 导 弹 俯 仰角，如图 3 所示 。
+
+HCAv
+
+ATA
+
+
+
+图 3 垂直面态势分解
+
+Fig.3 Vertical plane situation decomposition
+
+步骤 3 根据无人机与每一枚敌方 空 空 导 弹 的 观 测 信息，提取其中的相对运动信息，包括导弹对飞机的相对运动速度 ▽v、导弹转动角速度 ▽ω、无人机与导弹相 对 运 动 距 离D、无人机所处飞行高度 H 。
+
+步骤 4 将无人机与 每 一 枚 敌 方 空 空 导 弹 经 过 步 骤 2和步骤 3 得到的状态信息进行拼接，然后归一化，保存为状态单元 Si, 如下所示：
+
+ (9)
+
+步骤 5 无人机 在 面 临 多 枚 导 弹 打 击 的 情 况 下，越 早遭遇导弹，威胁紧急程度越高，需要优先进行考虑 。 与 自然语言处理一样，单词出 现 的 先 后 顺 序 会 呈 现 出 一 定 的 相 关性，状态单元之间 也 会 存 在 这 种 联 系 。 采 用 下 式 估 计 无 人机与导弹的碰撞时间：
+
+
+
+式中：D 为无人机到导弹形成的距离向量，|vm +vp | cos ξ为无人机与该导弹速度矢量 和 在 D 方 向 上 的 投 影，由 式(10)可得到遭遇导弹的剩余时间估计量  。
+
+步骤 6 按照  对 状 态 单 元 进 行 排 序 并 结 合，构 成 单元状态序列 USS , USS=[S0 , S1 , S2 ,…, SN ]。 导弹数量是不固定的，因此 USS 中含有的状态单元数量不固定 。
+
+2.2 隐藏特征提取
+
+USS能对无人机 当 前 所 处 的 环 境 信 息 进 行 唯 一 标 识，使用 GRU 网 络 对 USS 中 的 状 态 单 元 进 行 特 征 融 合，提 取隐藏特征的详细步骤如下 。
+
+步骤 1 初始化隐藏特征 hzero 为全零矩阵 。
+
+步骤 2 将前一时刻隐藏 特 征 ht-1 与 当 前 状 态 单 元 St输入公式进行计算，得到更新门神经元向量 zt 。
+
+zt =σ(Wz · [ht-1 , St ]) (11)
+
+步骤 3 将前一时刻隐藏特征 ht-1 与当前状 态 单 元 St输入公式进行计算，得到重置门神经元向量 rt 。
+
+rt =σ(Wr · [ht-1 , St ]) (12)
+
+步骤 4 将 前 一 时 刻 隐 藏 特 征 ht-1 、当 前 状 态 单 元 St以及重置门神经元向量rt 输 入 到 公 式 进 行 计 算，得 到 候 选
+
+隐藏特征 t 。
+
+t =tanh(W · [rt ·ht-1 , St ]) (13)
+
+步骤 5 将前一时刻隐藏特征ht-1 、更新门神经元向量
+
+zt 以及候选隐藏特征t 进行 计 算，在 平 衡 历 史 特 征 的 同 时
+
+加入了新状态所包含的信息，求到新的隐藏特征 。
+
+ht =(1-zt )ht-1 +ztt (14)
+
+步骤 6 如果 USS 中 还 有 状 态 单 元 St+1 , 则 将 新 的 隐藏特征 ht 和该状态单元St+1 返回步骤 2 进行计算 。
+
+步骤 7 得 到 USS 的 隐 藏 特 征 hN , 将 其 作 为 该 时 刻USS 的隐藏特征输出 Feature 。
+
+其中，Wr、Wz 和 W 都 是 可 学 习 参 数，σ 为 sigmoid 函数，输出 0~1 为信息所占百分比 。在强化学习动作选择阶段，直接使用特征输 出 Feature作 为 神 经 网 络 的 输 入，选 择动作；在训练阶段，同 样 使 用 GRU 提 取 单 元 状 态 序 列 中 的特征 Feature , 输入神 经 网 络，反 向 传 播 过 程 中 的 神 经 网 络误差值 error关于状态 单 元 S 的 梯 度 ▽e(S) 将 用 于 GRU 网络中 Wr、Wz 和 W 的更新 。
+
+2.3 结合 DDQN算法构建的算法
+
+环境中的观测信息 经 过 状 态 编 码 转 码 为 USS后，再 使用 GRU进行特征融合与提取，就能得到定长编码的特征信息 Feature , 可将其直接作为强化学习的神经网络输入 。
+
+结合 DDQN算法，构建基于 DDQN 的算法(DDQN al- gorithm based on USS , SSDDQN),其算法流程如图 4 所示 。 SSDDQN维护一 个 GRU 模 块，用 于 提 取 USS 中 的 隐 藏 特征，优化器通过式(2) 计算评估网络梯度，然后更新评估网络参数，梯度参数会传播到 GRU模块，以进行同步更新 。
+
+
+
+图 4 SSDDQN算法流程
+
+Fig.4 SSDDQN algorithm process
+
+结合 DDPG算法，构建 基 于 USS 的 DDPG算 法(DDPG algorithm based on USS , SSDDPG) , 其 算 法 流 程 如 图 5 所示 。SSDDPG维护两个 GRU 模 块，Feature 分 别 用 于 策 略网络和值网络 。值网络 优 化 器 通 过 式(4) 计 算 值 神 经 网 络梯度，策略网络优化器通 过 式(7) 计 算 策 略 梯 度，网 络 参 数更新时的梯度参数会传播到对应 GRU模块进行更新 。
+
+
+
+图 5 SSDDPG算法流程
+
+Fig.5 SSDDPG algorithm process
+
+3 基于强化学习的空战决策
+
+3.1 无人机机动模型
+
+本文 研 究 的 无 人 机 动 力 学 模 型 如 图 6 所 示，可 将 无 人机视作左右对称的理 想 刚 体，其 运 动 方 式 表 示 为 三 自 由 度飞行控制仿 真[37] 。 将 无 人 机 所 受 的 合 力 沿 运 动 方 向 和 垂直于运动方向进行分解，nv 表示升力 、阻力和推力的合力对速度产生的影响，提供切向加速度；无人机的法向过载用 nh表示，垂直于速度方向，控 制 无 人 机 俯 仰 角；滚 转 角 用 μ表示；重力加速度用 g 表示 。
+
+
+
+图 6 无人机动力学模型
+
+Fig.6 Unmanned aerial vehicles’dynamic model
+
+无人机三自由度仿真的运动方程如下：
+
+烄v· = g(nv -sinβ)
+
+β· =  (nhcosμ-cosβ)
+
+烅α· =  (15)
+
+x· = v cos βsin α
+
+y· = v cos βcos α
+
+烆z· =vsinβ
+
+式中：β为俯仰 角，表 示 速 度 与 水 平 面 的 夹 角，取 值 范 围 为[ -π/2 , π/2],水 平 面 向 上 为 正，向 下 为 负；α 为 方 位 角，表示速度在水平面上的 投 影 与 正 北 方 向 的 夹 角，大 小 范 围 为[0 , 2π]。
+
+3.2 无人机动作空间
+
+本文中的无人机动作以其运动方向和飞行姿态为相对坐标系的原点，始终保持无人机以最大速度进行飞行，即切向过载 nv =sinβ。智能体通过改变无人机的滚转角 μ和法向过载nh 控制无 人 机 机 动 。 其 中，μ∈ [ -π/2 , π/2], nh ∈ [ -Gmax , Gmax ]。
+
+DDPG算法直接输出两个 -1 到 1 的动作，并分别按照滚转角 μ和法向过载nh 进行反归一化，控制无人机机动 。
+
+DDQN算法适用于处理 离 散 型 的 动 作 决 策，对 于 无 人机智能机动这种连续 型 的 动 作 空 间，普 遍 做 法 是 将 连 续 动作进行离散化处理[38] , 将 其 转 换 为 离 散 机 动 控 制 。 根 据 美国国家航空航天局提 出 的 空 战 基 本 动 作 库，按 照 机 动 方 向和过载大小，将滚转角 与 过 载 离 散 化 为 表 1 所 示 的 9 个 基础动作 。其中，滚转角 μh 与当前俯仰角 β 的关系如下：
+
+烌 (16)
+
+烆 烎
+
+此时，β.=0 , 无人机会以当前运动平面做转向机动 。
+
+表 1 DDQN算法的动作空间
+
+Table 1 Action space of DDQN algorithm
+
+动作
+
+方向
+
+滚转角
+
+法向过载
+
+0
+
+爬升
+
+0
+
+Gmax
+
+1
+
+爬升
+
+0
+
+Gmax /2
+
+2
+
+俯冲
+
+0
+
+-Gmax /2
+
+3
+
+俯冲
+
+0
+
+-Gmax
+
+4
+
+左转
+
+μh
+
+Gmax
+
+5
+
+左转
+
+μh
+
+Gmax /2
+
+6
+
+右转
+
+μh
+
+Gmax /2
+
+7
+
+右转
+
+μh
+
+Gmax
+
+8
+
+直行
+
+0
+
+0
+
+3.3 实验奖励设计
+
+智能体在训练的 过 程 中，由 于 任 务 完 成 次 数 太 少 或 任务步数过大，会导致学习缓慢，甚至无法收敛 。本文通过奖励重塑给智能体设计 阶 段 性 目 标，引 导 智 能 体 朝 着 完 成 任务的方向前进 。
+
+(1) 高度奖励
+
+无人机最高飞行高度为 15km , 最低飞行高度为 2km ,在规避机动的过程中可能出现越过边界的情况，超过高度限
+
+制则判定为损毁 。考虑到靠近边界则处于危险态势，为减少在规避过程中超过边界导致损毁的现象，建立高度奖励函数：  (17)
+
+(2) 规避奖励
+
+在多枚导弹打击 无 人 机 时，将 任 务 拆 分 为 规 避 多 个 单枚导弹的阶段性任 务，并 鼓 励 智 能 体 规 避 更 多 导 弹 。 奖 励出现在导弹爆炸时，设计成功规避奖励：
+
+烄
+
+3 , 规避成功
+
+0 , 导弹未爆炸烆-3 , 规避失败
+
+(18)
+
+=烅
+
+RS
+
+(3) 仿真结束奖励
+
+在连续规避空空 导 弹 的 问 题 中，最 终 的 决 策 评 价 标 准为无人机能否生存 。 在 一 局 仿 真 模 拟 结 束 时，根 据 无 人 机生存状态，建立生存奖励：
+
+烄
+
+毁 (19)
+
+烆
+
+针对战斗机规避导弹问题，考虑以上 3 种奖励，建立环境奖励函数：
+
+ RH +RS , 仿真过程R=烅
+
+烄
+
+(20)
+
+烆RH +RS +RD , 仿真结束
+
+4 超视距空战仿真实验
+
+本文实验平台采用由中国指挥与控制学会和共青团航空工业集团委员会联合主 办 的“ 2021 首 届 全 国 空 中 智 能 博弈大赛”的决赛环 境 。 该 平 台 以 作 战 计 划 和 方 案 为 研 究 对象，构建典型空战场 景，拓 展 空 战 作 战 样 式 和 作 战 机 理，赋能作战指挥决策 。
+
+4.1 规避导弹任务想定
+
+针对无人机规避 空 空 导 弹 问 题，实 验 设 计 了 两 个 任 务
+
+想定：① 蓝方飞机 挂 载 导 弹 随 机 出 现 在 红 方 无 人 机 四 周，并利用导弹进行打击，红 方 无 人 机 通 过 连 续 机 动 决 策 规 避导弹；② 蓝方 4 架 飞 机 分 别 挂 载 导 弹，同 时 从 不 同 方 向 攻击无人机 。红方无人机尝试通过连续机动决策以求规避全部导弹，并最终获得生存 。
+
+影响空空导弹对 无 人 机 进 行 有 效 打 击 的 因 素 有 很 多，包括导弹和无人机的速度 、高度 、俯仰角 、朝向角 、目标进入角以及导弹制导律 、无 人 机 机 动 方 式 等 。 为 衡 量 在 不 同 态
+
+势下智能体控制 无 人 机 规 避 导 弹 的 性 能 优 劣，设 计 如 图 7所示的初始 场 景 。 红 方 无 人 机 速 度 为 400 m/s , 最 大 过 载Gmax 为 6g,初始高度为 9km 。蓝方无人机携带空空导 弹 在距离红方无人机 20km到 60km、高度在 3km到 15km 的范围随机出现 。蓝方飞机在导弹发射之后便跟随红方无人机飞行，为导弹制导提供雷达照射 。
+
+
+
+
+
+
+
+
+
+
+
+
+3 ~ 15 km
+
+
+
+
+
+
+图 7 初始想定场景
+
+Fig.7 Initial imaging scenario
+
+空空导弹的初始速度为 300m/s , 最大速度为 1 000m/s ,发动机 工 作 时 间 为 30s , 其 速 度 变 化 如 图 8 所 示 。 导 弹 在发射之后会先急剧加速，在到达最大速度后匀速飞行，发动机停止工作后做 减 速 运 动 。 导 弹 制 导 规 则 为 比 例 导 引 算法，杀伤半径为 100m , 脱靶后会立即爆炸 。
+
+
+
+图 8 导弹飞行速度随时间变化的曲线
+
+Fig.8 Variation curve of missile flight speed with time
+
+4.2 神经网络参数
+
+在强化 学 习中，DDQN 算 法 、DDPG算 法 、SSDDQN 算法以及 SSDDPG算法的神经网络均采用 3 层反向传播神经网络，每一层神经元 节 点 个 数 分 别 为 256 , 256 , 256 , 经 验 池大小为 50 000 。 DDQN 算 法 和 DDPG 算 法 的 输 入 将 状 态单元 Si 按最大实体数目进行直接拼接，初始状态默认为 0 ,对存在的实体按状态 值 进 行 填 充，即 在 单 枚 导 弹 场 景 训 练时的输入维度为 10 , 在 4 枚 导 弹 场 景 训 练 时 的 输 入 维 度 为40 。SSDDQN算法和 SSDDPG算法均使用 GRU 网络单元进行特征提取，GRU 网 络 单 元 以 USS 为 输 入，输 出 维 度 为10 的隐藏特征 Feature , 隐藏特征用于强化学习训练和动作选择 。
+
+在 DDQN 算 法 和 SSDDQN 算 法 中，折 扣 系 数 γ = 0 . 99 , 学习率lr=1e-4 , 网络更新频率为 100 , 即训练 100 次，就能将评估网络的参数拷贝到 目标网络中 。在 DDPG算法
+
+和 SSDDPG算法中，折扣系数 γ=0 . 99 , 值网络学习率 lrc = 5e-4 , 策略网络学习率 lra =1e-4 , 软 更 新 频 率 τ=0 . 01 。每训练2 000 局，就利用训练后的智 能 体 完 成 1 000 轮 对 局测试，以记录规避导弹存活率 。
+
+4.3 仿真实验分析
+
+在实验 中，DDQN 算 法 、DDPG算 法 、SSDDQN 算 法 以及 SSDDPG算 法 分 别 在 想 定 ①和 想 定 ②的 场 景 中 进 行 训练，并将 4 种强化学 习 算 法 与 3 种 简 单 的 固 定 机 动 策 略 进行比 较，即 高 速 直 线 飞 行 、高 速 俯 冲 、最 大 过 载 转 圈 。本 文分析了规避导弹的存 活 率 、智 能 体 控 制无人机连续规避 导弹的飞行轨迹，以及不同机动方式下的导弹脱靶量 。
+
+4.3.1 规避导弹成功率
+
+在想定 ①中的训练曲线如图 9(a) 所示：高速直线飞行 、高速俯冲 、最大过载转 圈 面 对 导 弹 打 击 时 的 存 活 率 分 别 为40% 、44% 、67% ;DDQN 、DDPG、SSDDQN 、SSDDPG 这4 种算法面对 导 弹 打 击 时 的 最 高 存 活 率 分 别 为 99% 、99 . 5% 、 98 . 5% 、99 . 5% 。在 3 种简单机动算法中，只有最大过 载 转圈机动策略的存活率超过 了 60% , 而 由 4 种 强 化 学 习 算 法训练出来的智能体操纵无人机规避导弹的存活率均超过了98% , 证明强化学习能 够 在 无 人 机 规 避 导 弹 场 景 下 训 练 出具有自主机动决策的智能体 。 同时 发 现，增 加 了 USS 的 强化学习算法在收敛速 度 上 比 传 统 强 化 学 习 算 法 更 慢，但 最终的智能体规避导弹的存活率差异很小 。 在想定 ②中的训练曲线如图 9(b) 所示：高 速 直 线 飞 行 、高 速 俯 冲 、最 大 过 载转圈在导弹打击时 的 存 活 率 分 别 为 2 . 5% 、3 . 7% 、20 . 1% ; DDQN 、DDPG、SSDDQN 、SSDDPG这 4 种算法 在 导 弹 打 击时的最高存活率 分 别 为 25 . 5% 、28 . 5% 、88 . 5% 、88% 。 增加打击无人机的导弹数量后，高速直线飞行和高速俯冲机动这两种机动方式很难存活，最大过载转圈这种机动方式仍然具有一定的规避能力 。DDQN算法和 DDPG算法在该场景下虽然也能够提升连续规避多枚导弹的存活率，但是其收敛效果较差 。结合 USS 的 SSDDQN算法与 SSDDPG算法，在应对 4 枚导弹时仍然能够训练出以很大概率规避全部导弹的智能体 。对比发现，结合 USS 的强化 学 习 算 法 在 多 枚 导弹同时打击场景下的收敛速度更快 、精度更高，能够明显提升无人机连续规避多枚空空导弹打击的存活率 。
+
+
+
+训练局数/局
+
+(a) 无人机规避单枚导弹的训练曲线
+
+(a) Training curve ofunmanned aerial vehicles for avoiding single missile
+
+
+
+(b) 无人机规避4枚导弹的训练曲线
+
+(b) Training curve ofunmanned aerial vehicles for avoiding four missiles : DDQN; : 最大过载转圈; : SSDDQN;
+
+: 高速俯冲; : DDPG; : 高速直飞;
+
+: SSDDPG 。
+
+图 9 无人机规避导弹打击的训练曲线
+
+Fig.9 Training curve of unmanned aerial vehicles
+
+avoiding missiles’strike
+
+由图 9 可知，由 SSRL 算 法 训 练 的 智 能 体 在 规 避 单 枚空空导弹中的存活率与 DDQN算法和 DDPG算法相当，并且在连续规避多 枚 空 空 导 弹 中 的 存 活 率 远 高 于 DDQN 算法和 DDPG算法 。
+
+4.3.2 无人机规避飞行轨迹
+
+在想定 ①中，DDQN算 法 、DDPG算 法 、SSDDQN 算 法 、 SSDDPG算法训练的智能体，针对不同态势来袭的导弹会采取不同的规避机动方式 。训练出的典型机动方式如图 10 所示，包括垂直于导弹运动方向 、急速下潜 、垂直置尾再急速转向等机动方式 。智能体根据态势不同和飞行速度不同的来袭导弹，会选择采用不同的机动方式进行规避，尽管这些机动方式不同，但是都能够有效规避智能体遭遇导弹的攻击 。
+
+
+
+(a) 垂直于导弹运动方向机动
+
+(a) Maneuver perpendicular to the direction ofmissile movement
+
+
+
+(b) 急速下潜机动
+
+(b) Rapid diving maneuver
+
+
+
+(C)置尾下降再急速转向机动
+
+(c) Tail setting descent and rapid steering maneuver
+
+图 10 无人机规避单枚导弹的飞行轨迹
+
+Fig.10 Flight path of unmanned aerial vehicles for
+
+avoiding single missile
+
+在想定 ②中，SSDDQN算法与 SSDDPG算法训练的智能体控制无人机机动的飞行轨迹近似，如图 11 所示 。 图 11(a)为 SSRL算法训练的智能体控制无人机连续规避 4 枚 导 弹的飞行轨迹 。在规避 导 弹 的 整 个 过 程 中，智 能 体 采 取 不 规则的爬升和俯冲动作，并 在 最 后 时 刻 使 用 最 大 过 载 进 行 极限转向 。 图 11(b) 为 无 人 机 遭 遇 导 弹 阶 段 的 飞 行 轨 迹，当导弹靠近时，智能体控 制 无 人 机 在 垂 直 平 面 做 不 规 则 的 蛇形机动，不断调整飞行姿态，使得无人机在最后时刻能够通过反向大机动规避空空导弹 。
+
+
+
+(a) 无人机连续机动飞行轨迹
+
+(a) continuous maneuver flight path ofunmanned aerial vehicles
+
+
+
+(b) 垂直平面做蛇形机动
+
+(b) snake maneuver in vertical plane
+
+图 11 无人机规避 4 枚导弹的飞行轨迹
+
+Fig.11 Flight of path unmanned aerial vehicles
+
+for avoiding four missiles
+
+4.3.3 导弹脱靶量
+
+脱靶量是用来形容导弹与 目标在运动过程中相对距离的最小值，是评定导弹系统命中精度的重要指标，脱靶量的大小能够直接影响 导 弹 的 毁 伤 概 率 。 脱 靶 量 越 大，导 弹 对无人机的威胁度越低，当导弹的脱靶量大于攻击范围时，无
+
+人机可以成功避开 导 弹 。 在 遭 遇 阶 段，可 以 认 为 导 弹 和 无人机均做匀速直线运 动，并 以 此 计 算 智 能 体 应 对 不 同 位 置来袭导弹的平均脱靶量 。
+
+图 12 为不同机动方式 下 的 导 弹 脱 靶 量 箱 型 分 布，表 2为不同机动方式下的导弹平均脱靶量 。 图 12 (a) 为想定 ①中导弹对无人机脱靶量的箱型分布：高速直线飞行 、高速俯冲的平均脱靶量集中 在 100 m 范 围 内，平 均 脱 靶 量 分 别 为97m、99m；最大过载转圈 的 脱 靶 量 集 中 在 100 m 周 围，平均 导 弹 脱 靶 量 为 106 m ; DDQN 算 法 、SSDDQN 算 法 、 DDPG算法 、SSDDPG算 法 训 练 的 智 能 体 应 对 导 弹 的 脱 靶量集中在 132m周围 。 图 12 (b) 为想定 ②中导弹对无人机脱靶量的箱型分布：高速直线飞行 、高速俯冲 、最大过载转圈的脱靶量 集 中 在 100 m 范 围 内，平 均 脱 靶 量 分 别 为 43 m、 74m、83m;DDQN算法 、DDPG算 法 训 练 的 智 能 体 应 对 导弹的脱靶量分别为 92m、98m;SSDDQN算法 、SSDDPG算法训练的智能 体 应 对 导 弹 的 脱 靶 量 分 别 为 128 m、127 m 。由此可知，在连续规 避 导 弹 的 场 景 中，SSRL算 法 训 练 的 智能体能够有效提高导弹脱靶量，更好地避开导弹的打击 。
+
+0 . 30
+
+0 .25
+
+0 .20
+
+0 . 15
+
+0 . 05
+
+
+
+无人机机动方式
+
+(a) 想定①中导弹脱靶量箱型分布
+
+(a) Box distribution ofmissile miss distance in scenario ①
+
+0 . 30
+
+0 .25
+
+0 .20
+
+0 . 15
+
+0 . 05
+
+
+
+无人机机动方式
+
+(b) 想定②中导弹脱靶量箱型分布
+
+(b) Box distribution of missile miss distance in scenario ②
+
+图 12 不同机动方式下的导弹脱靶量
+
+Fig.12 Missile miss distance under different maneuvers
+
+表 2 导弹平均脱靶量
+
+Table 2 Average miss distance of missile m
+
+规避方式
+
+想定 ①
+
+想定 ②
+
+DDQN
+
+133
+
+92
+
+SSDDQN
+
+134
+
+128
+
+DDPG
+
+131
+
+98
+
+SSDDPG
+
+133
+
+127
+
+最大过载转圈
+
+106
+
+83
+
+高速俯冲
+
+99
+
+74
+
+高速直飞
+
+97
+
+43
+
+5 结 论
+
+本文针对超视 距 空 战 中 无 人 机 在 面 对 多 枚 导 弹 同 时打击情景下状态空 间 维 度 大 、状 态 信 息 维 度 不 断 变 化 、强化学习算法 训 练 效 果 差 等 问 题 ，提 出 使 用 USS 表 示 单 实体对多目标场景 下 的 状 态 特 征 ，并 利 用 GRU 网 络 对 USS进行特征融合与提取 ，提取的特征用于强化学习 ，构成 SS- RL算法 。算 法 在“ 2021 首 届 全 国 空 中 智 能 博 弈 大 赛”仿真平 台 上 进 行 训 练 。 仿 真 结 果 表 明 ，相 比 DDQN 算 法 、 DDPG算法 、简 单 机 动 算 法 ，SSRL 算 法 训 练 出 来 的 智 能体能够增加导弹脱靶量 ，提升无人机在连续 规 避 导 弹 场 景中的存活率 。
+
+参考文献
+
+[1] 牛绿伟，高晓光，张坤，等 ．划 分 超 视 距 、近 距 的 多 机 协 同 作 战战术决策[J] . 西北工业大学学报，2011 , 29(6) : 971 977.
+
+NIU L W , GAO X G , ZHANG K , et al. Making decisions on proper cooperation tactics for multiple fighters to combat from beyond visual range (BVR) to within visual range ( WVR) [J] . Journal of Northwestern Polytechnic University , 2011 , 29(6) : 971 977.
+
+[2] LIU C , SUN S S , TAO C G , et al. Sliding mode control of multi-agent system with application to UAV air combat[J] . Computers & Electrical Engineering , 2021 , 96(A) : 107491.
+
+[3] YAN C , XIANG X J , WANG C. Towards real-time path plan- ning through deep reinforcement learning for a UAV in dynamic environments[J] . Journal of Intelligent & Robotic Systems , 2020 , 98(2) : 297 309.
+
+[4] 王怀威，李曙林，陈宁，等 ．战术机动对飞机作战生存力的影响研究[J] . 飞行力学，2011 , 29(3) : 88 91.
+
+WANG H W , LI S L , CHEN N , et al. Research on the influ- ence of tactic maneuver on aircraft combat survivability[J] . Flight Dynamics , 2011 , 29(3) : 88 91.
+
+[5] IMADO F , KURODA T. Family of local solutions in a missile- aircraft differential game[J] . Journal of Guidance , Control , and Dynamics , 2011 , 34(2) : 583 591.
+
+[6] YOMCHINDA T. A study of autonomous evasive planar-ma- neuver against proportional-navigation guidance missiles for un- manned aircraft[C] ∥Proc. of the Asian Conference on Defence Technology , 2015 : 210 214.
+
+[7] GIRARD A R , KABAMBA P T. Proportional navigation : opti-
+
+mal homing and optimal evasion[J] . SIAM Review , 2015 , 57(4): 611 624.
+
+[8] FONOD R , SHIMA T. Multiple model adaptive evasion against a homing missile[J] . Journal of Guidance , Control , and Dyna- mics , 2016 , 39(7) : 1578 1592.
+
+[9] CARR R W , COBB R. An energy based objective for solving an optimal missile evasion problem[C] ∥ Proc. of the AIAA Gui- dance , Navigation , and Control Conference , 2017 : 1016 1033.
+
+[10] 邵彦昊，朱荣刚，贺建良，等． 中 远 程 空 空 雷 达 导 弹 的 新 机 动规避方式的探索[J] . 弹箭与制导学报，2020 , 40(4) : 75 84. SHAO Y H , ZHU R G , HE J L , et al. Exploration of a new evasive maneuver mode for medium and long range air-to-air ra- dar missile[J] . Journal of Proj ectiles , Rockets , Missiles and Guidance , 2020 , 40(4) : 75 84.
+
+[11] 袁坤刚，刘登第，张志伟，等． 空 空 导 弹 末 端 毁 伤 效 能 的 仿 真评估[C] ∥第 13 届中 国 系 统 仿 真 技 术 及 其 应 用 学 术 年 会 论 文集，2011 : 679 682.
+
+YUAN K G , LIU D D , ZHANG Z W , et al. Simulation evalu- ation of air-to-air missile terminal kill efficiency[C] ∥ Proc. of the 13th Chinese Conference on System Simulation Technology and its Application , 2011 : 679 682.
+
+[12] 王光辉 ，吕超，谢宇鹏，等．歼击机规避空空导弹的评价算法[J] .
+
+系统工程与电子技术，2016 , 38(11) : 2561 2566.
+
+WANG G H , LYU C , XIE Y P , et al. Evasive maneuver model of a fighter against air-to-air missiles[J] . Systems Engineering and Electronics , 2016 , 38(11) : 2561 2566.
+
+[13] WANG L G , YU C Q , ZHAO J , et al. Flight vehicle penetra- tion probability evaluation against the missile intercepting[C] ∥ Proc. of the International Conference on Intelligent Transporta- tion , Big Data & Smart City , 2021 : 13 16.
+
+[14] ONG S Y , PIERSON B L. Optimal evasive aircraft maneuvers against a surface-to-air missile[C] ∥Proc. of the IEEE Regional Conference on Aerospace Control Systems , 1993 : 475 482.
+
+[15] SINGH L. Autonomous missile avoidance using nonlinear model predictive control[C] ∥ Proc. of the AIAA Guidance , Naviga- tion , and Control Conference and Exhibit , 2012 : 4910 4924.
+
+[16] IMADO F , KURODA T. Engagement tactics for two missiles against an optimally maneuvering aircraft[J] . Journal of Gui- dance , Control , and Dynamics , 2011 , 34(2) : 574 582.
+
+[17] 张斌，何明，陈希亮，等 ．改进 DDPG算法在 自动驾驶中 的 应用[J] . 计算机工程与应用，2019 , 55(10) : 264 270.
+
+ZHANG B , HE M , CHEN X L , et al. Self-driving via im- proved DDPG Algorithm[J] . Computer Engineering and Appli- cations , 2019 , 55(10) : 264 270.
+
+[18] WU C X , JU B B , WU Y , et al. UAV autonomous target search based on deep reinforcement learning in complex disaster scene[J] . IEEE Access , 2019 , 7 : 117227 117245.
+
+[19] HAN X , WANG J , XUE J Y , et al. Intelligent decision-mak- ing for 3-dimensional dynamic obstacle avoidance of uav based on deep reinforcement learning[C] ∥Proc. of the International Conference on Wireless Communications and Signal Processing , 2019.
+
+[20] SINGLE A , PADAKANDLA S , BHATNAGAR S. Memory-
+
+based deep reinforcement learning for obstacle avoidance in UAV with limited environment knowledge[J] . IEEE Trans. on Intelligent Transportation Systems , 2019 , 22(1) : 107 118.
+
+[21] YANG Q M , ZHANG J D , SHI G Q , et al. Maneuver decision of UAV in short-range air combat based on deep reinforcement learning[J] . IEEE Access , 2019 , 8 : 363 378.
+
+[22] ZHANG Y S , ZU W , GAO Y , et al. Research on autonomous maneuvering decision of UCAV based on deep reinforcement learning[C] ∥Proc. of the Chinese Control and Decision Confer- ence , 2018 : 230 235.
+
+[23] 范鑫磊，李栋，张尉，等 ．基于 深 度 强 化 学 习 的 导 弹 规 避 决 策训练研究[J] . 电光与控制，2021 , 28(1) : 81 85.
+
+FAN X L , LI D , ZHANG W , et al. Missile evasion decision training based on deep reinforcement learning[J] . Electronics Optics & Control , 2021 , 28(1) : 81 85.
+
+[24] LILLICRAP T P , HUNT J J , PRITZEL A , et al. Continuous control with deep reinforcement learning[EB/OL] . [2022 04 30] . https: ∥ arxiv. org/abs/1509.02971.
+
+[25] 宋宏川，詹浩，夏露，等．基于深度确定性策略梯度算法的战机规避中距空空导弹研究[J] . 航空工程进展，2021 , 12(3) : 85 94.
+
+SONG H C , ZHAN H , XIA L , et al. The study on a fighter against a medium-range air-to-air missile based on deep deter- ministic policy gradient algorithm[J] . Advances in Aeronautical Science and Engineering , 2021 , 12(3) : 85 94.
+
+[26] VAN H H , GUEZ A , SILVER D. Deep reinforcement learn- ing with double Q-learning[C] ∥Proc. of the 30th AAAI Con- ference on Artificial Intelligence , 2016 : 2094 2100.
+
+[27] 肖扬，吴家威，李鉴学，等 ．一 种 基 于 深 度 强 化 学 习 的 动 态 路由算法[J] . 信息通信技术与政策，2020 , 46(9) : 48 54.
+
+XIAO Y , WU J W , LI J X , et al. A dynamic routing algorithm based on deep reinforcement learning [J] . Information and Communications Technology and Policy , 2020 , 46(9) : 48 54.
+
+[28] 卜令正 ．基于深度强化 学 习 的 机 械 臂 控 制 研 究[D] . 北 京 ：中国矿业大学，2019.
+
+BU L Z. Study of robot arm control based on deep reinforce- ment learning[ D] . Beijing : China University of Mining and Technology , 2019.
+
+[29] MNIH V , KAVUKCUOGLA K , SILVER D , et al. Human- level control through deep reinforcement learning[J] . Nature , 2015 , 518(7540) : 529 533.
+
+[30] SILVER D , LEVER G , HEESS N , et al. Deterministic policy gradient algorithms[C] ∥Proc. of the 31st International Confer- ence on Machine Learning , 2014 , 32 : 387 395.
+
+[31] KOSANOGLU F , ATMIS M , TURAN H H . A deep rein- forcement learning assisted simulated annealing algorithm for a maintenance planning problem[J] . Annals of Operations Re- search , 2022 . DOI:10.1007/s10479 022 04612 8.
+
+[32] LIU P F , QIU X P , HUANG X J . Recurrent neural net- work for text classification with multi-task learning[EB/OL] . [2022 04 30] . https: ∥ arxiv. org/abs/1605.05101.
+
+[33] KYUNGHYUN C , BARTVAN M , CAGLAR G , et al. Learn- ing phrase representations using RNN encoder-decoder for statistical
+
+machine translation[EB/OL] . [2022 04 30] . https : ∥ arxiv. org/abs/1406.1078.
+
+[34] WANG X F , ZHAO H , HAN T , et al. A Gaussian estimation of distribution algorithm with random walk strategies and its application in optimal missile guidance handover for multi- UCAV in over-the-horizon air combat[J] . IEEE Access , 2019 , 7 : 43298 43317.
+
+[35] LI Q N , CHEN Y , HUANG Z Y , et al. An algorithm of air combat maneuver strategy based on two layer game decision- making and distributed MCTS method with double game trees under uncertain interval information conditions[C] ∥ Proc. of the Chinese Control and Decision Conference , 2021 : 6875 6880.
+
+[36] LIU Y P , GAO X , SHI J X , et al. Research on decision-mak- ing method of air combat embedded training based on extended influence diagram[C] ∥Proc. of the International Conference on Guidance , Navigation and Control , 2022 : 4529 4541.
+
+[37] WANG Z , LI H , WU H L , et al. Improving maneuver strategy in air combat by alternate freeze games with a deep reinforce-
+
+ment learning algorithm[J] . Mathematical Problems in Engi- neering , 2020 : 7180639.
+
+[38] YANG Z , ZHOU D , KONG W R , et al. Nondominated ma- neuver strategy set with tactical requirements for a fighter against missiles in a dogfight[J] . IEEE Access , 2020 , 8 : 117298 117312.
+
+作者简介
+
+吴冯国(1994—) ,男，硕士研究生，主要研究方向为深度强化学习 、空战自主博弈 。
+
+陶 伟(1978—) ,男，高级工程师，博士，主要研究方向为舰船电子信息系统 。
+
+李 辉(1970—) ,男，教授，博 士，主 要 研 究 方 向 为 智 能 计 算 、战 场 仿真 、虚拟现实 。
+
+张建伟(1972—) ,男，研究员，博 士 研 究 生 导 师，博 士，主 要 研 究 方 向为计算机图形图像 、虚 拟 现 实 、机 器 视 觉 、空 中 交 通 管 理 、智 能 交 通管理 。
+
+郑成辰(1998—) ,男，硕士研究生，主要研究方向为深度强化学习 。

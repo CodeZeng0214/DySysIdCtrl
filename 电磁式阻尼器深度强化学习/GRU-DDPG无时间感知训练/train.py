@@ -73,7 +73,12 @@ def train_ddpg(env: ElectromagneticDamperEnv, agent: DDPGAgent, replay_buffer: R
             action = agent.select_action(obs, epsilon=epsilon,rand_prob=rand_prob)
             
             # 执行动作 (传入单个动作值)
-            next_obs, reward, done = env.step(action)
+            # 兼容新的step接口
+            result = env.step(action)
+            if len(result) == 4:
+                next_obs, reward, done, _ = result
+            else:
+                next_obs, reward, done = result
             
             # 存储经验 (存储观测值)
             replay_buffer.add(obs, action, reward, next_obs, done) # 传递 done
@@ -217,14 +222,20 @@ def train_gru_ddpg(env: ElectromagneticDamperEnv, agent: GruDDPGAgent, replay_bu
             # 获取当前观测值
             obs = env.get_observation()
             
+            # 获取当前时间步长（如果环境支持时间噪声）
+            dt = env.get_current_timestep()
+            
             # 选择动作（GRU版本会维护状态历史）
-            action = agent.select_action(obs, epsilon=epsilon, rand_prob=rand_prob)
+            action = agent.select_action(obs, epsilon=epsilon, rand_prob=rand_prob, dt=dt)
             
             # 执行动作
-            next_obs, reward, done = env.step(action)
+            next_obs, reward, done, actual_dt = env.step(action, dt=dt)
             
             # 存储经验到GRU回放池
-            replay_buffer.add(obs, action, reward, next_obs, done)
+            if hasattr(replay_buffer, 'use_time_input') and replay_buffer.use_time_input:
+                replay_buffer.add(obs, action, reward, next_obs, done, actual_dt)
+            else:
+                replay_buffer.add(obs, action, reward, next_obs, done)
             
             episode_reward += reward
             

@@ -1,0 +1,503 @@
+振 动 与 冲 击
+
+第 43 卷第 19 期 JOURNAL OF VIBRATION AND SHOCK Vol. 43 No. 19 2024
+
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+
+数据驱动的结构振动鲁棒控制策略研究
+
+唐 介1 , 蒋纪元1 , 赵 坤2 , 李映辉1
+
+( 1 . 西南交通大学 力学与航空航天学院，成都 611756 ; 2 . 北京机电工程研究所，北京 100074)
+
+摘 要 ：振动控制工程中实际结构模型复杂，难以通过机理建模构建振动控制系统 。提出基于数据驱动的子空间辨识和 H∞ 鲁棒控制构建结构振动抑制策略 。根据实际被控系统所遭受的外扰以及作动器、传感器的布置情况，首先，确立出被控系统的扰动、控制输入和量测输出等参数；接着，分别对系统施加扰动力和主动作动力并采集此时系统的输入和响应数据；然后，根据采集到的输入输出的数据，运用子空间辨识法得到扰动、输入与输出间的传递函数；最后，通过 H∞鲁棒控制理论将得到的传递函数进行组装构建出系统的广义控制对象，并求解出了系统的反馈控制器 。并以一多自由度箭载载荷隔振模型为例，建立系统的动力学方程，并通过该系统的仿真数据重构系统的传递函数模型，结果表明通过将重构的广义模型所求解出的反馈控制器代入原系统后，扰动到控制输出间的传递率在谐振峰区间相比原系统得到极大的降低；时域上，在外界扰动下反馈控制系统相比无控系统其稳态响应的幅值大大降低，系统在外扰下的动态指标都得到极大改善。
+
+关键词 ：振动控制；数据驱动；子空间辨识；H∞ 鲁棒控制
+
+中图分类号 ：O327 文献标志码 ：A DOI:10 . 13465/j . cnki . jvs . 2024 . 19 . 022
+
+Study on data-driven robust control strategy for structural vibration
+
+TANG Jie1 , JIANG Jiyuan1 , ZHAO Kun2 , LI Yinghui1
+
+( 1 . College of Mechanics and Aerospace Engineering , Southwest Jiaotong University , Chengdu 611756 , China;
+
+2 . Beijing Electro-mechanical Engineering Institute , Beijing 100074 , China)
+
+Abstract : The actual structural model in vibration control engineering is complex , it is difficult to construct a vibration control system with mechanism modeling. Here , a structural vibration suppression strategy based on data-driven subspace identification and H∞ robust control was proposed . According to external disturbances exerted on the actual controlled system and arrangement of actuators and sensors , firstly , parameters of disturbance , control input , and measured output of the controlled system were established . Then , disturbance forces and active driving forces were exerted on the system respectively , and this moment inputs and response data of the system were collected . Once again , according to the collected input and output data , the subspace identification method was used to obtain transfer functions among disturbance , input and output. Finally , transfer functions obtained were assembled using H∞ robust control theory to construct the generalized control object of the system , and the feedback controller of the system was solved . Taking a multi-DOF rocket payload vibration isolation model as an example , the system ’s dynamic equation was established , and the transfer function model of the system was reconstructed with simulation data of the system. The results showed that by introducing the feedback controller solved with the reconstructed generalized model into the original system , the transmissibility between disturbance and control output is greatly reduced within the resonance peak range compared to the original system; in time domain , under external disturbances , the steady-state response amplitude of the feedback control system is significantly reduced compared to the uncontrolled system , and dynamic indexes of the system under external disturbances are greatly improved .
+
+Key words : vibration control ; data-driven ; subspace identification ; H∞ robust control
+
+结构振动主动控制系统的设计可以通常分为四个环节，即首先根据动力学原理或者有限元法建立控制模型的动力学方程；随后将动力学方程转变为状态空间方程；然后根据结构的特点和振动控制的要求设计
+
+基金项目： 国家自然基金项 目 (12102368) ；四川省 自然科学基金项 目(2022NSFSC1961) ；应用力学与结构安全四川省重点实验室自主研究课题项目(SZZZKT-202202)
+
+收稿日期：2023-03-15 修改稿收到日期：2024 03 05
+
+第一作者 唐介 男，博士，讲师，1989 年生
+
+观测方程和输出方程；最后选择合适的控制方法来进行控制器的设计 。对于一些简单系统来说很容易通过机理建模或者合理的简化方式获得系统的动力学方程，然而实际工程中的结构相当复杂，先进智能材料的结构特征很难准确描述，结构与热、流体等的多物理场作用研究尚浅，结构中的损伤、连接、摩擦等因素的影响也十分复杂，很难通过机理建模来获得系统的动力学方程 。即使模型已经建立得相对准确，仍然存在近似解析或数值求解的困难[1] 。通过有限元方式建立的模型往往维度很高，仿真耗时长成本高，需要采取模型缩聚的方法对有限元模型降阶[2] , 然而这个过程十分复杂而且容易出错，并且通过有限元建立的模型往往和实际模型相差甚远导致最后的控制效果并不理想。在实际的工程问题中，工程师们往往更倾向于通过利用输入输出数据采用系统辨识方式来确定结构的模型 [3] , 再进行控制系统的设计。
+
+系统辨识一般是通过处理结构系统的输入-输出（ 激励-响应）数据来获取其未知的系统参数，属于结构动力学中的反问题研究范畴，也被称为数据驱动动力学系统建模[4] 。在数据驱动建模过程中通过黑箱或灰箱模型参数化表达复杂系统的输入输出关系，并保证试验数据与该关系相匹配，从而利用该模型代替白箱模型进行分析设计 。邵敏强等[5] 基于特征系统实现算法( eigensystem realization algorithm , ERA) 模型辨识对尾撑式风洞测力模型的振动进行了主动控制 。Schoen等 [6] 采用两步法对柔性空间结构进行系统辨识和控制器的设计 。王建宏等[7] 通过采集观测数据采用基函数法和最小二乘法设计了两自由度控制器 。Xie 等 [8] 直接根据结构的输入输出数据，利用一种新颖的数据驱动控制方法对柔性结构的振动进行了抑制，并进行了试验验证 。辛峻峰等[9] 采用数据驱动随机子空间法提高了辨识过程中的降噪能力和模态辨识进度 。贾振等 [10] 通过伺服电机的驱动信号和机械臂的应变信号对旋转柔性机械臂系统模型的关键参数进行了辨识，并通过极点配置对机械臂的振动进行控制 。Di 等 [11] 针对地震作用下的框架结构，采用数据驱动的方式构建了结构的最优控制器 。此外，在复杂结构的振动控制研究中，池维超[12] 曾直接通过有限元分析获得输入到反馈的响应进行控制器的设计 。直接采用有限元法虽然能将复杂的工程模型进行简化，并且通过计算机求解优势对结构特性进行宏观把握，然而通常复杂模型的有限元计算结果与试验结果误差较大，需要通过试验来修正有限元结果[13] 。
+
+现有结构振动主动控制研究中，针对简单结构，基于机理建模进行控制器设计的研究较多，这类基于模型的控制器往往鲁棒性不强，这也导致控制学科的理
+
+论研究和工程应用大相径庭 。此外，在实际工程中被控对象往往较为复杂，具有多个控制输入与输出，导致许多传统控制策略不能胜任 。为进一步拓展控制理论在实际工程中的应用，本文采用数据驱动的方式，通过被控系统的输入输出数据，利用子空间辨识构建扰动、输入与输出间的传递函数，进一步通过 H∞ 鲁棒控制理论对系统传递函数进行组装构建系统的广义控制对象，并求解出系统的反馈控制器 。最后，通过以一自由度箭载载荷隔振模型为例，通过该模型的真实仿真数据重构系统的传递函数模型，并进行控制器设计 。结果表明在谐振频段上重构模型与真实模型匹配较好，所求解出反馈控制器能够极大地降低扰动到控制输出在谐振峰区间的传递率。
+
+1 子空间辨识及鲁棒控制理论
+
+1. 1 基于子空间辨识的系统状态空间方程
+
+系统辨识作为现代控制理论的三大支柱之一，其定义是利用被控对象或辨识系统的输入、输出观测信息来估计系统的数学模型，其中数据、模型类和准则是系统辨识的三个基本要素 。系统辨识的目的是通过辨识出的系统模型进行系统仿真、系统预测、系统设计和控制，以及故障诊断等分析 。系统辨识常用的方法可分为经典系统辨识法如：最小二乘法、阶跃响应法、频率响应法、脉冲响应法、谱分析法等，以及现代系统辨识方法如：神经网络辨识法、模糊逻辑辨识法、其他智能算法等[14] 。
+
+子空间模型辨识方法自 20 世纪 90 年代初提出，该方法的特点是直接由时域上的输入输出数据辨识线性时不变系统的状态空间模型 。近年来这一方法被应用于辨识柔性动力学结构的系统参数，如大型航天、航空飞行器等复杂结构，取得了很好的结果 。子空间辨识采用状态空间描述，辨识的主要目标是根据系统的输入输出数据确定系统的状态空间矩阵[15] 。
+
+首先，考虑如下离散线性时不变状态空间模型
+
+{x ( k + 1) = Ax ( k) + Bu( k) + w ( k)
+
+(1)
+
+y( k) = Cx ( k) + Du( k) + v( k)
+
+式中：x ( k) ∈R n , u( k) ∈ R m , y( k) ∈ R l 分别为系统的状态向量，输入观测向量和输出观测向量；w ( k) ∈ R n , v( k) ∈R l 分别为系统的测量噪声和过程噪声 。为了保证系统是可辨识的，进一步假设上式(1) 中的系统满足如下条件：
+
+(1) 系统是渐近稳定的；
+
+(2) 噪声 w ( k) 和 v( k) 为平稳的白噪声序列；
+
+(3) { A , C} 可观测，{ A , [ B Q1 /2 ] } 可控；
+
+(4) 输入 u( k) 满足持续激励 w ( k) ∈ R n条件，且与噪声序列不相关。
+
+此外状态空间模型的形式还有带 Kalman 滤波器的状态空间模型和预测状态空间模型 。子空间辨识方法的主要目标可以归结为：给定有限维输入输出观测数据{ u ( k) , y( k) , k = 1 , 2 , … , N} , 确定系统参数矩阵{ A , B , C , D} 以及噪声协方差矩阵 。一般步骤分为：第一步，构造数据 Hankel 矩阵和广义输入输出矩阵等式，通过正交投影获取系统的广义能观性矩阵或状态序列的估计；第二步，根据获得广义能观性矩阵或者状态序列估计，确定系统状态空间矩阵{ A , B , C , D} [16] 。
+
+1. 2 鲁棒控制及标准鲁棒问题
+
+在传统控制理论中控制系统主要是基于反馈原理设计，这就需要知道被控对象的精确模型，这在实际问题中是难以实现的，因而很难采用传统的控制算法进行反馈控制器的设计。而 H∞ 控制中通过输入输出关系即可构建广义的控制对象，根据控制目标进行反馈控制器的设计。除此之外 H∞ 控制能充分考虑系统不确定性的影响，不仅能保证控制系统的鲁棒稳定性，还能优化一些性能指标。因此 H∞ 控制的应用研究得到了广泛地重视，并在实际的控制领域中得到了成功地应用[17] 。
+
+标准 H∞ 控制问题基本框图如图 1 所示，其中 G aug和 K 分别为广义控制对象和控制器，前者是系统中给定的部分，后者需要进行设计 。在有限维线性时不变系统和控制中，外部输出 w 、控制输入 u 、被控输出 z 和测量输出 y 都是向量信号 。传递函数矩阵 G aug 中包含了受控对象以及描述期望特性所加的权重函数。
+
+
+
+图 1 标准 H∞ 控制框图
+
+Fig. 1 Standard control block diagram of H∞
+
+假定 G aug 和 K 均是线性时不变系统的传递函数阵描述，即 G aug 和 K 均为真有理函数矩阵 。则 G aug 可以分解为
+
+
+
+输入到输出的关系可以写为
+
+
+
+广义阵 G aug 的状态空间实现为
+
+
+
+
+
+其中，Gij = Ci ( sI - A) - 1Bj + Dij , i ,j = 1 , 2 。
+
+很显然由 w 到 z 的传递函数可表示为
+
+Tzw ( s) = Fl ( Gaug , K) = G11 + G12K( I -
+
+G22K) - 1 G21 (6)
+
+因此，H∞ 最优控制问题就是要设计一个镇定控制器 K , 使得系统稳定且使得 w 到 z 的闭环传递函数 Tzw ( s) 的 H∞ 范数 。次最优问题变为求控制器 K , 使得系统稳定且 Tzw ( s)  ∞ < γ , 其中 γ 已知 。在多变量系统设计中，选择适当的加权函数更能反映系统的性能指标 。因此，为了满足实际问题需求，通常在 Tzw ( s ) 中嵌入性能加权函数[18] 。
+
+2 基于子空间辨识的鲁棒振动控制
+
+实际被控结构往往较为复杂很难通过机理建模来获得系统的精确动力学方程，通过数据驱动的方式来确定结构的动力学模型，进而再进行控制系统的设计，是解决复杂结构振动主动控制的有效方式 。 因此，本文考虑动力学逆问题，提出基于数据驱动的 H∞ 鲁棒结构振动控制策略，控制器的设计线路如图 2 所示，具体实施流程如下：
+
+步骤 1 根据实际被控对象所采用的主动控制方案确定出被控系统的输入（ 控制输入，扰动输入）输出（ 控制输出，测量输出）；
+
+步骤 2 对被控结构输入控制力信号和扰动信号（ 白噪声或伪随机信号），在这个过程中分别采集控制端到输出端以及扰动端到输出端的信号数据；
+
+步骤 3 基于步骤 2 获得的输入 ～输出信号数据采用子空间系统辨识法识别出系统输入 ～ 输出间的传递函数；
+
+步骤 4 依据被控对象控制频段需求选择恰当的加权函数，并根据鲁棒控制理论确定广义的系统输入与输出，构建系统的广义控制对象；
+
+步骤 5 通过 H∞ 控制理论求解出反馈控制器，代入真实控制系统中。
+
+设控制系统的控制输出为 z , 控制输入为 u , 测量输出为 y , 外界扰动为 w , 则根据式(3) 有
+
+{z = G w + G u
+
+11 12 (7)
+
+y = G21 w + G22 u其中：
+
+
+
+G11 = [ gzp←wq ] i × m , G12 = [ gzp←uq ] i ×j ,
+
+G21 = [ gyp←wq ] k × m , G22 = [ gyp←uq ] k ×j (8)
+
+式中，gzp←wq 为扰动 wq ( q = 1 , 2 , …m ) 到控制输出 zp ( p = 1 , 2 , … , i) 之间的传递函数，gzp←uq 为控制输入 uq ( q = 1 , 2 , …j) 到控制输出 zp ( p = 1 , 2 , … , i) 之间的传递函数， gyp←wq 为扰动 wq (q = 1 ,2 , …m )到测量输出 yp (p = 1 , 2 , … , k) 之间的传递函数，gyp←wq 为控制输入 uq ( q = 1 , 2 , …j)到测量输出 yp ( p = 1 , 2 , … , k) 之间的传递函数。
+
+
+
+图 2 控制器设计的技术路线图
+
+Fig. 2 Technique route of the controller design
+
+通过子空间法辨识出系统输入、扰动、输出间的传递函数后，将其采入式(8) 进行组装，将组装好后的系统矩阵再代入式(7 ) 中，即可获得如式(2) 所示的标准控制对象 。在引入恰当的加权函数后，构建出广义的控制对象，即可通过 H∞ 控制理论求解出系统的反馈控制器。
+
+3 仿真分析
+
+针对上述结构振动主动控制策略，通过构建一多自由度结构振动控制系统，采用上述结构振动主动控制策略求解出系统的反馈控制器并代入原系统，分析采用 H∞ 控制后扰动到被控输出间传递函数特征和响应情况，对控制策略的有效性进行分析验证。
+
+3. 1 多自由度振动控制系统
+
+工程中的一些复杂振动控制系统，如：箭载载荷、航天器载荷运输和发射过程中的振动控制等往往可简化为多自由振动系统形式 。如图 3 所示，即假设箭载载荷隔振系统为一多自由度系统，有效载荷具有 x4 , x3两个纵向自由度，m4 , m3 分别为这两个自由度上的集中质量 。隔振系统和箭体可简化为由 m2 , m1 两个集中质量所组成，分别具有 x2 , x 1 方向上两个的自由度 。ki ( i = 1 , 2 , 3 , 4) , cj (j = 1 , 2 , 3 , 4) 分别为系统间的连接刚度和阻尼系数 。w 为箭体扰动，f1 ( t ) ,f2 ( t ) 为系统的主
+
+动控制力。
+
+
+
+图 3 箭载载荷隔振系统
+
+Fig. 3 Vibration isolation system for launch vehicle payload
+
+对于图 3 所示的多自由振动系统其动力学方程可以表示为
+
+
+
+假设在基础扰动 w 的作用下有效载荷 m4 , m3 的响应为系统的控制输出，m2 , m1 的响应为系统测量输出， f1 ( t ) ,f2 ( t ) 为系统的控制输入 。下面分别给系统输入扰动信号和控制信号并提取输入和响应信号数据为系统特征的辨识做准备。
+
+3. 2 输入输出数据提取
+
+为了获取系统的响应信号数据，定义系统的相关参数取值，如表 1 所示。
+
+表 1 系统参数及其取值
+
+Tab. 1 System parameters and values
+
+参数
+
+数值
+
+参数
+
+数值
+
+参数
+
+数值
+
+m4 /kg
+
+100
+
+k4 /( N ·m - 1 )
+
+10 000
+
+c4 /( N · s ·m - 1 )
+
+1
+
+m3 /kg
+
+200
+
+k3 /( N ·m - 1 )
+
+20 000
+
+c3 /( N · s ·m - 1 )
+
+2
+
+m2 /kg
+
+300
+
+k2 /( N ·m - 1 )
+
+30 000
+
+c2 /( N · s ·m - 1 )
+
+3
+
+m1 /kg
+
+400
+
+k1 /( N ·m - 1 )
+
+40 000
+
+c1 /( N · s ·m - 1 )
+
+4
+
+将表中的参数代入系统动力学方程，分别单独地给系统施加控制力信号f1 ( t ) ,f2 ( t ) 及扰动信号 w , 记录系统的被控输出 x4 , x3 和测量输出 x2 , x 1 的响应情况，并采集相应的系统输入和响应数据 。此外，在系统辨识时，合理地选择输入信号是获得精确辨识结果的关键，为使系统可辨识，在辨识时间内系统的动态必须被输入信号充分持续激励，以保证结构的所有模态能够被输入信号充分激起，辨识中常用的信号为白噪声或伪随机信号 。 因此，此处输入的系统控制力信号和扰
+
+动信号分别为功率谱密度为 0. 1 和 5 × 10 - 6 的白噪声信号 。其中f1 ( t ) 激励时系统的响应情况如图 4 所示， f2 ( t ) 激励时系统的响应情况如图 5 所示，w 激励时系统的响应情况如图 6 所示 。从图中可以看出，系统的各自由度的响应都能被控制和扰动信号所激起，因此这些响应数据可用于系统的动力学传递特征辨识。
+
+
+
+图 4 f1 ( t ) 激励时系统的响应
+
+Fig. 4 Responds of the system under excitation f1 ( t )
+
+
+
+图 5 f2 ( t ) 激励时系统的响应
+
+Fig. 5 Responds of the system under excitation f2 ( t )
+
+
+
+图 6 w 激励时系统的响应
+
+Fig. 6 Responds of the system under excitation w
+
+3. 3 输入输出传递函数辨识
+
+对上述采集到的输入输出数据，采用子空间辨识方法辨识输入输出间的状态空间表达式，再将其转变为传递函数的形式，用于构建 H∞ 控制器中的广义控制矩阵 。在辨识过程中需根据构造的 Hankel 矩阵进行模型阶次的估计，其中输入 f1 ( t ) 到输出 x 1 模型阶次的Hankel 奇 异 值，如 图 7 所 示 。 可 以 看 出 8 阶 以 后Hankel 奇异值较小，因此辨识的模型阶次选择为 8 , 采取同样的方式对其他输入-输出间传递函数阶次进行估计 。辨识出的系统输入、扰动到输出间传递函数 bode图，如图 8 ~ 图 10 所示。
+
+
+
+图 7 控制输入f1 ( t ) 到输出 x1 模型阶次的 Hankel 奇异值Fig. 7 Hankel singular value of the model order form the input
+
+f1 ( t ) to output x1
+
+
+
+
+
+图 8 控制输入f1 ( t ) 到输出间的传递函数 bode 图 Fig. 8 Bode diagram of the transfer functions from control
+
+input f1 ( t ) to the outputs
+
+
+
+
+
+图 9 控制输入f2 ( t ) 到输出间的传递函数 bode 图 Fig. 9 Bode diagram of the transfer functions from control
+
+input f2 ( t ) to the outputs
+
+3. 4 广义控制对象建立
+
+对比 H∞ 控制标准问题，本文中针对该多自由系统的振动控制目标是：使外界扰动到被控输出传递函数的 H∞ 范数最小 。本文中以 m4 , m3 的响应 x4 , x3 作为被控输出信号，m2 , m2 的响应 x2 , x 1 为测量信号输出 。因此首先需要利用输入-输出间的传递函数构建出广义传
+
+递函数矩阵，由式可获得系统的输入-输出传递关系，其中
+
+
+
+
+
+图 10 扰动 w 到输出间的传递函数 bode 图
+
+Fig. 10 Bode diagram of the transfer functions from disturbance
+
+w to the outputs
+
+
+
+, 传递矩阵中 Gx iw , Gx ifj分别为外界扰动 w
+
+■
+
+」
+
+Gx2f1
+
+Gx 1f1
+
+■ Gx2f2
+
+L Gx 1f2
+
+|
+
+|
+
+和控制力 fj 到 xi 之间的传递函数 。然而，直接根据上述关系构建的广义控制对象在实际应用时可能会遇到秩不满足标准 H∞ 控制问题中对矩阵秩的限制条件，并且所获得的控制器在高频范围内具有很高的增益 。 因此在上述传递关系的基础上增加主动控制力作为被控输出，从而使被控系统满足标准 H∞ 控制问题的基本假设 。此外在 H∞ 理论中，针对具体的实际问题，考虑期望的系统输入信号和输出信号分量中相对的重要性，使用适当的加权函数是鲁棒控制器设计中非常重要的一步 。在本例多自由振动控制系统中考虑加权函数后，构建系统的输入输出模型为
+
+z = W1 G11 Wdw + W1 G12 u
+
+■u 1 = W2 u (10)
+
+y = G21 Wd + G22 u
+
+由式(10) 可得，考虑加权函数后的系统广义矩阵为
+
+
+
+即式(10) 可表示为
+
+ (12)式中，w , u 1 , z 上的权值函数为 Wd , W1 , W2 , 其闭环控制框图如图 11 所示。
+
+
+
+图 11 闭环控制系统框图
+
+Fig. 11 Block diagram of closed loop control system
+
+对于 H∞ 控制问题，通过加权函数反映性能指标更具有意义 。在实际多变量系统的控制设计中，向量信号中的某些分量往往比其他分量更重要 。此外，向量信号中的测量单位不尽相同，加权函数能够有效地对不同分量进行区分 。在实际问题中，对于不同频段内的性能要求各有不同，例如对于感兴趣的特定频段，期望其权重值限定在特定范围内 。以此来反映控制器设计在鲁棒性、控制力、干扰抑制力、控制重心、作动器输出限制等方面的实际性能需求 。上述系统中的外界扰动加权 wd 取 1 。
+
+w 1 为控制性能输出的加权及对振动控制性能指标的加权，在系统控制目标频段内，为了确保较好的振动抑制效果，w 1 的取值应尽量大 。其他频段上的取值应尽量小，以避免冗余的控制作用，因而此处的加权函数w 1 选择为
+
+w 1 = ( s + 0. 1) × ( s + 1 000) (13)
+
+0. 11 × ( s + 0. 1) × ( s + 10 000)
+
+其 bode 图如图 12 所示，从图 12 中可以在系统的共振频段内加权函数增益量级较大，而在不关注的系统频段内，加权函数幅值较小，因而说明该加权函数的选取符合预期要求。
+
+
+
+图 12 加权函数 w1 的 bode 图
+
+Fig. 12 Bode diagrams of relative weighting w1
+
+w2 是主动控制力加权函数，在系统的主要控制频段区域，为了确保控制效果，必须保证有足够的控制力输入，因此该区域的取值应尽量较小 。在不关注的频段，为了削弱控制力的效果，其值应尽量较大 。此外，为了避免饱和现象以及对作动器进行有效保护 w2 的增益幅值应该限定在一定的范围内 。系统的加权函数w2 选取为
+
+w2 = (14)
+
+0. 02 × ( s + 10) × ( s + 10 000)
+
+( s + 1) × ( s + 1 000)
+
+其 bode 图如图 13 所示，可见在系统共振频段内加权函数 w2 增益量级较小，而在其他系统频段内，加权函数幅值较大，该加权函数的选取符合预期要求。
+
+
+
+图 13 加权函数 w2 的 bode 图
+
+Fig. 13 Bode diagrams of relative weighting w2
+
+3. 5 仿真结果分析
+
+将加权函数代入式(10 ) , 基于 Doyle 等 [19] 的鲁棒控制算法 。求取出最优的 H∞ 性能值 γ = 0. 524 , 并得到鲁棒控制器 K。 由前面的分析可知，不加控制前外界扰动到控制输出间传递函数为 G11 , 采用 H∞ 控制后外界扰动到控制输出间传递函数如式(6) 所示 。其中有无控制时扰动 w 到控制输出之间的传递函数 bode 图，如图 14 、图 15 所示 。从图 14 、15 中可以看出，在所关注的频段内辨识系统的传递函数与真实系统几乎相同，说明了该辨识结果的有效性，其次系统采用 H∞ 控制后其扰动到控制输出间的传递率在共振峰值区间相比原系统极大的降低了，说明该控制策略能够有效地降低系统在共振频率区间内的振动响应。
+
+
+
+图 14 有无控制时扰动 w 到控制输出 x4 的传递函数 bode 图 Fig. 14 Bode diagram of the transfer function from the disturbance
+
+w to control output x4 with or without control
+
+在传递函数频域分析的基础上，通过时域内分析系统在有无控制力作用下的响应，构建系统的 Simulink控制框图，如图 16 所示 。给系统输入扰动信号为功率谱密度为 5 × 10 - 6 的白噪声信号后，得到系统在不同的控制增益下有无控制时的系统控制输出 x4 , x3 响应，如
+
+图 17 、图 18 所示 。可以看出相比无控开环系统而言采用了 H∞ 反馈控制后的系统其响应的幅值大大降低了，对控制输出 x4 , x3 的振动控制效果十分显著，其中在不同的控制增益下系统的实时控制力随时间变化的曲线，如图 19 所示。
+
+
+
+图 15 有无控制时扰动 w 到控制输出 x3 的传递函数 bode 图
+
+Fig. 15 Bode diagram of the transfer function from the disturbance
+
+w to control output x3 with or without control
+
+
+
+图 16 主动控制系统的 Simulink 框图
+
+Fig. 16 Simulink block diagram of the active control system
+
+
+
+图 17 有无控制时 x4 在扰动 w 下的响应图
+
+Fig. 17 Response of x4 under disturbance w with or without
+
+control
+
+
+
+图 18 有无控制时 x3 在扰动 w 下的响应图
+
+Fig. 18 Response of x3 under disturbance w with or without control
+
+
+
+( a) F1 ( b) F2
+
+图 19 系统的实时控制力
+
+Fig. 19 Control forces of the system
+
+4 结 论
+
+本文针对结构振动控制过程中复杂系统难以建立有效的动力学模型，提出了基于数据驱动的方式来构建广义的控制对象，并通过 H∞ 鲁棒控制理论设计反馈控制器的结构振动控制策略。并以一多自由度箭载载荷隔振模型为例，验证了该方法的有效性，研究结论如下：
+
+(1) 相比于其他需要事先建立系统动力学方程的主动控制策略，该控制策略并不需要建立具体的结构动力学模型，只需要获得实际系统的输入输出数据即可构建控制器对被控结构振动进行控制，控制策略更容易实现，为工程结构的振动主动控制提供了新的解决思路。
+
+(2) 恰当地选择广义的输入输出以及充分考虑被控对象所需的控制频段是构建鲁棒控制器的关键 。带有反馈控制器的主动控制系统其扰动到控制输出间的振动传递率在控制频段区间相比无控系统得到了极大的降低，系统振动响应得到了有效的抑制。
+
+参 考 文 献
+
+[ 1] 于开平，庞世伟，赵婕． 时变线性／非线性结构参数识别
+
+及系统辨识方法研究进展[ J] . 科学通报，2009 , 54(20) : 3147-3156 .
+
+YU Kaiping , PANG Shiwei , ZHAO Jie . Advances in method of time-varying linear/nonlinear structural system identification and parameter estimate [ J ] . Chinese Science Bulletin , 2009 , 54(20) : 3147-3156 .
+
+[ 2] 唐晓峰，王皓，唐国安．动力学缩聚模型修正的矩阵逼近法[ J] . 上海航天，2007 , 144(5) : 10-13 .
+
+TANG Xiaofeng , WANG Hao , TANG Guoan. Updating dynamic reduced models using matrix approxi mation method [ J] . Shanghai Aerospace , 2007 , 144(5) : 10-13 .
+
+[ 3] GHANEM R , SHINOZUKA M . Structural-system identification. I : theory [ J ] . Journal of Engineering Mechanics , 1995 , 121(2) : 255-264 .
+
+[ 4] 马志赛，丁千．时变／非线性结构动力学系统辨识方法研究：第十四届全国振动理论及应用学术会议[ C] . 天津： NVTA , 2021 .
+
+[ 5] 邵敏强，陈卫东，佘重禧．基于 ERA 模型辨识的 H∞ 振动主动控制试验研究[J] . 振动与冲击，2017 , 36(2) : 72-76 . SHAO Minqiang , CHEN Weidong , SHE Zhongxi . Experiment study on the active vibration control using H∞ method based on ERA identification model [ J ] . Journal of Vibration and Shock , 2017 , 36(2) : 72-76 .
+
+[ 6] SCHOEN M P , HOOVER R C , CHINVORARAT S , et al.
+
+System identification and robust controller design using genetic algorithms for flexible space structures[ J] . Journal of Dynamic Systems , Measurement , and Control , 2009 , 131
+
+(3) : 031003 .
+
+[ 7] 王建宏，朱永红．两自由度控制器的直接数据驱动辨识[ J] . 华东交通大学学报，2016 , 33(5) : 65-75 .
+
+WANG Jianhong , ZHU Yonghong. Direct data-driven identification for controllers with two degrees of freedom [ J] . Journal of East China Jiaotong University , 2016 , 33(5) : 65-75.
+
+[ 8] XIE Y , WANG C , SHI H , et al. A data driven control method for structure vibration suppression [ J ] . Acta Astronautica , 2018 , 143 : 302-309 .
+
+[ 9] 辛峻峰，盛进路，张永波．数据驱动随机子空间法矩阵维数选择与噪声问题研究[ J] . 振动与冲击，2013 , 32(16) : 152-157 .
+
+XIN Junfeng , SHENG Jinlu , ZHANG Yongbo. Study on matrix dimension selection and noise problem of data-driven stochastic subspace method [ J ] . Journal of Vibration and Shock , 2013 , 32(16) : 152-157 .
+
+[10] 贾振，娄军强，杨依领，等．旋转柔性机械臂系统的试验模型辨识及伺服速度抑振控制[ J] . 振动与冲击，2020 , 39
+
+(24) : 76-82 .
+
+JIA Zhen , LOU Junqiang , YANG Yiling , et al. Experimental model identification and servo velocity vibration suppression control of rotating flexible robotic arm system [ J] . Journal of Vibration and Shock , 2020 , 39(24) : 76-82 .
+
+[11] DI GIROLAMO G D , SMARRA F , GATTULLI V , et al. Data-driven optimal predictive control of seismic induced vibrations in frame structures [ J ] . Structural Control and Health Monitoring , 2020 , 27(4) : e2514 .
+
+[12] 池维超．基于电磁作动器的整星主被动一体化隔振技术研究[ D] . 哈尔滨：哈尔滨工业大学，2015 .
+
+[13] 范新亮，王彤，张丽君，等．大型有限元模型频响快速修正方法[ J] . 振动与冲击，2021 , 40(13) : 193-200 .
+
+FAN Xinliang , WANG Tong , ZHANG Lijun , et al. Fast correction method for FRF of large FE model [ J] . Journal of Vibration and Shock , 2021 , 40(13) : 193-200 .
+
+[14] 张春良．振动主动控制及应用[ M] . 哈尔滨：哈尔滨工业大学出版社，2011 .
+
+[15] 王佳．基于子空间方法的闭环系统辨识[ D] . 大连：大连理工大学，2013 .
+
+[16] VAN OVERSCHEE P , DE MOOR B L. Subspace identification for linear systems : theor-implementation- applications [ M ] . Berlin : Springer Science & Business
+
+Media 2012
+
+.
+
+,
+
+[17] 梅生伟 ，申 铁 龙 ，刘 康 志． 现 代 鲁 棒 控 制 理 论 与 应 用[ M] . 北京：清华大学出版社，2008 .
+
+[18] 王广雄，袁欣．H∞ 设计：两块还是三块问题[ J] . 电机与控制学报，2001 , 5(2) : 81-83 .
+
+WANG Guangxiong , YUAN Xin. H∞ control : 2 block or 3 block problems[ J] . Electric Machines and Control , 2001 , 5
+
+(2) : 81-83 .
+
+[19] DOYLE J , GLOVER K , KHARGONEKAR P , et al. State- space solutions to standard H 2 and H∞ control problems[ C] ∥ 1988 American Control Conference . Atlanta , GA : IEEE , 1988 .

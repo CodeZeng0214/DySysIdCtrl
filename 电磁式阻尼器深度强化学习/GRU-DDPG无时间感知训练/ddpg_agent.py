@@ -49,12 +49,13 @@ class DDPGAgent:
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=actor_lr)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=critic_lr)
         
-    def select_action(self, state:np.ndarray, add_noise=True, epsilon=1.0, rand_prob=0.05)-> np.ndarray:
+    def select_action(self, state:np.ndarray, add_noise=True, epsilon=1.0, rand_prob=0.05, dt=None)-> np.ndarray:
         """选择动作，支持探索 (输入 state 是观测值)
         参数\n
         - state: 当前状态 (numpy array)\n
         - add_noise: 是否添加噪声 (布尔值)\n
         - epsilon: 噪声强度 (浮点数)\n
+        - dt: 时间步长（为了兼容GRU版本，传统DDPG忽略此参数）\n
         返回：\n
         - action: 选择的动作 (numpy array)"""
         # state 应该是 numpy array, e.g., shape [action_dim,]
@@ -183,7 +184,7 @@ class DDPGAgent:
 class GruDDPGAgent:
     def __init__(self, state_dim=1, action_dim=1, hidden_dim=64, action_bound=5.0, 
                  actor_lr=1e-3, critic_lr=1e-3, gamma=0.99, tau=0.005, sigma=0.2, 
-                 clip_grad=False, seq_len=10, num_layers=2):
+                 clip_grad=False, seq_len=10, num_layers=2, use_time_input=False):
         """基于GRU的DDPG代理参数\n
         state_dim: 状态维度\n
         action_dim: 动作维度\n
@@ -197,6 +198,7 @@ class GruDDPGAgent:
         clip_grad: 是否使用梯度裁剪\n
         seq_len: 序列长度\n
         num_layers: GRU层数\n
+        use_time_input: 是否使用时间步长作为输入\n
         """
         # 初始化参数
         self.gamma = gamma
@@ -207,13 +209,14 @@ class GruDDPGAgent:
         self.state_dim = state_dim
         self.clip_grad = clip_grad
         self.seq_len = seq_len
+        self.use_time_input = use_time_input
         self.model_name = None
         
         # GRU网络初始化
-        self.actor = Gru_Actor(state_dim, action_dim, hidden_dim, action_bound, seq_len, num_layers).to(device)
-        self.critic = Gru_Critic(state_dim, action_dim, hidden_dim, seq_len, num_layers).to(device)
-        self.target_actor = Gru_Actor(state_dim, action_dim, hidden_dim, action_bound, seq_len, num_layers).to(device)
-        self.target_critic = Gru_Critic(state_dim, action_dim, hidden_dim, seq_len, num_layers).to(device)
+        self.actor = Gru_Actor(state_dim, action_dim, hidden_dim, action_bound, seq_len, num_layers, use_time_input).to(device)
+        self.critic = Gru_Critic(state_dim, action_dim, hidden_dim, seq_len, num_layers, use_time_input).to(device)
+        self.target_actor = Gru_Actor(state_dim, action_dim, hidden_dim, action_bound, seq_len, num_layers, use_time_input).to(device)
+        self.target_critic = Gru_Critic(state_dim, action_dim, hidden_dim, seq_len, num_layers, use_time_input).to(device)
         
         # 复制参数到目标网络
         self.target_actor.load_state_dict(self.actor.state_dict())
@@ -225,38 +228,67 @@ class GruDDPGAgent:
         
         # 用于维护状态历史的缓冲区
         self.state_history = []
+        self.time_history = [] if use_time_input else None
         
     def reset_state_history(self):
         """重置状态历史，在新的episode开始时调用"""
         self.state_history = []
+        if self.time_history is not None:
+            self.time_history = []
         
-    def select_action(self, state: np.ndarray, add_noise=True, epsilon=1.0, rand_prob=0.05) -> np.ndarray:
+    def select_action(self, state: np.ndarray, add_noise=True, epsilon=1.0, rand_prob=0.05, dt=None) -> np.ndarray:
         """选择动作，支持探索
         参数\n
         - state: 当前状态 (numpy array)\n
         - add_noise: 是否添加噪声\n
         - epsilon: 噪声强度\n
         - rand_prob: 随机动作概率\n
+        - dt: 当前时间步长（如果使用时间输入）\n
         返回：\n
         - action: 选择的动作 (numpy array)
         """
         # 更新状态历史
         self.state_history.append(state.copy())
         
+        # 如果使用时间输入，更新时间历史
+        if self.use_time_input and self.time_history is not None:
+            if dt is not None:
+                self.time_history.append(dt)
+            else:
+                # 如果没有提供时间步长，使用默认值
+                self.time_history.append(0.001)
+        
         # 如果历史长度不够，使用零填充或重复当前状态
         if len(self.state_history) < self.seq_len:
             # 用当前状态填充不足的部分
             padded_history = [state] * (self.seq_len - len(self.state_history)) + self.state_history
+            if self.use_time_input and self.time_history is not None:
+                current_dt = dt if dt is not None else 0.001
+                padded_time_history = [current_dt] * (self.seq_len - len(self.time_history)) + self.time_history
         else:
             # 保持最近的seq_len个状态
             padded_history = self.state_history[-self.seq_len:]
+            if self.use_time_input and self.time_history is not None:
+                padded_time_history = self.time_history[-self.seq_len:]
+            # 保持最近的seq_len个状态
+            # padded_history = self.state_history[-self.seq_len:]
             
         # 构建状态序列
         state_seq = np.array(padded_history)  # [seq_len, state_dim]
         state_seq_tensor = torch.tensor(state_seq, dtype=torch.float32).unsqueeze(0).to(device)  # [1, seq_len, state_dim]
         
+        # 如果使用时间输入，构建时间序列
+        time_seq_tensor = None
+        if self.use_time_input and self.time_history is not None:
+            time_seq = np.array(padded_time_history)  # [seq_len]
+            time_seq_tensor = torch.tensor(time_seq, dtype=torch.float32).unsqueeze(0).unsqueeze(-1).to(device)  # [1, seq_len, 1]
+        
         with torch.no_grad():
-            action_tensor = self.actor(state_seq_tensor)
+            if self.use_time_input:
+                action_tensor = self.actor(state_seq_tensor, time_seq_tensor)
+            else:
+                # 为了兼容旧版本网络，传递None作为时间序列
+                action_tensor = self.actor(state_seq_tensor, None)
             action_np = action_tensor.cpu().detach().numpy()
             action = action_np.flatten()
             
@@ -274,16 +306,23 @@ class GruDDPGAgent:
             return 0.0, 0.0
         
         # 1. 从回放池中采样
-        state_seqs, actions, rewards, next_state_seqs, dones = replay_buffer.sample()
+        state_seqs, actions, rewards, next_state_seqs, dones, time_seqs, next_time_seqs = replay_buffer.sample()
         
         # 2. 计算目标Q值
         with torch.no_grad():
-            next_actions = self.target_actor(next_state_seqs)  # [batch_size, action_dim]
-            target_q = self.target_critic(next_state_seqs, next_actions)  # [batch_size, 1]
+            if self.use_time_input:
+                next_actions = self.target_actor(next_state_seqs, next_time_seqs)  # [batch_size, action_dim]
+                target_q = self.target_critic(next_state_seqs, next_actions, next_time_seqs)  # [batch_size, 1]
+            else:
+                next_actions = self.target_actor(next_state_seqs, None)  # [batch_size, action_dim]
+                target_q = self.target_critic(next_state_seqs, next_actions, None)  # [batch_size, 1]
             target_value = rewards + self.gamma * target_q * (1 - dones)  # [batch_size, 1]
             
         # 3. 更新Critic网络
-        current_q = self.critic(state_seqs, actions)  # [batch_size, 1]
+        if self.use_time_input:
+            current_q = self.critic(state_seqs, actions, time_seqs)  # [batch_size, 1]
+        else:
+            current_q = self.critic(state_seqs, actions, None)  # [batch_size, 1]
         critic_loss = F.mse_loss(current_q, target_value)
         
         self.critic_optimizer.zero_grad()
@@ -293,8 +332,12 @@ class GruDDPGAgent:
         self.critic_optimizer.step()
         
         # 4. 更新Actor网络
-        policy_actions = self.actor(state_seqs)  # [batch_size, action_dim]
-        actor_loss = -self.critic(state_seqs, policy_actions).mean()
+        if self.use_time_input:
+            policy_actions = self.actor(state_seqs, time_seqs)  # [batch_size, action_dim]
+            actor_loss = -self.critic(state_seqs, policy_actions, time_seqs).mean()
+        else:
+            policy_actions = self.actor(state_seqs, None)  # [batch_size, action_dim]
+            actor_loss = -self.critic(state_seqs, policy_actions, None).mean()
         
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
@@ -303,8 +346,8 @@ class GruDDPGAgent:
         self.actor_optimizer.step()
         
         # 5. 软更新目标网络
-        self._soft_update(self.actor, self.target_actor)
-        self._soft_update(self.critic, self.target_critic)
+        self._soft_update(self.target_actor, self.actor)
+        self._soft_update(self.target_critic, self.critic)
         
         return critic_loss.item(), actor_loss.item()
     

@@ -1,0 +1,1194 @@
+第 46 卷第 4 期 宇 航 学 报 Vol. 46 No. 4
+
+2025 年 4 月 Journal of Astronautics April 2025
+
+时滞与未知扰动下航天器时变编队最优协同跟踪
+
+岳晓奎 1，2 ，魏铂淞 1，2 ，党朝辉 1，2 ，代洪华 1，2 ， 吕茂隆 3
+
+（1. 西北工业大学航天学院，西安 710072；2. 西北工业大学航天飞行动力学重点实验室，西安 710072；
+
+3. 空军工程大学空管领航学院，西安 710051）
+
+摘 要：针对航天器编队实现快速低能耗构形恢复与保持的需求，研究编队在通讯时滞与未知扰动下的构形跟踪问题，提出一种抗扰时滞最优协同控制器。为进一步缩短构形恢复时间并降低编队总体燃料消耗，基于构形标称连边与实时连边之间的边误差，以编队构形的连边为对象引导编队协同；进而设计了融合“边误差”与“控制耦合”的时滞非线性性能指标，通过构造不变流形实现对该非线性指标最优解的渐进逼近，建立了动态最优反馈控制器；同时通过扰动观测设计前馈控制实现扰动抑制。稳定性分析证明，该方法能够保证航天器编队构形跟踪误差的闭环一致最终有界；仿真校验表明，提出的时滞最优协同控制器能够在通信时滞与未知扰动下有效降低编队构形跟踪的时间花费与燃料消耗。
+
+关键词：航天器编队；最优协同；通讯时滞；扰动抑制
+
+中图分类号：V448. 2 文献标识码：A 文章编号：1000-1328（2025）04-0753-12
+
+DOI：10. 3873/j. issn. 1000-1328. 2025. 04. 010
+
+Optimal Cooperative Tracking of Time-varying Spacecraft Formation with Time Delay and Unknown Disturbances
+
+YUE Xiaokui1，2，WEI Bosong1，2，DANG Zhaohui1，2，DAI Honghua1，2，LYU Maolong3
+
+（1. School of Astronautics，Northwestern Polytechnical University，Xi ’an 710072，China；2. National Key Laboratory of Aerospace
+
+Flight Dynamics，Northwestern Polytechnical University，Xi ’an 710072，China；3. College of Air Traffic Control and
+
+Navigation，Air Force Engineering University，Xi ’an 710051，China）
+
+Abstract: Considering the requirements for formation recovery and maintenance with lower consumption and time costs， the optimal cooperative control problem is investigated，and an optimal cooperative controller is developed. To facilitate faster formation recovery，the formation is guided to maneuver through configuration edges based on the error between each real-time edge and the nominal one. Subsequently，nonlinear performance indices based on“edge error”and“control coupling ”are designed. The optimal solutions to these indices are asymptotically approximated by introducing invariant manifolds， leading to the derivation of a dynamically optimal feedback controller. Furthermore，a bounded attenuation for unknown disturbances is achieved through the implementation of an observer-based feedforward controller. Stability analysis demonstrates that the closed-loop tracking errors of the formation，under time delays and disturbances，are uniformly ultimately bounded by the proposed controller. Simulations show that the time costs and fuel consumption for configuration tracking，under time delays and disturbances，can be effectively reduced.
+
+Key words: Spacecraft formation ；Optimal cooperation ；Time delay ；Disturbance attenuation
+
+收稿日期：2024-06-18 ； 修回日期：2024-09-12
+
+基金项目：国家重点研发计划（2021YFC2202600）；国家自然科学基金（U2013206，12172288，12472046）
+
+中国知网 https : //w , cxnk:i. net
+
+0 引 言
+
+随着空间探索进程的深入，单一高性能航天器已难以满足部分空间任务的需求（例如空间引力波
+
+探测［1-2］、分布式空间太阳能存储［3］与天体差分干涉
+
+量测［4］等），因而采用多航天器编队作业方式已成为必然选择［5］，而保证编队对标称构形的稳定跟踪是关键技术之一。针对带有小推力约束的航天器编队构形跟踪与保持问题，蔡曜等［6］通过包含摄动前馈的滑模控制策略实现了静态电磁力编队的长期高精度保持；宋申民等［7］针对航天器编队受限推力、外部扰动和模型不确定性，提出了一种连续鲁棒自适应控制策略实现编队构形跟踪控制。然而，对于燃料补充困难及控制窗口较短的航天器编队，往往要求以最优燃料消耗与最短时间完成对标称构形的跟踪［8］。
+
+采用最优协同控制框架是目前航天器编队实现上述目标的主要方式。针对采用非线性模型描述的精确编队最优协同控制问题，近年来涌现出了以模型预测控制、状态相关黎卡提方程及近似/自适应动态规划等编队最优协同控制技术。 Yu 等［9］通过基于线性二次型指标的单体最优轨迹跟踪实现了编队构形跟踪与保持。 Hu 等［10］根据逆优化理论研究满足线性二次型指标的时变编队最优跟踪控制。柴源等［11］通过状态相关 Riccati 方程迭代求解了多个微小卫星接管失效卫星的非线性最优协同控制器。由于上述线性二次型协同指标不参考编队中其他航天器的跟踪误差及控制策略，可能在协同过程中产生部分无益于构形整体跟踪误差减少的机动动作。这将限制部分长期在轨编队的使用性能。
+
+同时，由于上述最优协同方法尚不能实现对通信时滞的最优补偿，目前主要基于扩展时滞积分项的 Lyapunov 函数或网络训练导出独立时滞补偿控制器。 Liu 等［12］为大尺度航天器编队协同构形跟踪构造了引入时滞的 Lyapunov 函数，进而提出了一种有限时间滑模控制方法，实现了有界时滞变化率下的编队构形跟踪。 Zhang 等［13］提出一种拓展时滞积分项的 Lyapunov 函数解决空间引力波探测编队在通讯时滞与未知扰动下的自适应编队构形控制问题。陈谋等［14］在基于线性二次型指标的编队最优协同控制器基础上，通过独立神经网络设计时滞补偿。由于时滞影响的持续性，长期非最优时滞补偿
+
+将累积额外消耗。另一方面，目前对于指标控制耦合导致二次时滞的讨论尚少。
+
+此外，未建模不确定性与碎粒碰撞等未知非周期扰动也同时为航天器编队的构形跟踪性能带来了巨大挑战。由于扰动存在的客观性而不必考虑最优抑制，目前主要通过阻尼注入或估计前馈实现扰动抑制。 Franco 等［15］基于端口哈密顿模型设计了Casimir 守恒的控制器实现了扰动阻尼下的轨迹跟踪。 Zhang 等［16］提出一种固定增益干扰观测器实现了对系统扰动的有界补偿。董朝阳等［17］基于扩张状态观测设计自抗扰控制律实现了非线性时变受扰编队的协同控制。
+
+综合上述分析，本文针对通信时滞与未知扰动下的航天器编队构形最优协同跟踪控制问题，基于以下工作进一步降低了燃料消耗与构形恢复时间：
+
+1）设计动态观测器实现对航天器编队所受未知扰动的一致最终有界估计与前馈抑制；2）通过设计“边误差”与“控制耦合”指标，提出时滞非线性性能指标，引导航天器协同地保证构形各实时连边与标称连边重合来实现编队构形恢复，确保航天器机动行为总是有益于编队整体跟踪误差的下降；3）相对于传统近似最优控制器求解所需的迭代或网络训练，通过构造不变流形，设计了可渐进逼近非线性指标最优解的在线反馈控制器。
+
+1 问题描述与模型分析
+
+1. 1 问题描述
+
+本文以 N 颗全驱动连续小推力航天器构成的编队为研究对象。因燃料补充难度大且可控时间区间短，要求在时变通讯时滞与未知扰动下，保证航天器编队实现对时变标称构形的精确恢复与稳定跟踪，同时要求构形恢复与保持过程花费时间与燃料尽可能少，如图 1 所示。
+
+1. 2 航天器编队构形跟踪模型
+
+根据拉格朗日力学原理，考虑航天器编队非线性相对运动模型如下［18］：
+
+x.i (t ) = [ q. ，q“ ]T =
+
+
+
+式中：qi (t ) ∈ R3 与 q.i (t ) ∈ R3 分别为航天器 i 在编队中心 LVLH 系中的相对位置矢量与相对速度矢量，
+
+
+
+图 1 编队标称构形及编队构形跟踪
+
+Fig. 1 Formation nominal configuration and formation
+
+configuration tracking
+
+i(t内) [ i1 综，qi2合，q未i3]知；() ∈；uRi 航3天i受i
+
+T
+
+制 输 入 ；xi (t ) = [ q，q. ]T∈ R6 为 状 态 变 量 ；非 线 性
+
+Ni (q.i，ω , ω.，r ) ∈ R3 与 Coriolis项 Ci ( ω ) ∈ R3 × 3 为
+
+
+
+Ni (q.i，ω , ω.，r ) = mi .
+
+
+
+式中：ω (t ) ∈ R，ω.(t ) ∈ R 与 r (t ) ≜ ‖RT (t ) ‖ ∈ R 分别为编队中心绕中心天体角速度的大小、角加速度大小以及相对中心天体位置矢量模值；mi 为航天器 i的质量；μ c 为中心天体引力常数。
+
+各航天器标称相对运动模型为
+
+x.id (t ) = [ q. ，q“ ]T =
+
+
+
+式中：xid (t ) = [ q，q. ]T 为航天器 i 的标称轨迹；非线
+
+性 Ni (q.id，ω , ω.，r ) ∈ R3 与 Coriolis 项 Ci ( ω ) ∈ R3 × 3 分别与式（2）、（3）同理定义。
+
+根据式（1）、（4），考察航天器 i 跟踪误差变量 i = xi - xid ∈ R6，则编队相对标称构形的跟踪误差系统为
+
+i = x.i - x.id =
+
+A-i i + B-i (fi (qi ) - fi (qid )) +
+
+H-i-1 B-i ui + H-i-1 B-iFdi （5）
+
+式 中：fi (qi ) = ( μ s (qi + rey )‖ RT + qi ‖ ∈ R3 为 状 态
+
+3
+
+非线性项；ey =[ 0，1，0]T ∈ R3；H-i ≜ miI6；B-i =[ 03，I3 ]T；且有
+
+
+
+由于式（5）中非线性项fi (qi ) ~fi (qid )为光滑连续函数，故根据显式线性化原理［19］，一定存在连续矩 阵 值 函 数 F-i (.) ∈ R6 × 6 满 足 F-i i i = B-ifi (qi ) - B-ifi (qid )。则可得航天器 i 跟踪误差系统为：
+
+i = F-i 
+
+通过协同控制框架，式（7）中控制输入 ui 将由所有编队航天器的状态共同决定。然而在通讯时滞情况下，航天器 i 能够获取的状态信息可整合为  T ∈ R6N。 根据式（7），整合向量i，τ 满足的微分方程写为：
+
+
+
+
+
+其中，
+
+
+
+为方便描述，后文记 ui 
+
+为 uj，2τ。
+
+1. 3 基本假设
+
+基于建立的航天器构形跟踪模型，本文研究基于如下基本假设：
+
+1）各航天器所受综合扰动 Fdi 未知但其本身及一阶微分有界，即| Fdi | ≤ | F-di |，且 | F.di | ≤ μ。
+
+2）编队间通讯时滞变化率有界且满足| τ.ij | ≤ hij < 1，∀i，j = 1，… , N。
+
+2 编队抗扰时滞最优协同控制器设计
+
+在未知扰动下，为进一步降低编队构形恢复与保持过程的总体燃料消耗与构形恢复时间，同时实现时滞影响的最优抑制，本节设计一种基于非线性
+
+性 能 指 标 的 时 滞 最 优 协 同（Nonlinear-index time- delay optimal cooperative，N-TOC）控 制 器 如 图 2 所示。时滞最优协同控制器 ui，τ 可分解为
+
+u ，τ = ui，τ + udi （10）
+
+式中：反馈的时滞最优协同控制器 ui，τ ∈ R3 用于实现编队标称构形最优跟踪与通讯时滞最优补偿；前馈的扰动抑制控制器 udi ∈ R3 用于补偿未知扰动。
+
+
+
+图 2 编队 N-TOC控制器框架示意图
+
+Fig. 2 N-TOC controller framework
+
+2. 1 扰动抑制控制器设计
+
+针对航天器 i 所受未知扰动 Fdi，设计如下扰动观测器：
+
+
+
+（11）
+
+式中：di ∈ R3 为 Fdi 的估计值；θ(t ) ∈ R6 为引入的辅
+
+助变量；ρ ∈ R 为调节估计误差的正系数。
+
+定理 1. 考虑通讯时滞下编队相对标称构形的跟踪误差系统式（5），所受未知扰动 Fdi 满足假设 1，则由 动 态 扰 动 估 计 器 式（11）给 出 的 扰 动 估 计 误 差
+
+di ≜ Fdi - di 一致最终有界。
+
+证. 针对估计误差 di 定义如下 Lyapunov 函数：
+
+Ldi di （12）
+
+对其求时间导数可知：
+
+L.di = -ρi Γ-H，B di + iF.di ≤
+
+-2ρλmin ( Γ-H，B )Ldi + μ | di | （13）
+
+式中：常矩阵 Γ-H，B = B- H-i-TH-i-1 B-i；λmin ( Γ-H，B )为方阵
+
+Γ-H，B 的最小特征值。且仅当估计误差模值 | di | >
+
+时，有 L.di < 0，估计误差 di 一致最
+
+))
+
+μ/( ρλmin (
+
+-
+
+Γ
+
+H，B
+
+终有界。
+
+进而，构建扰动抑制控制器 udi (t ) = - di。
+
+2. 2 时滞最优协同控制器设计
+
+传统编队构形恢复指标设计以成员航天器的自身跟踪误差及其相对邻接航天器的状态一致误差引导航天器编队构形协同恢复，同时约束自身的控制消耗最小。由于未在指标中考虑邻接航天器相对标称轨迹的误差，可能导致邻接航天器的部分机动无益于自身构形恢复而产生额外的过机动量，造成不必要的调整时间与燃料消耗。为此，本文在成员航天器的指标设计中综合考虑了所有航天器的构形跟踪误差及控制消耗，这使得成员航天器的
+
+机动动作均有益于编队整体跟踪误差及控制消耗的缩小，从而抑制了过机动的产生。这在几何上也恰好形成了以编队构形实时连边 xi -xj 与对应标称连边 xid -xjd 之间的边误差为主导的协同方式，即通过引导航天器协同地保证构形各实时连边与标称连边重合来实现编队构形恢复。综合上述考虑，为航天器 i 设计如下基于“边误差”与“控制耦合”的非线性性能指标泛函 Ji ∈ R：
+
+
+
+式中：fi (u 1，2τ , … , uN，2τ)为“控制耦合”项，用于反映编队其他航天器的控制策略，会使得任意航天器在决策自身控制策略时均会综合参考其他航天器的控制策略，从而保证编队总体控制能量消耗的最小化。“边误差”通过如下非线性项 qi i，τ )引入：
+
+
+
+式中：κ i，α Fi 均为正系数，κ i 引导的比例项用于实现通讯时滞的最优补偿。正系数 hF ∈ N+ 且 ≥ 1 用于调节指标数值对边误差的灵敏度。
+
+基 于 边 误 差 的 编 队 协 同 机 理 如 图 3 所 示 。 cFii，τ ) 由所有从航天器 i 出发的构形实时连边与对应标称连边的边误差共同影响。当任意航天器 i 偏离自身标称轨迹时，造成的边误差将总是驱动编队其他航天器协同调整，相当于增大了各航天器相对自身标称位置的阻尼，从而减小了产生的过机动量。 qi i，τ )取极小时，编队构形中存在的边误差总和将归于零值，从而实现编队构形恢复与保持。
+
+根据泛函极值条件［20］，求解时滞最优协同控制
+
+策略 ui，τ 将归结为精确求解关于最优值函数 Vi∗ 
+
+的耦合 Hamilton-Jacobi-Isaacs（HJI）偏微分方程组：
+
+
+
+
+
+由于难以解析求解非线性偏微分方程组（16）的精确解，即最优值函数 Vi*，且方程组（16）存在二次
+
+状态xjτ(一次时滞)
+
+状态uj,2τ(二次时滞)
+
+
+产生必要相对运动
+
+
+
+边误差
+
+ (时滞)  (xi-xj,τ)-(xjd-xjd,τ)≠0 ∀j≠i
+
+1 航天器
+
+1 航天器标称位置
+
+ x1d
+
+
+
+
+
+2 航天器
+
+实际位置
+
+x2
+
+
+
+
+
+指标qi (xi, xjτ)
+
+下降梯度方向 3
+
+
+ 构形跟踪
+
+∀xi-xid=0
+
+点误差
+
+
+
+2 航天器
+
+标称位置
+
+x2d
+
+实际位置
+
+x1
+
+jxi-xj,τ)≠0
+
+协同机构
+
+
+图 3 基于边误差的编队协同示意
+
+Fig. 3 Formation cooperation based on edge error
+
+时滞项，本文提出一种可直接构造的近似值函数 Vi并渐进逼近最优值函数，避免了传统近似求解方法必需的迭代计算或网络训练。
+
+定义 1.（对角矩阵解）考虑系统式（8）与各航天器个体 性 能 指 标 式（14），对 于 一 组 矩 阵 函 数 Σi (.)： R6N → R6N × 6N，满 足 Σi (.) + ΣiT (.) > 0 且 Σi (0 ) + ΣiT (0 ) > 0。则满足以下条件的所有对角矩阵函数Pi (.) = PiT (.) 被称为原 HJI 偏微分方程组式（16）的一个对角矩阵解：
+
+1）对任意i，τ ∈ R6N，矩阵函数 Pi i，τ )满足：
+
+I ≥ BHj-TPi i，τ )(Σi i，τ ) + ΣiT i，τ )). Pi i，τ )Hj-1 Bj
+
+（17）
+
+2）对任意i，τ ∈ R6N，矩阵函数 Pi i，τ )满足： 
+
+
+
+3）记 Pi (0 ) = P- i，Qi (0 ) = Q- i，Σi (0 ) = Σ- i，则 矩
+
+-
+
+阵 P i 满足：
+
+
+
+
+
+根据定义 1，引入辅助变量 ξi ∈ R6N，i = 1，…, N，并构造式（16）的近似值函数为：
+
+
+
+
+
+式中：矩阵函数 Pi ( ξi，τ ) ∈ R6N × 6N 为可直接构造的对
+
+角矩阵解：
+
+
+
+同时，式（20）中 Ri 分块结构与 Pi 相同，即对于
+
+所有p ≠ q 或p = q ≠ i，有 Rq (.) = 0 。ξi 的动态方程
+
+设计为：
+
+
+
+
+
+式中：矩阵函数 ΨiT i，τ , ξi ) ∈ R6N × R6N → R6N × 6N定义为列向量 ( 12) . Pi ( ξi，τ i，τ 的雅可比矩阵；ki ∈ R为各辅助变量调节系数。
+
+进而，由式（20）设计时滞最优协同控制器 uoi，τ 为 
+
+
+
+（23）
+
+式中：矩阵函数 Φi，τ , ξi ) ∈ R6N × R6N → R6N × 6N
+
+满足：
+
+
+
+由于式（22）为全局渐进稳定，故辅助变量的调节律式（22）总是将 ξi 向着使 i，τ → 0 与误差i，τ - ξi ) → 0 调节。最终i，τ 将收敛到包含原点的不变流形 Mi：{i，τ , ξi ) i，τ - ξi = 0}，即 Vi i，τ , ξi ) → Vi* (t )，
+
+此时动态控制器 uoi，τ 将实现对式（10）中最优控制器ui，τ 的精确逼近。
+
+定理 2. 考虑系统式（8）以及个体性能指标式（14）。取对角形矩阵 Pi i，τ )满足定义 1；取矩阵函数 Ri =
+
+R > 0。构造的近似值函数 Vi i，τ , ξi )式（20）在包
+
+含原点的邻域 Ω⊆ R6N × R6N 中为正定。同时对于标量函数 ei i，τ , ξi )满足 ei i，τ , ξi ) = -2Iis，则：
+
+1）对于所有 ki ≥ k-i 以及 i，τ , ξi ) ∈ Ω,存在一组有 界 常 数 i，i = 1，… , N，使 得 构 造 的 近 似 值 函 数Vi i，τ , ξi ) 式（20）满 足 如 下 耦 合 HJI 偏 微 分 不 等式组：
+
+
+
+
+
+
+
+
+
+
+
+2）由反馈控制器 uoi，τ 式（23）与前馈控制器udi =
+
+-di 构成的抗扰时滞最优协同控制器 ui，τ = uoi，τ + udi
+
+式（10）使编队构形跟踪误差一致最终有界。
+
+3 稳定性分析
+
+对应定理 2 的两个结论，首先说明构造的近似值函数 Vi 
+
+其次说明抗扰时滞最优协同控制器 ui，τ = uoi，τ + udi在通讯时滞与未知扰动下确保了闭环系统式（8）在原点 i，τ = 0 附近的一致最终有界。
+
+1）由 式（22）与 式（23），记 整 合 向 量 Θ ≜   R6NN。式（25）中第 i 个不等式对称化后可整理为如下形式：
+
+
+
+式 中 ：矩 阵 函 数 Zi：R6N × R6N → R12NN × 12NN 是 Iis + (Iis)T 中所有不包含系数 ki 的项的系数矩阵，并可以写为如下分块形式：
+
+
+
+式中：记 Pi i，τ ) ≜ Pi，τ ,各分块项系数写为：
+
+
+
+| zi2，jj = -1 2 (Pj，2τHj-1 Bj BHj-T (Rj，τ - Φj，τ )) -
+
+| -12 ((Rj，τ - Φj，τ )THj-1 Bj BHj-T Pj，2τ )
+
+cHl，ij- PAj，，i (Ri - Φi ))（28）
+
+|，1，  -(2(-iP(-j，-ΦB-1，ji-i(-，iH--Φj-j，j)， ) -
+
+| T
+
+| zi4，jj = -(Rj，τ - Φj，τ ) Hj-1 Bj BHj-T (Rj，τ - Φj，τ )
+
+■
+
+其中，Acl，i ≜ Ai，τ - Hi-1 BiBHi-TPi，τ。
+
+矩 阵 函 数 Ti(j )：R6N × R6N → R6N × 12NN 为 式（25）中所有含 ki 项的系数矩阵，并为如下分块形式：
+
+
+
+注意到如下矩阵函数 Ki ∈ R12NN × 12NN满足：
+
+
+
+（30）
+
+其列向量恰好同时张成 Ti(j ) 的核空间。根据舒尔补正定判据，存在一个原点的非空邻域 Ω 与一 组 有 界 常 数 k-i 使 得 对 于 所 有 ki ≥ i 以 及 任 意
+
+i，τ , ξi ) ∈ Ω使 I + (I )T 为负半定，即式（25）成立［21］。
+
+2）取 Pk = -Acl，i/2，根据 Lyapunov-Krasovskii 定理，考虑如下标量 Lyapunov候选函数：
+
+
+
+
+
+据原 HJI PDEs 式（16），式（31）的时间导数对
+
+于所有原点邻域中的  满足：
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+（32）
+
+式中：∇ = -(Acl，i + A，i )，λmin ( ∇ ) 为其最小特征值。
+
+矩阵函数 Εi 为：
+
+
+
+式中：各分块项系数写为：
+
+
+
+常矩阵 Bi 与扰动估计误差 di 均有上界，
+
+则根据式（32）可知当 i，τ |> 2‖Hi-1 Bi ‖| di |/λmin ( ∇ ) +
+
+2j ‖ Hj-1 Bj min i，τ , ξi ) < 0，编队构形跟踪误差一致最终有界［22］。
+
+4 仿真校验
+
+本节以空间引力波探测编队非科学模式下的构形恢复与保持作为数值案例，采用 N = 3 颗航天器构成由空间圆约束的正三角构形且编队平面随其动态演化。主要呈现：1）通过执行器理想条件下的控制性能分析及对比，说明提出方法的有效性与先进性；2）通过执行器非理想条件下的控制性能分析，验证提出方法的鲁棒性。
+
+4. 1 仿真参数设置
+
+编队中心轨道根数：半长轴 ac = 1. 495 9 × 1011 m；偏心率 ec = 0. 003 4；轨道倾角 ic = 0°；升交点赤经Ωc = 0°；近日点辐角 ω c = 0° 以及初始真近点角fc = 20°。考虑通信时滞为 ∀τij = τji = | qi - qj |vcs，其中qi -qj 表示航天器 i，j 在编队中心 LVLH 系下的实时距离，vc 为光速。同时，标称构形动态演化需满足如下几何约束［23］：
+
+
+
+式中：θi ∈ R 为第 i 个航天器在空间圆上的相角。 d为约束编队平面圆的几何半径。
+
+航天器质量 mi = 300 kg；由日心轨道分析［24］，设航天器受总扰动 Fdi = mi 2. 78 × 10-6 sin ( ωt )I3 × 1 N；式（35）中相位角 θ i ∈ R 分别取为 30° 、150°与 270° ;空间圆半径 d = 5 × 108 m。设 Sat1～3 由以下位置ρ d (0) ∈ R3N与速度ρ.d (0) ∈ R3N开始启动构形恢复与保持控制：
+
+
+
+
+
+编队相对标称构形的初始误差  R3N 与 (0) ∈ R3N为：
+
+
+
+
+
+式（15）代数矩阵解参数设计为：κ i = 1 × 10-3， hF = 1，α Fi = 3 × 10-5，βFi = 3 × 10-6，γi = 1 × 10-3。
+
+辅助系统式（22）中，取增益 ki = 0. 05，i = 1，2，3； Ri = diag{0 … I(i) … 0 }。本文将各航天器辅助系统初始化为：
+
+
+
+
+
+在数值计算中选取采样步长取 h = 1 s，仿真总时间 t0 = 0 s，tf = 1 × 106 s（约 1/2个恒星月）。
+
+4. 2 控制器有效性及性能分析
+
+本小节通过仿真对比来校验本文方法的控制性能。对比方法 1采用基于线性二次型指标的时滞最优单体（Linear quadratic-index time-delay optimal single，LQ-TOS）编队控制方案，相似控制器结构已被用于编队时滞最优控制问题［9］；对比方法 2采用基于线性二次型指标的时滞最优协同（Linear quadratic- index time-delay optimal cooperative，LQ-TOC）编队控制方案，相似控制思想已被用于编队时滞最优协同控制［13-14］。在相同任务参数设计下，用 3 种方法进行仿真实验，得到实验结果如下。
+
+图 4 与图 5对比了 N-TOC方法、LQ-TOC方法与LQ-TOS 方法在 Sat1 相对标称位置轨迹跟踪误差q 1 -q 1d  T 与 Sat1相对标称速度轨迹跟踪
+
+误差 q.1 -q.1d =[ .11，.12，.13 ]T 的动态曲线。本文 N-TOC
+
+方法在 1 923 s实现了对 Sat1标称轨迹的位置跟踪精度连续 300 s 小于 1 m，构形恢复时间相对 LQ-TOC与 LQ-TOS 方法分别缩短了约 25% 与 37%。图 4 与
+
+图 5局部展示了2 500 s 至 3 000 s 内的跟踪曲线，本文 N-TOC 方法通过非线性状态指标 qi i，τ )实现了更优的跟踪精度与更好的时滞抑制能力。表 1对比了全仿真时间下 N-TOC 方法与两种对比方法的最终跟踪精度。对比方案 1 的最终精度主要受限于编队摄动。得益于 N-TOC 方法反馈控制部分在平衡点处的渐进稳定性，较 LQ-TOC 方法通过网络训练方案得到的最终跟踪精度更优。
+
+13m 12m q11/m
+
+6 000
+
+2 000
+
+0
+
+-2 000
+
+6 000
+
+2 000
+
+0
+
+-2 000
+
+2 000
+
+0
+
+-2 000
+
+-6 000
+
+ N-TOC  LQ-TOC  LQ-TOS
+
+
+
+0.5
+
+0
+
+
+
+-1.0
+
+2 800 3 000
+
+0.2
+
+0
+
+
+
+-0.2
+
+2 800 3 000
+
+0.1
+
+0
+
+
+
+-0.2
+
+2 800 3 000
+
+300
+
+0
+
+-100
+
+0 1 000 20 00 3 000时间/s
+
+(a) Satl x 轴位置跟踪误差
+
+0
+
+
+
+-500
+
+0 1 000 2 000 3 000时间/s
+
+(b) Satly 轴位置跟踪误差
+
+
+
+500
+
+0
+
+
+
+-500
+
+0 1 000 2 000 3 000时间/s
+
+(c) Sat1 z 轴位置跟踪误差
+
+图 4 Sat1位置轨迹跟踪误差
+
+Fig. 4 Position trajectories tracking error of Sat1
+
+q13/(m·s-1) q12/(m·s-1) q11/(m·s-1)
+
+20
+
+10
+
+0
+
+-10
+
+10
+
+0
+
+-10
+
+20
+
+10
+
+0
+
+-10
+
+ N-TOC  LQ-TOC  LQ-TOS
+
+×10-3
+
+
+
+4
+
+2
+
+ 0
+
+-2
+
+2 800 3 000
+
+×10-4
+
+10
+
+5
+
+0
+
+
+
+2 800 3 000
+
+2
+
+
+
+0
+
+-1
+
+2 800 3 000
+
+2
+
+ 0
+
+-2
+
+
+
+0 1 000 2 000 3 000时间/s
+
+(a) Satl x 轴速度跟踪误差
+
+
+
+3
+
+0
+
+
+
+0 1 000 2 000 3 000时间/s
+
+(b) Satly 轴速度跟踪误差
+
+×10-3
+
+2
+
+0
+
+-2
+
+0 1 000 2 000 3 000时间/s
+
+(c) Sat1 z 轴速度跟踪误差
+
+图 5 Sat1速度轨迹跟踪误差
+
+Fig. 5 Velocity trajectories tracking error of Sat1
+
+表 1 Sat1～3位置及速度跟踪精度
+
+Table 1 Position and velocity tracking precision of Sat1～3
+
+参数
+
+N-TOC
+
+LQ-TOS
+
+LQ-TOC
+
+‖ 1 ‖/m
+
+5. 72 × 10-4
+
+5. 45 × 10-3
+
+7. 57 × 10-3
+
+‖ .1 ‖/（m.s-1）
+
+6. 68 × 10-9
+
+5. 30 × 10-9
+
+2. 29 × 10-6
+
+‖ 2 ‖/m
+
+4. 48 × 10-4
+
+6. 28 × 10-3
+
+8. 32 × 10-3
+
+‖ .2 ‖/（m.s-1）
+
+6. 02 × 10-9
+
+6. 47 × 10-9
+
+2. 40 × 10-6
+
+‖ 3 ‖/m
+
+5. 77 × 10-4
+
+4. 24 × 10-3
+
+8. 29 × 10-3
+
+‖ .3 ‖/（m.s-1）
+
+5. 29 × 10-9
+
+6. 80 × 10-9
+
+2. 24 × 10-6
+
+图 6对比了 3类方法在 Sat1各主轴方向上产生的控制输入 [u11，u 12，u 13 ]T。本文将航天器各主轴方向的推力幅值限制在区间[ -10 N，10 N]，因此 3 类方法在 0 s至 400 s 内因推力器物理限制呈现出相似的瞬态过程。但本文 N-TOC 方法通过非线性指标式（14）中的最优时滞误差抑制与控制量耦合优化实现了较两类对比方法更低的总体控制消耗。表 2展示了 N-TOC 方法与两类传统方法在全仿真时间
+
+（1 × 106 s）内产生的总计控制消耗量∫ ‖ u，τ ‖ dt，计
+
+量步长为 1 s。N-TOC 方法相对 LQ-TOC 与 LQ-TOS方法分别降低了约 19%与 20% 的控制消耗。
+
+ N-TOC  LQ-TOC  LQ-TOS
+
+u13/N u12/N u11/N
+
+10
+
+0
+
+-10
+
+10
+
+0
+
+-10
+
+10
+
+0
+
+-10
+
+10
+
+0
+
+-10
+
+0 300
+
+0 1 000 2 000 3 000时间/s
+
+(a) x方向控制输入
+
+10  0
+
+-10
+
+0 300
+
+0 1 000 2 000 3 000时间/s
+
+(b) y方向控制输入
+
+10
+
+0
+
+-10
+
+0 300
+
+0 1 000 2 000 3 000
+
+(c) z方向控制输入
+
+时间/s
+
+图 6 Sat1控制量曲线
+
+Fig. 6 Control input of Sat1
+
+图 7 为本文 N-TOC 方法 0～3 000 s 内时滞最优协同性能指标式（14）中 Sat1～3 的编队协同保持项cFii，τ )的动态曲线。由于编队采用正三角构形，星间 通 讯 时 滞 τ 12 = τ21，τ 13 = τ 31 以 及 τ23 = τ 32 均 在
+
+表 2 Sat1～3 总控制消耗
+
+Table 2 Control consumption of Sat1～3
+
+cFi
+
+0.06
+
+0.05
+
+0.04
+
+0.03
+
+0.02
+
+0.01
+
+0
+
+参数
+
+N-TOC
+
+LQ-TOS
+
+LQ-TOC
+
+∫‖ u，τ ‖dt/（m.s-1）
+
+60. 79
+
+75. 14
+
+74. 71
+
+∫‖ u，τ ‖dt/（m.s-1）
+
+67. 63
+
+77. 35
+
+77. 67
+
+∫‖ u，τ ‖dt/（m.s-1）
+
+59. 64
+
+86. 82
+
+85. 38
+
+
+
+Sat1
+
+Sat2
+
+Sat3
+
+0.06
+
+0.04
+
+
+
+0.02
+
+0 2 3 4 6 8
+
+1 000 2 000 3 000
+
+时间/s
+
+图 7 Sat1～3编队协同保持指标 cFii，τ )曲线
+
+Fig. 7 Collaboration maintenance index of Sat1～3
+
+2. 887 s左右实时变化。由于数值计算的步长为1 s，故在 0～3 s 内各航天器尚未更新其他编队航天器状态信息而仅依靠自身相对标称轨迹的误差决策控制行为；3s后，各航天器间达成信息协同交互，并协同地调节构形“边误差”回归零值点，实现各自编队保持项指标极小化，并实现编队构形的快速恢复与保持。
+
+4. 3 非理想控制器有效性检验
+
+考虑在实际中还存在执行器噪声、执行器输出效率损失以及执行器最小分辨率等非理想因素的影响，本节进一步校验非理想情形下本文方法的控制性能。每一时刻考虑小于 10% 的随机拉偏，同时设定执行器最小分辨率为 10 mN。
+
+图 8展示了 Sat1考虑非理想推力作用下三个主轴方向上的控制量曲线。可见本文方法可在非理想推力条件下保证编队控制能力，并最终实现在最小分辨率范围内的有界稳定性。
+
+表 3 统计了 Sat1～3 在非理想推力作用下所产
+
+生的总控制消耗 dt、最终跟踪精度 ‖ i ‖ 和
+
+Ⅱ1/N
+
+10
+
+5
+
+0
+
+-5
+
+-10
+
+
+x 轴控制量
+
+y 轴控制量
+
+z 轴控制量
+
+
+
+-10
+
+/ 0 1 000
+
+-9
+
+-11
+
+0 50
+
+
+
+9.999 6 10 ×105
+
+0.02
+
+0
+
+-0.02
+
+
+-8 
+
+2 000
+
+10
+
+▲
+
+0
+
+×105
+
+0 2 4 6 8 10
+
+时间/s
+
+图 8 非理想推力下 Sat1控制量曲线
+
+Fig. 8 Control input of Sat1 under non-ideal thrust
+
+表 3 Sat1～3非理想推力下构形跟踪性能
+
+Table 3 Tracking performance of Sat1～3 under
+
+non-ideal thrust
+
+参数
+
+数值
+
+参数
+
+数值
+
+∫‖ u，τ ‖dt/（m.s-1）
+
+60. 64
+
+‖ .2 ‖/（m.s-1）
+
+5. 63 × 10-5
+
+∫‖ u，τ ‖dt/（m.s-1）
+
+67. 51
+
+‖ 3 ‖/m
+
+1. 74 × 10-2
+
+∫‖ u，τ ‖dt/（m.s-1）
+
+59. 79
+
+‖ .3 ‖/（m.s-1）
+
+2. 30 × 10-5
+
+‖ 1 ‖/m
+
+2. 86 ×
+
+10-2
+
+ts1/s
+
+1 987
+
+‖ .1 ‖/（m.s-1）
+
+3. 64 ×
+
+10-5
+
+ts2/s
+
+2 019
+
+‖ 2 ‖/m
+
+4. 36 ×
+
+10-2
+
+ts3/s
+
+2 450
+
+‖ .i ‖ 以及构形恢复时间 tsi，i = 1，2，3。在非理想推
+
+力条件下，本文方法使各航天器最终轨道跟踪精度仍然保持在 10-2 m 量级，实现对标称构形的稳定跟踪。
+
+5 结 论
+
+为航天器编队构形恢复与保持问题设计了时滞协同最优控制器。考虑存在通讯时滞与未知扰动下，将编队构形恢复与保持的协同最优控制器设计为前馈与反馈两部分。前馈部分通过动态扰动观测保证了对编队未知扰动的一致最终有界抑制。反馈部分基于“边误差”与“控制耦合”构造了非线性性能指标，引导航天器编队协同地缩小构形实时连边与对应标称连边间的误差，使得成员航天器的机动动作总是有益于缩小编队整体构形跟踪误差，抑制了协同机动过程中的过机动累积。
+
+针对典型编队构形恢复与保持案例进行的仿真校验说明了本文方法可有效降低燃料消耗并缩短构形恢复时间。
+
+后期工作将考虑部分特殊航天器编队所受状态约束与通讯受限情形，解决状态约束下与分布式时滞通讯下的编队构形跟踪控制。
+
+参 考 文 献
+
+［ 1 ］ 罗俊，艾凌皓，艾艳丽，等 . 天琴计划简介［J］. 中山大学学报：自然科学版，2021，60（1）：1-19.
+
+LUO Jun，AI Linghao，AI Yanli，et al. A brief introduction to the TianQin Project［J］. Acta Scientiarum Naturalium Universitatis Sunyatseni，2021，60（1）：1-19.
+
+［ 2 ］ HU Z Q，WANG P C，DENG J F，et al. The drag-free control design and in-orbit experimental results of “Taiji-1”［J］. International Journal of Modern Physics A，2021，36（11n12）： 2140019.
+
+［ 3 ］ 侯欣宾，张潇，成正爱，等 . 模块化多旋转关节空间太阳能电站方案设计［J］. 空间电子技术，2023，20（3）：1-6.
+
+HOU Xinbin，ZHANG Xiao，CHENG Zhengai，et al. Concept design on modular multi-rotary joints solar power satellite［J］. Space Electronic Technology，2023，20（3）：1-6.
+
+［ 4 ］ LEE N，BACKES P，BURDICK J，et al. Architecture for in-space robotic assembly of a modular space telescope［J］. Journal of Astronomical Telescopes ，Instruments ，and Systems ，2016 ，2 （4）：041207.
+
+［ 5 ］ 董勇，张治彬，李新洪，等 . 分布式空间系统研究进展与应用分析［J］. 无人系统技术，2020（5）：9-16.
+
+DONG Yong ，ZHANG Zhibin ，LI Xinhong ，et al. Research progress and application analysis of distributed space system［J］. Unmanned Systems Technology，2020（5）：9-16.
+
+［ 6 ］ 蔡曜，杨盛庆，吴敬玉 . 异构多星电磁编队静态构型设计与
+
+保持控制［J］. 宇航学报，2024，45（3）：376-388.
+
+CAI Yao，YANG Shengqing，WU Jingyu. Static configuration design and maintenance control of heterogeneous multi-satellite electromagnetic formation［J］. Journal of Astronautics，2024，45
+
+（3）：376-388.
+
+［ 7 ］ 宋申民，郑重，苏烨 . 控制受限的编队航天器鲁棒自适应控制［J］. 宇航学报，2014，35（12）：1422-1429.
+
+SONG Shenmin ， ZHENG Zhong ， SU Ye. Robust adaptive control of spacecraft formation flight under control constraint［J］. Journal of Astronautics，2014，35（12）：1422-1429.
+
+［ 8 ］ 陈丹鹤，何敬源，刘幸川，等 . 航天器编队飞行相对运动轨迹优化方法综述［J］. 宇航学报，2024，45（3）：325-340.
+
+CHEN Danhe，HE Jingyuan，LIU Xingchuan，et al. Review on relative trajectory optimization methods for spacecraft formation flying［J］. Journal of Astronautics，2024，45（3）：325-340.
+
+［ 9 ］ YU C B，WANG Y Q，SHAO J L. Optimization of formation for
+
+multi-agent systems based on LQR［J］. Frontiers of Information Technology & Electronic Engineering，2016，17（2）：96-109.
+
+［10］ HU J Y，LANZON A. Cooperative adaptive time-varying formation tracking for multi-agent systems with LQR performance index and switching directed topologies［C］. 2018 IEEE Conference on Decision and Control（CDC）， Miami，USA，December 17-19， 2018.
+
+［11］ 柴源，罗建军，韩楠，等 . 失效航天器姿态接管的 SDRE 微分博弈控制［J］. 宇航学报，2020，41（2）：191-198.
+
+CHAI Yuan，LUO Jianjun，HAN Nan，et al. Attitude takeover control of failed spacecraft using SDRE based differential game approach［J］. Journal of Astronautics，2020，41（2）：191-198.
+
+［12］ LIU R X，CAO X B，LIU M. Finite-time synchronization control of spacecraft formation with network-induced communication delay［J］. IEEE Access，2017，5：27242-27253.
+
+［13］ ZHANG Y ，LIU Y，ZHANG J Z ，et al. Adaptive control for gravitational wave detection formation considering time-varying communication delays［J］. Sensors（Basel），2023 ，23（6）： 3003.
+
+［14］ 陈谋，吴颖 . 具有输入时滞的集群无人机事件触发协同最优控制［J］. 南京航空航天大学学报，2022，54（5）：958-968.
+
+CHEN Mou ， WU Ying. Event-triggered cooperative optimal control of swarm UAVs with input delays［J］. Journal of Nanjing University of Aeronautics & Astronautics ， 2022 ， 54（5）： 958-968.
+
+［15］ FRANCO E ，ARPENTI P ，DONAIRE A. Integral passivity- based control of underactuated mechanical systems with state- dependent matched disturbances［J］. International Journal of Robust and Nonlinear Control，2024，34（5）：3565-3585.
+
+［16］ ZHANG K ，ZHANG Z L ，HAN Z G. Optimal guidance law design for three-dimensional trajectory tracking of missiles based on fixed-gain disturbance observer［J］. ISA Transactions，2023， 143：298-312.
+
+［17］ 董朝阳，张文强，王青 . 复杂不确定性下多无人机的抗扰时变编队控制［J］. 宇航学报，2020，41（3）：319-328.
+
+DONG Chaoyang ， ZHANG Wenqiang ， WANG Qing. Time- varying anti-disturbance formation control for multi-UAV systems with complex uncertainties［J］. Journal of Astronautics，2020， 41（3）：319-328.
+
+［18］ HAO Z W，YUE X K，WEN H W，et al. Full-state-constrained non-certainty-equivalent adaptive control for satellite swarm subject to input fault［J］. IEEE/CAA Journal of Automatica Sinica， 2022，9（3）：482-495.
+
+［19］ MYLVAGANAM T，SASSANO M，ASTOLFI A. A differential game approach to multi-agent collision avoidance［J］. IEEE Transactions on Automatic Control，2017，62（8）：4229-4235.
+
+［20］ CHAI Y，LUO J J，MA W H. Data-driven game-based control of microsatellites for attitude takeover of target spacecraft with disturbance［J］. ISA Transactions，2022，119：93-105.
+
+［21］ ANSTREICHER K M，WRIGHT M H. A note on the augmented
+
+hessian when the reduced hessian is semidefinite［J］. SIAM Journal on Optimization，2000，11（1）：243-253.
+
+［22］ BLANCHINI F. Set invariance in control［J］. Automatica， 1999，35（11）：1747-1767.
+
+［23］ 刘培栋，焦博涵，党朝辉 . 面向空间引力波探测的多边形编队设计方法［J］. 航空学报，2022，43（S1）：726907.
+
+LIU Peidong，JIAO Bohan，DANG Zhaohui. Design method of polygon formation for space-based gravitational-wave detection ［J］. ActaAeronautica et Astronautica Sinica，2022，43（S1）： 726907.
+
+［24］ 李卓，郑建华，李明涛，等 . 太阳系天体引力对空间引力波探测日心编队构型的影响分析［J］. 空间科学学报，2021，41 （3）：457-466.
+
+LI Zhuo，ZHENG Jianhua，LI Mingtao，et al. Analysis of celestial gravity influence on heliocentric formation flying of gravitational
+
+wave observatory［J］. Chinese Journal of Space Science，2021， 41（3）：457-466.
+
+作者简介：
+
+岳晓奎（1970-），男，博士，长江学者，教授/博士生导师，主要从事空天飞行器总体设计、航天器飞行动力学与控制理论、卫星导航及组合导航技术、空间机动与操控等方面的研究。
+
+通信地址：陕西省西安市碑林区友谊西路 127 号（710072）
+
+电话：（029）88493685
+
+E-mail：xkyue@nwpu. edu. cn
+
+魏铂淞（1995-），男，博士生，主要从事多体系统协同控制等方面的研究。本文通信作者。
+
+通信地址：陕西省西安市碑林区友谊西路 127 号（710072）
+
+电话：18109298695
+
+E-mail：weibosong9589@mail. nwpu. edu. cn
