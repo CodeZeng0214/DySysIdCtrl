@@ -1,0 +1,467 @@
+振 动 与 冲 击
+
+第 43 卷第 16 期 JOURNAL OF VIBRATION AND SHOCK Vol. 43 No. 16 2024
+
+■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+
+时滞影响下压电悬臂梁强化学习振动控制
+
+张 猛1 , 王晓宇2 , 文 浩1
+
+( 1 . 南京航空航天大学 航空航天结构力学及控制全国重点实验室，南京 210016 ;
+
+2 . 北京空间飞行器总体设计部，北京 100094)
+
+摘 要 ：时滞普遍存在于各种控制系统中，如果忽略控制系统中时滞的影响可能会降低控制器的控制效果，甚至导致发散 。因此研究了时滞对强化学习(reinforcement learning , RL)振动控制器性能的影响 。首先，利用有限元方法建立了压电悬臂梁的动力学模型，通过试验辨识修正了动力学模型参数；进而，仿真分析了不同时滞大小对比例微分控制和基于近端优化策略的 RL 控制效果的影响；然后，在不同时滞条件下训练了多个 RL 时滞控制器，并对 RL 控制效果进行了仿真及试验验证；最后，评估了 RL 时滞控制器对时滞偏差的鲁棒性 。结果显示，RL 时滞控制器不仅在所对应的时滞条件下具有良好的控制效果，还对实际时滞偏差有一定容忍范围，具有良好鲁棒性。
+
+关键词 ：强化学习(RL) ；近端优化策略；时滞；振动控制
+
+中图分类号 ：O328 文献标志码 ：A DOI:10 . 13465/j . cnki . jvs . 2024 . 16 . 010
+
+Reinforcement learning based vibration control of a piezoelectric
+
+cantilever beam with time delay
+
+ZHANG Meng1 , WANG Xiaoyu2 , WEN Hao1
+
+( 1 . State Key Laboratory of Mechanics and Control of Mechanical Structures , Nanjing University of Aeronautics and Astronautics ,
+
+Nanjing 210016 , China; 2 . Beijing Institute of Spacec Systems Engineering , Beijing 100094 , China)
+
+Abstract : The presence of time delays in various control systems can have a significant impact on the performance of controllers . Ignoring time delays may result in reduced control effectiveness and even instability. The effects of time delays on a reinforcement learning ( RL) based vibration controller was investigated in this work . Firstly , a dynamic model of a piezoelectric cantilever beam was established using the finite element method , and the parameters of the dynamic model were corrected using experimental identification methods . Subsequently , the impact of different time delay conditions on the proximal policy optimization-based RL controller and the proportional-derivative controller were simulated and analyzed . Then , multiple RL time-delay controllers were trained under different time-delay conditions , and the control effect of the time-delay controller was simulated and experimentally verified . Finally , the robustness of the RL time- delay controller to time delay deviations was evaluated . Results show that the RL time-delay controller not only has good control performance under the corresponding time delay conditions but also has a certain tolerance range for actual time delay deviations , demonstrating good robustness .
+
+Key words : reinforcement learning (RL) ; proximal policy optimization ; time-delay; vibration control
+
+随着航天事业的飞速发展，加之复合材料技术的发展与在航天领域的广泛应用，使航天器的结构 日益趋近大型化、柔性化[1] 。如卫星和空间站的太阳能帆板、空间站柔性机械臂、桁架结构等 。这种结构在外力干扰下很容易产生振动响应，由于在外太空环境中几
+
+基金项目： 国家重点研发计划项目(2020YFA0711700)
+
+收稿日期：2023-09-19 修改稿收到日期：2024 01-12第一作者 张猛 男，硕士生，1993 年生
+
+通信作者 文浩 男，博士，教授，1979 年生
+
+乎没有外界阻尼力，结构的振动会持续很长时间，振动会使结构疲劳甚至损坏 。 因此为了抑制振动，结构振动控制得到了广泛的研究。
+
+结构的振动控制方法可分为被动控制和主动控制 。被动控制无需外部能量输入而是通过在结构上附加各种耗能或储能材料来耗散结构的振动能量，但一般来说对高频振动较为有效，对低频振动控制效果较差 。结构的主动控制技术是指通过作动器向系统输入能量，以达到对系统振动进行主动调节或镇定的 目的 [2] , 能更好地满足柔性结构的控制要求 。近年来人
+
+工智能技术快速发展，已经广泛的应用于各种领域中。强化学习( reinforcement learning , RL) 是一种人工智能技术，也在结构的主动振动控制上有着很多应用 。周嘉明等[3] 采用基于深度确定性策略梯度的方法控制1 /4悬架系统的振动控制效果达到 74% ；陈孝聪等[4] 基于深度强化学习的无模型减振算法设置了桥梁拉索减振控制器；Xu 等[5] 提出了一种基于在线学习的模糊控制方法，该方法与模糊控制方法相比更有效地抑制了智能太阳能电池板的振动；Qiu 等 [6-7] 采用强化学习方法训练控制器，来抑制柔性板及耦合梁等构件的振动； Zhang 等[8] 采用深度强化学习的方法来抑制高速旋转机床的振动；Ouyang 等[9] 使用强化学习算法控制单连杆柔性机械臂的振动；Zhang 等[10] 针对机器人振动问题，提出了一种基于深度强化学习的优化方法，利用对决优先深度 Q 网络( duelling prioritized deep Q-network , DPDQN) 算法建立了优化策略，通过试验验证该方法对关节机器人具有更有效的抑振效果，平均抑振率达96 . 75% ;Landman 等[11] 为了降低振动对望远镜精度的影响使用一种无模型强化学习方法来优化闭环预测控制的递归神经网络控制器，与最佳增益积分器相比，将残余均方根( residual root mean square , RRMS)降低了约6倍，有效地减轻了振动。
+
+然而，以上的研究并没有考虑控制系统中存在的时滞，振动状态的测量以及控制量的计算及输出都被假设是瞬时完成的 。实际控制系统中普遍存在时滞，例如在数据通信以及在系统处理数据时都会花费时间，不可避免的产生时滞 。如果忽略时滞的影响，可能会导致控制性能的下降，甚至导致发散 。 因此在控制过程中考虑时滞的影响很有必要 。一些学者对考虑时滞的控制开展了研究 。罗梦翔等[12] 采用瞬时最优方法对二元机翼颤振的时滞反馈控制进行了研究，该控制律能有效地抑制机翼颤振；宋攀等[13] 将时滞差分方程转化成形式上不包含时滞项的标准差分方程，采用二次型性能指标为目标函数设计控制律，取得了良好的控制效果；李美超等[14] 利用时滞控制力项的差分方程对系统的状态变量进行增广，将时滞系统动力学方程变为形式上不含有时滞项的增广状态方程，然后根据时滞系统动力学方程和已确定的参数建立相应参考模型；孙洪鑫等[15] 采用基于相移法的拉索控制时滞补偿理论，取得了良好的时滞补偿效果，接近无时滞最优控制减振率；吴彪等[16] 采用含时滞的控制方程，采用不同的控制策略对考虑时滞的悬架系统控制特性进行研究，并对控制效果进行对比分析；李非凡等[17] 对考虑时滞半主动控制的摆振方程组进行优化分析，在摆振方程组中引入时滞半主动控制项，提出了一种求解时滞
+
+动力学方程的特征方程的数学方法，利用时滞半主动控制可将反共振峰幅值控制在较低水平 。以上经典的时滞控制方法在进行动力学模型建模及控制律设计时需要引入时滞项 。而强化学习算法相较于传统的控制算法具有两个明显优点 。一个是强化学习算法可以在几乎不需要任何先验知识的情况下学习最优控制；另一方面，由于强化学习算法使用近似函数逼近和深度神经网络等技术，使得强化学习算法可以处理高维、非线性的复杂的任务 。因此本文采用强化学习算法来训练时滞振动控制器。
+
+目前多位学者已采用强化学习方法针对多种主动振动控制问题开展研究，但缺乏针对控制效果受时滞影响分析的探讨 。为此，本文首先研究了不同时滞条件对强化学习控制器控制性能的影响；然后针对不同时滞条件训练了基 于 近 端 优 化 策 略 ( proximal policy optimization , PPO) 的强化学习时滞控制器，并通过仿真和试验验证了强化学习时滞控制器的控制效果；最后，评估了强化学习控制对时滞偏差的容忍能力，发现其不仅对于所对应的时滞情况有着良好的控制能力，对于其他时滞情况仍然具有控制效果，体现了强化学习时滞控制器的鲁棒性。
+
+1 系统动力学模型建模
+
+本文以压电作动悬臂梁为例展开研究，采用有限元法建立其动力学模型 。将悬臂梁划分成有限数量的四节点矩形板单元，其模型图如图 1 所示 。浅色区域为铝合金悬臂梁，深色区域为宏纤维复合材料( macro fiber composite , MFC) 压电片 。悬臂梁与压电片的几何参数和材料参数，分别如表 1 和表 2 所示 。悬臂梁的左侧为固定端，压电片作动器布置在距离悬臂梁固定端2 cm 的位置，在宽度方向上居中布置，并在悬臂梁同样位置的背面也布置一个压电片作为备用作动器 。其中在对 MFC 进行建模时，将 MFC 材料建立为正交各项异性复合材料，从而提高建模效率，且具有较高精度。然后，采用压电驱动的载荷比拟法来计算压电驱动矩阵 Kv [18-19] 。
+
+
+
+图 1 有限元模型示意图
+
+Fig. 1 Schematic diagram of finite element model
+
+表 1 几何参数
+
+Tab. 1 Geometric parameters 单位：mm
+
+材料
+
+长
+
+宽
+
+厚
+
+铝合金梁
+
+485 . 0
+
+35 . 0
+
+1 . 0
+
+MFC
+
+85 . 0
+
+28 . 0
+
+0 . 3
+
+表 2 材料参数
+
+Tab. 2 Material parameter
+
+参数名称
+
+MFC( P1)
+
+铝合金梁
+
+密度/( kg ·m - 3 )
+
+5 400
+
+2 700
+
+弹性模量/GPa
+
+剪切模量/GPa
+
+30 . 336（ 非极化方向）， 15 . 857（ 极化方向）
+
+5 . 515
+
+70 . 3
+
+27 . 038
+
+泊松比
+
+0 . 31 , 0 . 16
+
+0 . 3
+
+压电常数/(m·V- 1 )相对介电常数
+
+4 × 10 - 10 , - 1 . 7 × 10 - 10 17 300
+
+—
+
+—
+
+压电驱动悬臂梁系统整体动力学方程为
+
+··
+
+·
+
+Mδ + Cδ + Kδ = Fe + Kv U (1)
+
+式中，M、K、Fe 、Kv 、U、C 和 δ 分别为系统的总体质量矩阵、总体刚度矩阵、外力向量、系统驱动矩阵、施加在MFC 上的电压向量、系统阻尼矩阵和位移向量 。建模时阻尼选取的是比例阻尼，即 C = αM + βK , 其中 α = 1 × 10 - 4 , β = 5 × 10 - 4 。
+
+将式(1) 转化成状态方程形式
+
+
+
+式中，X、A 、B 和 Cg 分别为系统状态向量、系统状态矩
+
+阵、系统控制矩阵和系统观测矩阵，表达式分别为
+
+
+
+
+
+式中，S s 、I、q、 、 、 和 v 分别为传感器的灵敏度矩阵、单位矩阵、模态坐标向量、模态质量矩阵、模态刚度矩阵、模态阻尼矩阵和模态驱动矩阵。
+
+采用 MATLAB 软件对结构的前三阶模态进行分析，并将得到的结果同 ANSYS 软件分析的结果进行比较 。MATLAB 和 ANSYS 得到的系统前两阶频率如表 3所示，前两阶频率误差分别为 0 . 81% 和 0 . 46% , 说明了MATLAB 有限元建模的相对准确性 。 由仿真计算结果可知第三阶频率达到了 60 Hz , 考虑低阶模态是悬臂梁的主要振动模态，而且本文接下来研究的控制工况是对悬臂梁端部施加初始位移激励所引起的振动进行控制，所激发的主要是悬臂梁的第一阶振动模态，因此考虑结构的前两阶模态满足实际需求 。结构前两阶模态振型图如图 2 所示 。得到系统前两阶控制矩阵和状态矩阵为
+
+
+
+
+
+表 3 前三阶固有频率
+
+Tab. 3 First three natural frequencies
+
+阶数
+
+MATLAB/Hz
+
+ANSYS/Hz
+
+误差/%
+
+1 阶
+
+4 . 061 5
+
+4 . 094 2
+
+0 . 81
+
+2 阶
+
+22 . 998 8
+
+23 . 104 0
+
+0 . 46
+
+3 阶
+
+60 . 479 8
+
+60 . 379 0
+
+0 . 17
+
+
+
+图 2 前两阶模态振型图
+
+Fig. 2 The first two modes of vibration
+
+2 强化学习控制器设计
+
+采用 PPO 算法进行强化学习控制律设计，其算法结构图如图 3 所示 。图中评价神经网络给出当前状态的评价值，同时动作神经网络根据当前状态产生一个动作，并将其反馈给环境 。环境再根据当前动作产生一个新的状态，智能体不断的同环境交互，产生一系列的数据并存储到经验池 。强化学习算法根据这些数据更新动作和评价神经网络 。通过对损失函数求策略梯度，然后进行反向传播进行神经网络的更新，策略梯度可以表示为[20]
+
+
+
+式中：E[ · ] 为取括号内表达式的期望；πθ 为策略，下标 θ 为策略的参数；t 为在时间步 t 的优势函数的估计量；at 和 st 分别为在时间步 t 的动作和状态 。t 可以表示为
+
+
+
+式中：δk 为 第 k 步 的 时 序 差 分 误 差，δk = Rk + 1 +
+
+子(sk。+ 1 ) - V( sk ) ; γ 和 λ 分 别 为 折 减 因 子 和 平 滑
+
+
+
+图 3 PPO 算法结构
+
+Fig. 3 PPO algorithm structure
+
+为了保证学习的稳定性，新旧策略的差别不能过大，为此对旧的策略进行重要性采样，即将重要性系数定义为新旧策略的比值，为了确保新旧策略差别不过大，给重要性系数一个限定值，如果其值超过限定则取上限或下限的值，重要性系数表示为
+
+
+
+最终的损失函数表示成
+
+
+
+1 - ε , 1 + ε ] t } (6)
+
+其中，
+
+clip[ ri ( θ) , 1 - ε , 1 + ε ] =
+
+max{ min[ ri ( θ) , 1 + ε ] , 1 - ε } (7)
+
+式中，ε 为裁剪因子。
+
+在进行振动控制器训练算法设计时，动作神经网络和评价神经网络的都采用 3 层隐藏层的神经网络，其结构图如图 4 所示 。隐藏层的神经元个数为 64 个，激活函数采用 tanh 函数 。动作神经网络采用 Beta 分布获取动作的随机采样 。PPO 算法中的其他超参数设置如表 4 所示。
+
+
+
+图 4 动作及评价神经网络结构
+
+Fig. 4 Action and value neural network structure
+
+表 4 PPO 算法超参数
+
+Tab. 4 PPO algorithm hyperparameters
+
+参数
+
+数值
+
+动作网络学习率
+
+0. 01
+
+价值网络学习率
+
+0. 01
+
+折减因子
+
+0. 99
+
+平滑因子
+
+0. 96
+
+裁剪因子
+
+0. 20
+
+策略熵
+
+0. 01
+
+控制目标是抑制悬臂梁的振动，强化学习算法根据系统的状态（观测点的位移和速度）计算出控制电压作为动作 。其中状态、动作及奖励的设计思路如下：
+
+状态：将强化学习的输入状态定义成一个二维的向量 st = [ y( t) , y· ( t) ] T , 其中 y( t) 和y· ( t ) 分别代表测点当前的位移及速度。
+
+动作：动作 at = ut 表示控制电压，其取值范围为[ - 200 V ,200 V] 。
+
+奖励：奖励函数定义成式 ( 8 ) 的形式，其中 D =
+
+
+
+r( t) = - s ·D ·st - ut ·T ·ut (8)
+
+3 仿真及试验结果
+
+试验系统如图 5 所示 。试验系统包含以下几部分试验装置：①MFC 压电作动器，型号为 M ⁃8528⁃P1 型；
+
+②铝合金悬臂梁；③5 通道高压压电放大器，型号为芯
+
+明天 E01 . A 型，每通道可将电压从 - 2. 5 ~ 7. 5 V 放大
+
+至 - 500 ~ 1 500 V;④激光位移传感器，型号为 OPTEX
+
+FA CD5 , 量 程 范 围 [ - 20 mm , 20 mm ] , 灵 敏 度 为
+
+0. 5 V/mm; ⑤研华 USB4716 数据采集卡；⑥ 计算机。
+
+悬臂梁及压电片的几何参数及布置位置与第 1 章有限
+
+元模型相同 。激光位移传感器的测点布置在距离悬臂
+
+梁端部 3. 8 cm 处 。在试验过程中控制器的输出电压
+
+控制在 ± 1 V 以内 。试验编程基于 QT 平台开发，试验
+
+采样率为 100 Hz。
+
+
+
+图 5 试验系统 Fig. 5 Test system
+
+3. 1 悬臂梁参数辨识结果
+
+使用强化学习算法在模拟环境中训练智能体，需要建立一个准确的仿真环境，环境的准确性取决于系统模型的准确性 。因此为了提高模型的准确性，对压电悬臂梁系统进行了辨识。
+
+在试验中采集结构自由振动的数据，通过分析振动信号的功率谱密度可以得到系统的前两阶固有频率分别为f1 = 3. 845 21 Hz 和f2 = 22. 033 7 Hz。获得固有
+
+频率之后，通过拟合自由振动曲线包络线获得阻尼比ζ , 辨 识 得 到 前 两 阶 阻 尼 比 分 别 为 ζ 1 = 0. 018 , ζ2 = 0. 007 。对悬臂梁进行固定频率的正弦激励得到稳态响应，将试验得到的稳态响应值和仿真得到的稳态响应值做商，得到控制矩阵的修正系数分别为 k1 = 0. 545 0和 k2 = 0 . 184 7 。得到修正后的系统状态矩阵和控制矩阵分别为
+
+
+
+
+
+3. 2 时滞对控制器影响的仿真分析
+
+将 3 . 1 节辨识得到的悬臂梁模型作为强化学习训练环境，在离线情况下训练得到无时滞强化学习控制器，强化学习算法的超参数见表 4 。给定悬臂梁端部初始振幅为 20 mm 。对比了无时滞强化学习控制器和 PD控制器进行振动控制的仿真效果，其中 PD 控制器的控制参数设置为：位移增益 k d = 3 和速度增益 kp = 2 。 由于本研究主要关注的是时滞对控制器控制效果的影响及时滞控制器的控制效果，因此在这里仅考虑给定端部初始位移的情况。
+
+当控制系统无时滞时振动控制结果如图 6 所示，比例微分( proportional-derivative , PD) 控制器和无时滞强化学习控制器的控制效果几乎相当，在 1 . 5 s 内悬臂梁的振动迅速得到了控制 。当存在输入时滞时，控制结果如图 7 所示，对于 PD 控制器当时滞为 0 . 01 s 和0 . 02 s 时，控制效果较好，在 1 . 5 s 以内系统振动得到了控制，当时滞达到 0 . 03 s 时 PD 控制器无法抑制振动 。对于强化学习控制器，时滞0 . 01 ~ 0 . 03 s 的控制效果均较好，在 1 . 5 s 内悬臂梁振动迅速得到了控制，当时滞为 0 . 04 s 时控制器无法抑制振动 。 由以上仿真结果可知，强化学习控制器对时滞的鲁棒性强于 PD 控制，但是随着时滞的增加会导致控制效果下降 。 因此在强化控制器设计过程中应考虑时滞的影响 。根据仿真情况，以下研究将以时滞 0 . 04 s 条件开始。
+
+
+
+图 6 强化学习及 PD 控制效果Fig. 6 RL and PD control effect
+
+
+
+图 7 不同时滞条件强化学习控制及 PD 控制仿真结果
+
+Fig. 7 Simulation results of RL control and PD control with different time-delay conditions
+
+3. 3 强化学习控制器控制效果仿真分析
+
+采用和 3 . 2 节同样的强化学习环境以及超参数设置训练时滞控制器 。在利用仿真模型学习控制律时引入 4 组 不 同 的 反 馈 时 滞 量（ 从 0 . 04 ~ 0 . 10 s , 间 隔0 . 02 s) , 分别训练强化学习控制器，研究各时滞控制器在所对应时滞条件下的仿真控制效果 。结果如图 8 所示，以上 4 个强化学习时滞控制器都能在 2 s 左右的时间完成对悬臂梁振动的抑制，如果不进行控制则至少需要 10 s 系统的振动才能够完成衰减，证明了强化学习时滞控制器的有效性。
+
+3. 4 强化学习时滞控制效果试验验证
+
+利用如图 5 所示试验装置对控制效果进行验证。试验系统控制程序单次运行耗时约 7 ms , 因此满足采样率 100 Hz 条件下 10 ms 计算时限要求 。 由 3 . 2 节可知，当使用无时滞强化学习控制器控制振动时，系统中不存在时滞和系统存在时滞为 0 . 01 s 的控制效果几乎相同，因此忽略采样时滞的影响 。为模拟时滞对控制环路的影响，将之前数个时刻测得的状态量存储起来，在当前时刻取出前几个时间步的状态量作为时滞后的反馈量 。将 3 . 3 节中离线训练好的 4 个强化学习时滞控制器迁移到试验的系统中进行振动控制试验 。给定
+
+悬臂梁一个初始位移，当悬臂梁的振动振幅达到20 mm开始控制 。控制结果如图 9 所示，从时滞 0 . 04 ~ 0 . 08 s的前三种情况，所对应的时滞控制器均能够在 2 s 内完成对振动的抑制 。当时滞为 0 . 1 s 时，大幅振动迅速得
+
+到了抑制，小幅振动抑制稍慢，但最终也得到了抑制，因此总体来说所训练的时滞控制器能够在相应的时滞条件下，有效地抑制系统的振动，验证了控制器的时滞控制效果。
+
+
+
+图 8 不同时滞条件强化学习时滞控制仿真结果
+
+Fig. 8 Simulation results of RL time-delay control with different time-delay conditions
+
+
+
+图 9 不同时滞条件强化学习时滞控制试验结果
+
+Fig. 9 Experimental results of RL time-delay control with different time-delay conditions
+
+3. 5 时滞偏差鲁棒性评估
+
+考虑实际时滞与训练时滞可能存在差异，以 0 . 06 s时滞下仿真数据训练的时滞控制器为例，评估强化学习控制器对时滞偏差的鲁棒性，试验结果如图 10 所示 。可以发现当实际时滞小于 0 . 06 s 时，控制器仍能够有效地抑制振动，当时滞大于 0 . 06 s 时，随着时滞量的增加控制器的控制效果也随之减弱，直至时滞达到
+
+0 . 1 s 时无法抑制振动 。可以看出所训练的强化学习时滞控制器对于不同的时滞条件仍然具有控制能力，尤其是系统时滞量小于训练控制器采用的时滞量时控制效果没有变差，当系统时滞量大于训练控制器的时滞量时，控制效果会逐渐变差 。总体而言，强化学习控制器对时滞偏差有一定容忍范围，具有良好鲁棒性 。
+
+
+
+图 10 强化学习时滞控制器对时滞偏的差鲁棒性评估
+
+Fig. 10 Robustness evaluation of RL time-delay controller for time-delay deviation
+
+4 结 论
+
+本文采用了基于强化学习的时滞控制策略，即利用 PPO 算法训练时滞振动控制器 。首先，分析了时滞对无时滞强化学习控制器及 PD 控制器的控制效果的影响，时滞的存在会导致控制器控制效果变差甚至导
+
+致发散 。其次，训练了从时滞 0 . 04 ~ 0 . 10 s 的多个强化学习时滞控制器，并且采用仿真和试验验证了所提出的时滞控制器的有效性，在各个时滞条件下强化学习时滞控制器均能够在 2 s 左右实现对系统振动的抑制 。最后以时滞 0 . 06 s 情况训练的时滞控制器为例，研究了所提出的控制器对时滞偏差的鲁棒性 。试验结
+
+果表明，所提出的时滞控制器对于系统时滞量小于训练控制器采用的时滞量时，控制效果良好 。当系统时滞量大于训练控制器采用的时滞量时，控制效果会随着时滞量的增加逐渐变差 。强化学习控制器对时滞偏差有一定容忍范围，具有良好鲁棒性。
+
+参 考 文 献
+
+[ 1 ] 冯焕，庞爱平，周鸿博，等．大型柔性航天器的高精度结
+
+构化 综 合 控 制 [ J ] . 科 学 技 术 与 工 程，2022 , 22 ( 29 ) : 12909-12916 .
+
+FENG Huan , PANG Aiping , ZHOU Hongbo , et al. High- precision structured synthesized control for large-scale flexible spacecraft [ J] . Science Technology and Engineering , 2022 , 22(29) : 12909-12916 .
+
+[ 2 ] 蔡国 平． 结 构 振 动 主 动 控 制 [ M ] . 北 京 ：科 学 出 版社，2021 .
+
+[ 3 ] 周嘉明，董龙雷，孟超，等．基于强化学习的随机振动主动控制策略[ J] . 振动与冲击，2021 , 40(16) : 281-286 .
+
+ZHOU Jiaming , DONG Longlei , MENG Chao , et al. A active vibration control strategy based on reinforcement learning[ J] . Journal of Vibration and Shock , 2021 , 40(16) : 281-286 .
+
+[ 4 ] 陈孝聪，张恩启，程斌，等．基于深度强化学习的拉索智能减振算法[ J] . 振动与冲击，2022 , 41(23) : 175-181 .
+
+CHEN Xiaocong , ZHANG Enqi , CHENG Bin , et al. Intelligent vibration reduction algorithm of cable based on deep reinforcement learning [ J ] . Journal of Vibration and Shock , 2022 , 41(23) : 175-181 .
+
+[ 5 ] XU R , LI D X , JIANG J P. An online learning-based fuzzy control method for vibration control of smart solar panel[ J] . Journal of Intelligent Material Systems and Structures , 2015 , 26(18) : 2547-2555 .
+
+[ 6 ] QIU Z C , CHEN G H , ZHANG X M . Reinforcement learning vibration control for a flexible hinged plate [ J ] . Aerospace Science and Technology , 2021 , 118 : 107056 .
+
+[ 7 ] QIU Z C , DU J H , ZHANG X M . Vibration control of three coupled flexible beams using reinforcement learning algorithm based on proximal policy optimization [ J ] . Journal of Intelligent Material Systems and Structures , 2022 , 33 ( 20 ) : 2578-2603 .
+
+[ 8 ] ZHANG T , DENG Y A , HU F , et al. Reducing vibration of a rotating machine with deep reinforcement learning [ C ] // 2020 IEEE International Conference on Mechatronics and Automation ( ICMA) . Beijing : IEEE , 2020 .
+
+[ 9 ] OUYANG Y C , HE W , LI X J. Reinforcement learning control of a single-link flexible robotic manipulator[ J] . IET Control Theory & Applications , 2017 , 11(9) : 1426-1433 .
+
+[10] ZHANG T , CHU H B , ZOU Y B , et al. A deep reinforcement learning-based optimization method for vibration suppression of articulated robots [ J ] . Engineering Optimization , 2023 , 55(7) : 1189-1206 .
+
+[11] LANDMAN R , HAFFERT S Y , RADHAKRISHNAN V M , et al. Self-optimizing adaptive optics control with reinforcement learning for high-contrast imaging[ J] . Journal of Astronomical Telescopes , Instruments , and Systems ,
+
+2021 , 7(3) : 39002 .
+
+[12] 罗梦翔，高明周，蔡国平．机翼颤振的时滞反馈控制研究[ J] . 振动与冲击，2016 , 35(18) : 58-61 .
+
+LUO Mengxiang , GAO Mingzhou , CAI Guoping. Delayed feedback control for airfoil flutter [ J ] . Journal of Vibration and Shock , 2016 , 35(18) : 58-61 .
+
+[13] 宋攀，董兴建，孟光．柔性基础主动隔振系统的缩聚建模和时滞问题研究[ J] . 振动与冲击，2012 , 31(23) : 57 61 . SONG Pan , DONG Xingjian , MENG Guang. Dynamic reduction modeling and time delay for an active vibration isolation system with flexible base [ J ] . Journal of Vibration and Shock , 2012 , 31(23) : 57-61 .
+
+[14] 李美超，陈龙祥，蔡国平．不确定线性时滞系统模型参考自适 应 控 制 研 究 [ J ] . 应 用 力 学 学 报 ，2018 , 35 ( 6 ) : 1207-1213 .
+
+LI Meichao , CHEN Longxiang , CAI Guoping. Model reference adaptive control of uncertain linear system with time delay[ J] . Chinese Journal of Applied Mechanics , 2018 , 35
+
+(6) : 1207-1213 .
+
+[15] 孙洪鑫，李建强，王修勇，等．基于磁致伸缩作动器的拉索主动控制时滞补偿研究 [ J ] . 振 动 与 冲 击，2017 , 36 (14) : 208-215 .
+
+SUN Hongxin , LI Jianqiang , WANG Xiuyong , et al. Time delay compensation for the active cable vibration control using giant magnetostrictive actuators[ J] . Journal of Vibration and Shock , 2017 , 36(14) : 208-215 .
+
+[16] 吴彪，闫盖，李佩琳，等．考虑时滞的主动悬架系统控制策略对比研究[ J] . 力学季刊，2023 , 44(1) : 75-87 .
+
+WU Biao , YAN Gai , LI Peilin , et al. Comparison of control strategies for active suspensions with time delay[ J] . Chinese Quarterly of Mechanics , 2023 , 44(1) : 75-87 .
+
+[17] 李非凡，赵艳影．基于时滞半主动控制的起落架摆振反共振峰优化[ J] . 振动与冲击，2023 , 42(8) : 341-350 .
+
+LI Feifan , ZHAO Yanying. Anti-resonance optimization of landing gear shimmy based on time-delay semi-active control [ J ] . Journal of Vibration and Shock , 2023 , 42 ( 8 ) : 341-350 .
+
+[18] 卢志荣，王晓明，周文雅．MFC 驱动主动反射器形面的有限时间动态变形控制[ J] . 振动与冲击，2023 , 42 (4 ) : 325-332 .
+
+LU Zhirong , WANG Xiaoming , ZHOU Wenya. Finite-time dynamic shape control of an active reflector surface actuated by MFC[ J] . Journal of Vibration and Shock , 2023 , 42(4) : 325-332 .
+
+[19] 孙杰，黄庭轩，朱东方，等．基于压电纤维复合材料的航天器动力学建模与振动抑制[ J ] . 飞控与探测，2019 , 2
+
+(3) : 70-76 .
+
+SUN Jie , HUANG Tingxuan , ZHU Dongfang , et al. Dynamics modeling and vibration suppression of spacecraft based on macro fiber composites [ J ] . Flight Control & Detection , 2019 , 2(3) : 70-76 .
+
+[20] SCHULMAN J , WOLSKI F , DHARIWAL P , et al. Proximal policy optimization algorithms [ J ] . arXiv preprint arXiv :
+
+1707 . 06347 , 2017 .

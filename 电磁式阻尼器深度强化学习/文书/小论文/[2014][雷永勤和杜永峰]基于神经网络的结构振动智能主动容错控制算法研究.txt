@@ -1,0 +1,335 @@
+振 动 与 冲 击
+
+第 33 卷第 13 期 JOURNAL OF VIBRATION AND SHOCK Vol．33 No．13 2014
+
+〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓〓
+
+基于神经网络的结构振动智能主动容错控制算法研究
+
+雷永勤1，2 ，杜永峰1，2
+
+(1．教育部西部土木工程防灾减震研究中心，兰州 730050 ; 2．兰州理工大学 防震减灾研究所，兰州 730050)
+
+摘 要 : 针对重大工程结构振动控制系统传感器失效问题，提出了基于多路 RBFNN 的控制系统动力特性辨识及传感器故障检测方法，实现了重大工程结构控制系统传感器失效时的智能主动容错控制。通过把传感器反馈信号分解为多路信号进行系统辨识，实现反馈信号的分离，避免正常传感器与故障传感器之间的相互干扰 ;当传感器正常工作时，控制器按设定的控制算法确定控制力，当多路 RBFNN 检测到某个传感器失效时，控制系统将自动剔除该传感器信号，切换到考虑此传感器失效时的振动控制算法确定控制力。通过对 AMD 控制 Benchmark 模型进行仿真分析，验证了所提出的基于多路 RBFNN 传感器故障检测技术以及智能主动容错控制策略的有效性和优越性。
+
+关键词 : 结构振动控制 ;智能容错控制 ;AMD 控制 ;地震响应 ;控制算法
+
+中图分类号 : TU352．12 文献标志码 : A DOI:10．13465 /j．cnki．jvs．2014．13．021
+
+Smart active fault tolerant control algorithm based on
+
+neural network for structural vibration control
+
+LEI Yong-qin1，2 ，DU Yong-feng1，2
+
+(1．Northwest Center for Disaster Mitigation in Civil Engineering，Ministry of Education，Lanzhou 730050，China ;
+
+2．Institute of Earthquake Protection and Disaster Mitigation，Lanzhou Univ．of Tech．，Lanzhou 730050，China)
+
+Abstract : In allusion to the sensors failure in vibration control system in huge engineering structures，the methods of dynamic characteristic identification and sensor failure detection of control system were proposed based on multi-channel RBF neural network，and a smart active fault tolerant control algorithm was presented for huge engineering structures．The mutual interference between normal sensor and failure sensor in the process of sensor failure detection was solved by decomposing the sensor feedback signals into multi-channel signals in dynamic characteristic identification．When sensors work normally，the controller calculates the control force according to the preset control algorithm．When any sensor fails， the control system will get rid of the failure sensor signal automatically and the controller will switch to the control algorithm which considers this sensor's failure．The effectiveness and superiority of the sensor failure detection strategy and the presented smart active fault control algorithm based on multi-channel RBF neural network were proved by the simulation of Benchmark model controlled by AMD under earthquake．
+
+Key words : structural vibration control ; smart fault tolerant control ; AMD control ; seismic response ; control algo- rithm
+
+结构主动控制技术可有效减小结构在地震或风振作用下的振动，近年来，已成为结构振动控制领域的研究热点，开始应用于实际工程。但是，由于土木工程结构的复杂性及特殊性，控制系统在运行的过程中一旦出现故障就可能造成人员和财产的巨大损失，特别是在传感器失效时，主动控制系统将威胁到控制系统的安全。 因此，如何保障系统的可靠性与安全性，具有十
+
+基金项 目 : 国家自然科学基金(51178211)
+
+收稿日期 : 2013－05 －15 修改稿收到日期 :2013－09－04第一作者 雷永勤 男，博士生，高级工程师，1968 年生
+
+通信作者 杜永峰 男，教授，博士，博士生导师，1962 年生
+
+分重要的意义。
+
+容错控制技术(Fault Tolerant Control，FTC)为解决这一问题提供了新途径，已成为土木工程结构振动控制领域热点研究课题之一。许多学者提出了不同的容错定义，尽管表述各不相同，但容错控制的根本特征是很明确的，即“当控制系统中发生故障时，系统依然能够维持其自身运行在安全状态，并尽可能地满足一定的性能指标要求 ”。李宏男等［1］研究了通过多分支 BP神经网络识别结构振动控制系统特性 ;宋刚等［2］ 研究考虑不确定性的结构抗震 H∞ 鲁棒控制算法 ;霍泽云等［3］研究了不确定系统的主动容错 H∞ 控制 ; 孟令
+
+雅［4］研究了基于反馈线性化的主动容错控制器设计 ;刘菁等［5］基于 GPC 进行了主动容错控制研究 ; 白铭珍等［6］进行了非线性主动容错控制系统 H∞ 模糊控制器设计研究 ;孙金龙等［7］ 研究了多约束条件下结构振动系统的容错控制策略 ;Du 等［8］研究了非确定结构系统H∞ 鲁棒容错振动控制算法 ;杜永峰等［9］ 研究 了基于RBF 神经网络的结构动力响应预测方法研究，为传感器失效识别奠定了基础。本文针对重大工程结构振动控制系统传感器失效问题，提出了基于多路 RBFNN 的控制系统动力特性辨识及传感器故障检测方法，实现了重大工程结构控制系统传感器失效时的智能主动容错控制。通过对 AMD 控制 Benchmark 模型进行仿真分析，验证了所提出的基于多路 RBFNN 传感器故障检测技术 以及 智 能主动容错控制策略的有效性和优越性。
+
+1 RBF 神经网络
+
+径向基函数神经网络具有单隐层的 3 层前馈神经网络。RBF 网络模拟了人脑中局部调整、相互覆盖接收域的神经网络结构，已经证明 RBF 网络能任意精度逼近任意连续函数［10］。
+
+RBF 网络的学习过程与 BP 网络的学习过程类似，两者的主要区别在于使用不同的作用函数。BP 网络中隐层使用的是 Sigmoid 函数，其值在输入空间中无限大的范围内为非零值，因而是一种全局逼近的神经网络 ;而 RBF 神经网络中的作用函数是高斯基函数，其值在输入空间中有限范围内为非零值，因而 RBF 网络是局部逼近的神经网络。
+
+多输入单输出的 RBF 网络结构如图 1 所示。
+
+
+
+图 1 RBF 网络结构图
+
+Fig．1 Structure of RBFNN
+
+在 RBF 网络结构中，X =［x1 ，x2 ，… , xn］T 为网络的输入向量。设 RBF 网络的径向基向量 X = ［h1 ，h2 ，… , hm］T，其中 hj 为高斯基函数，即
+
+
+
+j = 1，2，… , m
+
+其中:网络节点j 的中心向量为 C = ［cj1 ，cj2 ，… , cjm］T， i = 1，2，… , n， · 为 Euclid 范数。
+
+设网络的基宽向量为
+
+
+
+bj 为基函数围绕节点 j 中心点的宽度，且为大于零的数。 网络的权向量为
+
+W = ［w1 ，w2 ，… , wm］T (3)
+
+RBF 网络的输出为
+
+y = w1 h1 + w2 h2 + … + wm hm (4)
+
+RBF 网络逼近的性能指标函数为
+
+
+
+其中:E(k)为误差函数，y(k)表示期望的输出，y* (w， k)代表网络的实际输出。
+
+根据梯度下降法，输出权、节点基宽参数及节点中心矢量的迭代算法如下
+
+wj (k) = wj (k －1) + η(y(k) －ym (k))hj +
+
+a(wj (k －1) －wj (k －2)) (6)
+
+
+
+bj (k) = bj (k －1) + ηΔbj +
+
+a［bj (k －1) －bj (k －2) ］ (8)
+
+
+
+cji (k) = cji (k －1) + Δηcji +
+
+a［cji (k －1) －cji (k －2) ］ (10)式中:η 为学习速率，a 为动量因子，η ∈ ［0，1］，a ∈ ［0，1］。
+
+将对象输出对输入的敏感度称为 Jacobian信息，其值可由 RBF 神经网络辨识而得到。辨识算法如下:取 RBF 网络的第一个输入为 u(k)，及x1 = u(k)，则
+
+
+
+
+
+2 多路 RBF 网络受控系统动力特性辨识
+
+神经网络进行系统动力特性辨识采用如下步骤 : ① 样本数据的选取。训练网络的数据样本可以是试验数据，也可以是根据理论模型计算得到的结果。②样本的预处理。有了样本之后，应对样本数据进行预处理，由于各种神经网络的激活函数、学 习规则等不同，所以在输入样本之前需对输入样本作归一化处理，相关性处理及野点处理等。③ 输入预处理后的样本。一般分为 k 组，每组有 i + 1 个值:前 i 个值作为网络输入节点的输入，后一个作为输出节点的期望值。进行系统动力特性辨识时，选该时刻以前几个时间步长的结构响应、控制力和输入激励，输出为当前时刻的结构响应。④ 使用 RBF 神经网络训练算法，训练网络。⑤
+
+数据的还原处理。 由于神经网络预测时首先对样本进行了归一化处理，在训练好的神经网络输入以前几个时间步长的结构响应、控制力和输入激励，输出为当前时刻的结构响应后，要对运算结果进行反归一化处理，才能得到有效的响应预测值。
+
+根据上述步骤，考虑进行信号故障检测时避免正
+
+常传感器与故障传感器之间的相互干扰，造成神经网络对信号故障判别失误，因此，本文把传感器反馈信号分解为多路信号，通过多路 RBF 神经网络进行系统辨识，实现反馈信号的分离，避免失效传感器对正常传感器检测的干扰，设计的多路 RBF 网络控制系统动力特性辨识结构图如图 2 所示。
+
+
+
+图 2 多路 RBF 网络控制系统动力特性辨识结构图
+
+Fig．2 Dynamic characteristic identification based on multi-channel RBFNN
+
+对样本数据进行归一化处理的方法主要有:标准化法、重新定标法、变换法和比例缩放法等。其中，最为常用的是比例缩放法，其变换公式为
+
+
+
+式中 :X 为原始数据;Xmax ，Xmin 为原始数据中的最大值和最小值 ;T 为变换后的数据 ;Tmax 和 Tmin 为变换后数据的最大值和最小值，通常取为 0．8 ～0．9 和 0．1 ～0．2 。
+
+网络训练后，数据的反归一化公式为
+
+
+
+式中各个符号的含义同式(12)。
+
+3 基于多路 RBFNN 的传感器故障检测
+
+当每个传感器均处于正常工作状态时，采用 LQG控制算法得到训练数据，采用每个传感器当前时刻前 n步的测量数据、控制力及输入激励作为输入，以每个传感器当前时刻的测量数据作为输出，采用多路 RBF 网络进行控制系统动力特性辨识，建立每个传感器当前时刻响应与当前时刻以前 n 步的测量数据、控制力及输入激励的内在联系。 经过 上述 训练后得到多路RBF 。基于多路 RBFNN 的传感器故障实时检测过程图 3 所示，通过每个传感器测量的当前时刻以前的数据、控制力及输入激励经过多路 RBFNN 计算当前时刻
+
+
+
+图 3 基于多路 RBFNN 的传感器故障实时检测
+
+Fig．3 Sensor failure on-line detection based on multi-channel RBFNN
+
+传感器的辨识值，对传感器的辨识值与该传感器当前时刻测得的真实数据进行比较，当两者之差 Em (t)不在 ± σ范围之内时，认为该传感器失效，否则处于正常工作状态。其中，σ 的值需要预先指定，同时也不难理解:如果σ 取得较大，上述故障检测机构对故障是否出现并不敏感，可能出现“漏报”;反之，则会出现“误报”，因此，这些值需通过反复的数值计算才能大致确定。
+
+通过上述传感器故障检测过程来看，采用滚动检测技术，根据以前时刻的正常的信号，对当前传感器信号进行故障诊断，而且，每个传感器的信号相互独立，检测互不干扰，因此，可以保证多路 RBFNN 在线实时对传感器检测的准确性。
+
+4 基于多路 RBFNN 智能主动容错控制
+
+基于多路 RBFNN 智能主动容错控制结构图如图 4所示，其中 FTC Controller 模块为智能主动容错控制控制器。当传感器测量到当前时刻的响应后，数据传输到智能主动容错控制控制器，容错控制器将通过基于多路 RBFNN 的传感器故障检测模块对信号是否有故障进行检测，当检测到某个传感器出现故障时，容错控
+
+控制器将进行考虑此传感器故障的控制器重构，转向预定考虑检测到失效传感器的控制器。在图 4 中 FTC Controller 模块结构如图 6 。 图 6 中 State determination为根据传感器实效的状态，确定控制器按什么规律进行重构，该模块采用的为用户自定义函数模块编程实现。 图 6 中 Sensor failure detection 模块为的结构图如图 7 所示，该模块为多路 RBFNN 传感器故障检测模块，用来检测各个传感器是否出现故障，可以看出各传感器检测相互独立，互不干扰，确定该传感器是否有故障，跟其它传感器数据无关，因此，可以保证当某传感器出现故障后，不会对别的传感器故障的检测产生影响，该模块中“SK1”、“SK2”和“SK3”通过用户自定义函数模块编程实现，为多路 RBF 网络控制系统动力特性辨识模型，即为基于多路 RBFNN 的传感器故障实时检测系统。 图 7 中 Sensor failure simulation 模块的功能为进行仿真传感器失效的形式、状态及时间。从短期可靠性方面考虑，缓变故障出现的可能性较小且程度不会很严重，因此，在失效时刻到达时，加入突变的偏移信号、随机噪声信号太大或传感器没有信号三种情况来模拟传感器失效。
+
+
+
+图 4 基于多路 RBFNN 智能主动容错控制结构图
+
+Fig．4 Smart fault tolerant control based on multi-channel RBFNN
+
+图 5 传感器故障仿真模块 Fig．5 Simulation of sensor failure
+
+
+
+图 6 FTC Controller 模块结构图
+
+Fig．6 Structure of FTC Controller
+
+图 7 多路 RBFNN 传感器故障检测模块
+
+Fig．7 Sensor failure detection based
+
+on multi-channel RBFNN
+
+5 数值仿真分析
+
+本文采用的仿真原型为美国 Notre Dame 大 学Spencer 研究组 AMD 控制的 3 层框架钢结构试验模型，即 AMD 控制 Benchmark 模型。 该 AMD 控制模型是Chung 等人实验用模型的更小缩尺比例模型，与原型结构的几个主要相似比为:力比1∶ 60，质量比 1∶ 200，时间比 1∶ 5，位移比 4∶ 29，加速度比 7∶ 2 。模型高为 158 cm，各层楼板总重 227 kg、平均分配与每层，框架自重 77 kg 。模型前三阶频率分别为 5．81 Hz、17．68 Hz 和28．53 Hz，相 应 阻 尼 比 分 别 为 0．33% 、0．23% 和0．30% 。该模型由一个安装在顶层的小型 AMD 控制，其中 AMD 由一个液压作动器和一个加在其端部的钢板质 量 块 组 成。 地震输入激励为 El Centro、Sylmar Kobe、Erzincan Rinaldi 、Newhall，进行仿真控制时，控制算法采用 LQG 控制算法，控制时反馈量为结构每层的加速度响应，1# ～3#传感器分别采集结构第一～第三层的加速度，以 Kobe 地震波激励结构响应的数据，通
+
+过多路 RBF 网络对控制系统进行动力特性辨识。考虑到传感器故障的组合，共需重构 8 个控制器(包括全部传感器正常与全部失效)，设计的 FTC Controller Simu- link 仿真模块如图 8 所示，其它同图 4 。仿真传感器失效的形式为:突变的偏移信号，随机噪声信号太大，传感器没有信号。仿真时分以下 9 中工况进行，包含了全部传感器可能失效的情况。工况 1 :1 #传感器与 2 #传感器分别在 2．0 s 和 3．0 s 后噪声过大失效 ;工况 2 : 2#传感器与3#传感器分别在3．0 s 和 3．5 s 后噪声过大失效 ;工况 3:1 #传感器与 3 #传感器分别在 2．0s 和3．5s 后噪声过大失效 ;工况 4:1#传感器与2#传感器在2．5 s 和 3．5 s 后信号出现 0．5 的偏移 ;工况 5:2#传感器与 3#传感器在2．5 s 和 3．5 s 后信号出现 0．5 的偏移 ;工况 6:1#传感器与 3#传感器在 2．5s 和 3．5s 后信号出现 0．5 的偏移 ;工况 7 :1 # 传感器与 2 # 传感器在2．1 s和3．6 s 后反馈 0 信号 ;工况 8:2#传感器与 3#传感器在 2．1 s 和 3．6 s 后反馈 0 信号 ;工况 9:1#传感器与 3#传感器在2．1 s 和 3．6 s 后反馈 0 信号。
+
+
+
+图 8 FTC Controller 仿真模块
+
+Fig．8 Simulation of FTC Controller
+
+图 9 和图 10 为工况 1 一号与二号传感器染入噪声信号时程图。 图 11 分别为工况 1 EI Centro 地震波作用时智能主动容错控制策略检测到传感器失效的时刻，可以看出多路 RBFFNN 能准确检测到失效的传感器及该传感器失效的时刻，说明本文提出的基于多路RBFNN 的传感器故障检测技术是正确的、可靠的。 图12 为工况 1 EI Centro 地震波作用时未控结构 (普通抗
+
+震结构)、主动控制(传感器都正常)和主动容错控制的第三层加速度响应，可以看出，当一号和二号传感器失效后，智能主动容错控制策略仍可以取得良好的控制效果，智能主动容错控制策略可以保证传感器失效后控制系统的安全性。其它工况以及其它地震波作用下的检测结果及控制效果不在一一叙述，结果同上。
+
+
+
+图 9 一号传感器染入的噪声信号(工况1)
+
+Fig．9 Noise of sensor 1# ( Case 1)
+
+
+
+图 10 二号传感器染入的噪声信号(工况1)
+
+Fig．10 Noise of sensor 2# ( Case 1)
+
+
+
+图 11 多路 RBFFNN 检测的失效的传感器(工况 1)
+
+Fig．11 Sensor failure detected by multi-channel RBFNN ( Case 1)
+
+
+
+图 12 第三层加速度响应比较(工况1)
+
+Fig．12 Acceleration of the third floor ( Case 1)
+
+6 结 论
+
+本文提出了基于多路 RBFNN 的传感器故障检测方法及智能主动容错控制 策 略，通过对 AMD 控制Benchmark 模型进行仿真分析，得到以下主要结论 :
+
+(1) 提出的基于多路 RBFNN 的传感器故障检测方法能准确的检测到多个传感器失效的情况，由于采用的滚动检测方法，每个传感器的信号相互独立，检测互不干扰，因此，可以保证基于多路 RBFNN 的传感器故障检测方法能在线实时对一个或多个传感器故障进行准确性的检测。
+
+(2) 智能主动容错控制策略当传感器正常工作时，控制器按设定的控制算法确定控制 力，当 多 路RBFNN 检测到某个传感器失效时，控制系统将自动剔除该传感器信号，切换到考虑此传感器失效时的振动控制算法确定控制力，即进行控制器的重构。仿真结果显示，当一个或多个传感器失效时，采用智能主动容错控制策略仍具有良好的控制效果，可以保证系统的安全及具有良好的稳定性。
+
+本文仅仅对传感器故障出现时对结构主动容错控制进行探讨，对控制器及执行器的故障诊断没有涉及，对于主动控制或混合控制系统而言，控制器及执行器的失效同样会对结构的安全不利，控制器失效模式及主动容错控制策略更为复杂，因此，智能主动容错控制策略在实际土木工程结构振动控制中进行应用还需要进一步的研究和进行试验验证。
+
+参 考 文 献
+
+［1］ 李宏男，杨浩．基于多分支 BP 神经网络的结构系统辨识［J］．工程力学，2006，23 (2) :23－28．
+
+LI Hong-nan ，YANG Hao． Structural system identification based on multi-branch Bp neural network［J］． Engineering Mechanics，2006，23 (2) :23 － 28．
+
+［2 ］ 宋刚，吴志刚，林家浩．考虑不确定性的结构抗震鲁棒 H∞控制［J］．地震工程与工程振动，2008，28(6) :226－232．
+
+SONG Gang ，WU Zhi-gang ，LIN Jia － hao． Robust H∞ control for earthquake-excited structures with parameter uncertainties ［J］． Earthquake Engineering and Engineering Vibration，2008，28(6) : 226－232．
+
+［3］ 霍泽云，钟麦英，董全超．一类线性不确定系统的主动容错 H∞ 控制［J］．控制工程，2008，15 (4) :474－477．
+
+HUO Ze-yun，ZHONG Mai-ying ，DONG Quan-chao．Active fault tolerant H∞ control for uncertain linear systems ［J］． Control Engineering of China，2008，15 (4) :474－477．
+
+［4 ］ 孟令雅．基于反馈线性化的主动容错控制器设计［J］．科学技术与工程，2009，9(10) :2774－2777．
+
+MENG Ling-ya．Active fault-tolerant controller design based on feedback linearization ［J］． Science Technology and Engineering，2009，9(10) :2774 － 2777．
+
+(下转第 160 页)
+
+［C］/ / Proceedings of the First World Conference on Earthquake Engineering． Berkeley ，California : Earthquake Engineering Research Institute，1956 : 1 －12．
+
+［2 ］ Housner G W．Behavior of structures during earthquake ［J］． Journal of the Engineering Mechanics Division ， 1959， 85 (4) : 109 －129．
+
+［3］ 魏新磊，周云，于敬海，等．基于结构能量分析的抗震设计新方法的研究［J］． 世界地震工程，2003 ，19 (3) : 62 - 67．
+
+WEI Xin-lei，ZHOU Yun，YU Jing-hai，et al．Research on new methods of aseismic design of structures based on energy concept［J］．World Earthquake Engineering，2003 ，19 (3) :
+
+62－67．
+
+［4 ］ 马千里．钢筋混凝土框架结构基于能量抗震设计方法研究［D］．北京:清华大学，2009．
+
+［5］ Fajfar P，Gaspersic P．The N2 method for the seismic damage analysis of RC buildings［J］． Earthquake Engineering and Structural Dynamics，1996，25 (1) : 31－46．
+
+［6 ］ Chou C C ，Uang C M．A procedure for evaluating seismic energy demand of framed structures ［J］． Earthquake Engineering and Structural Dynamics ，2003 ，32 (2 ) : 229 - 244．
+
+［7］ 江辉，慎丹，刘夏润，等．基于改进 Park －Ang 模型的 RC桥墩地震动损伤及滞回耗能特性研究［J］．振动与冲击， 2012，31 (5) : 97 －105．
+
+JIANG Hui ， SHEN Dan ， LIU Xia-run ， et al． Seismic damage and hysteretic energy dissipation characteristics of a RC bridge pier based on improved park-Ang model ［J］． Journal of Vibration and Shock，2012，31 (5) : 97 －105．
+
+［8］ 叶列平，程光煜，曲哲，等．基于能量抗震设计方法研究及其在钢支撑框架结构 中 的应用［J］． 建筑结构学报， 2012，33 (11) : 36－45．
+
+YE Lie-ping ，CHENG Guang-yu ，QU Zhe ，et al． Study on energy-based seismic design method and application on steel braced frame structures［J］．Journal of Building Structures， 2012，33 (11) : 36－45．
+
+［9 ］ Akiyama H． Earthquake-Resistant Limit-State design for buildings［M］．Tokyo : University of Tokyo Press，1985 : 70．
+
+［10］ Connor J J，Wada A ，Iwata M，et al． Damage － controlled
+
+structures : preliminary design methodology for seismically active regions［J］．Journal of Structural Engineering ，1997， 123 (4) : 423－431．
+
+［11］ Shen J ，Akbas B． Seismic energy demand in steel moment frames［J］．Journal of Earthquake Engineering，1999，3 (4) : 519－559．
+
+［12］ 史庆轩，熊仲明，李菊芳．框架结构滞回耗能在结构层间分配的计算分析［J］． 西安建筑科技大学学报，2005， 37(2) : 174 －178．
+
+SHI Qing-xuan，XIONG Zhong-ming，LI Ju-fang．Calculation analysis of the storey distribution of hysteretic energy for frame structures［J］． J．Xi ’an Univ． of Arch．＆Tech． ( Natural Science Edition)，2005，37(2) :174 －178．
+
+［13］ 毛建猛，谢礼立． 基于 MPA 方法的结构滞回耗能计算［J］．地震工程与工程振动，2008，28(6) : 33－38．
+
+MAO Jian-meng ， XIE Li-li． Computation of structural hysteretic energy based on MPA procedure［J］． Journal of Earthquake Engineering and Engineering Vibration ，2008， 28(6) : 33－38．
+
+［14］ 陈清军，袁伟泽．基于长周期地震动记录的 SDOF 体系能量谱探讨［J］．振动与冲击，2013，32(10) : 36－42．
+
+CHEN Qing-jun ，YUAN Wei-ze．Energy spectrum of SDOF system based on long －period ground motion records［J］． Journal of Vibration and Shock，2013，32(10) : 36－42．
+
+［15］ Krawinkler H ，Seneviratna G D P K． Pros and cons of a pushover analysis of seismic performance evaluation ［J］． Engineering Structures，1998，20 : 452 － 464．
+
+［16］ 叶献国．建筑结构弹塑性地震反应中的能量表达及应用［J］．合肥工业大学学报，1998，21 (5) : 9 －16．
+
+YE Xian-guo．Energy expressions of earthquake response and damage in inelastic structures and applications［J］．Journal of Hefei University of Technology，1998，21 (5) : 9 －16．
+
+［17］ 闫书明．护栏碰撞中车体加速度敏感性分析［J］．振动与冲击，2011，30(7) : 1－4．
+
+YAN Shu-ming． Sensitivity analysis of vehicle acceleration during impact of a barrier［J］． Journal of Vibration and Shock，2011，30(7) :1－4．
+
+［18］ 张新培．钢筋混凝土抗震结构非线性分析［M］．北京:科学出版社，2003．
+
+
+
+(上接第 122 页)
+
+［5］ 刘菁，刘晓华．基于 GPC 的主动容错控制研究［J］．鲁东大学学报( 自然科学版)，2011，27(1) :27－31．
+
+LIU Jing，LIU Xiao-huab．Active fault tolerant control based on GPC ［J］．Ludong University Journal ( Natural Science Edition，2011，27(1) :27－31．
+
+［6］ 白铭珍，吴淮宁．非线性主动容错控制系统 H∞ 模糊控制器
+
+设计［J］．航空学报，2008，29(5) :1281 － 1287．
+
+BAI Ming-zhen ，WU Huai-ning．H∞ fuzzy controller design for nonlinear active fault tolerant control systems［J］． Acta Aeronautica Et Astronautica Sinica ，2008，29 ( 5 ) : 1281
+
+- 1287．
+
+［7］ 孙金龙，滕青芳，王国林，等．多约束条件下结构振动系统的容错控制［J］．振动与冲击，2010，29(2) : 69－74．
+
+SUN Jin-long ，TENG Qing-fang ，WANG Guo-lin ，et al．
+
+Fault-tolerant control for a structural vibration system with multi-constraint ［J］．Journal of Vibration and Shock，2010， 29(2) : 69－74．
+
+［8 ］ Du H P，James L，Kam Y S．Non-fragile H∞ vibration control for uncertain structural systems［J］． Journal of Sound and Vibration，2004，273 (4) :1031 － 1045．
+
+［9 ］ 杜永峰，郭剑虹．基于 RBF 神经网络的结构动力响应预测［J］．兰州理工大学学报，2006，32(2) :111 － 114．
+
+DU Yong-feng ， GUO Jian-hong． Prediction of structural dynamic response based on RBF neural network［J］．Journal of Lanzhou University of Technology ，2006 ，32 (2 ) : 111
+
+- 114．
+
+［10］ 刘金琨．智能控制［M］．北京 :电子工业出版社，2006．
