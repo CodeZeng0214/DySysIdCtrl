@@ -80,7 +80,7 @@ class ElectromagneticDamperEnv:
 
     def reset(self, X0=None, z_func:Callable=None) -> np.ndarray:
         """重置环境到初始状态，返回初始观测值"""
-        if X0:
+        if X0 is not None:
             self.all_state = X0.copy()
             # 随机扰动初始状态（可选）
             # self.state[1] = np.random.uniform(-0.5, 0.5)  # 随机初始速度
