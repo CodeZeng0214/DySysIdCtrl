@@ -1,0 +1,659 @@
+文章编号：1009-6744(2024)02-0096-09 中图分类号：U491 文献标志码：A
+
+DOI: 10. 16097/j.cnki.1009-6744.2024.02.010
+
+基于自注意力机制的深度强化学习交通信号控制
+
+张玺君*，聂生元，李喆，张红
+
+(兰州理工大学，计算机与通信学院，兰州 730050)
+
+摘要：交通信号控制(Traffic Signal Control, TSC)仍然是交通领域中最重要的研究课题之一 。针对现有基于深度强化学习(Deep Reinforcement Learning, DRL)的交通信号控制方法的状态需要人为设计，导致提取交通状态信息难度大以及交通状态信息无法全面表达的问题，为了从有限特征中挖掘潜在交通状态信息，从而降低交通状态设计难度，提出一种引入自注意力网络的 DRL 算法 。首先，仅获取交叉口各进入口车道车辆位置，使用非均匀量化和独热编码方法预处理得到车辆位置分布矩阵；其次，使用自注意力网络挖掘车辆位置分布矩阵的空间相关性和潜在信息，作为 DRL算法的输入；最后，在单交叉口学习交通信号自适应控制策略，在多交叉口路网中验证所提算法的适应性和鲁棒性 。仿真结果表明，在单交叉口环境下，与 3 种基准算法相比，所提算法在车辆平均等待时间等指标上具有更好的性能；在多交叉口路网中，所提算法仍然具有良好的适应性。
+
+关键词：智能交通；自适应控制；深度强化学习；自注意力网络；近端策略优化
+
+Traffic Signal Control with Deep Reinforcement Learning and
+
+Self-attention Mechanism
+
+ZHANG Xijun*, NIE Shengyuan, LI Zhe, ZHANG Hong
+
+(School of Computer and Communication, Lanzhou University of Technology, Lanzhou 730050, China)
+
+Abstract: Traffic signal control (TSC) is still one of the most important research topics in the transportation field. The existing traffic signal control method based on deep reinforcement learning (DRL) needs to be designed manually, and it is often difficult to extract the complete traffic state information in the real operations. This paper proposes a DRL algorithm based on the self-attention network for the traffic signal control to analyze the potential traffic from limited traffic state information and reduce the difficulty of traffic state design. The vehicle position of each entry lane at the intersection is obtained, and the vehicle position distribution matrix is established through the non-uniform quantization and one-hot encoding method. The self-attention network is then used to analyze the spatial correlation and latent information of the vehicle location distribution matrix which is an input of the DRL algorithm. The traffic signal adaptive control strategy is trained at a single intersection and the adaptability and robustness of the proposed algorithm are verified in a multi-intersection road network. The simulation results show that in a single intersection environment, the proposed algorithm has better performance on the average vehicle delay and other indicators compared with three benchmark algorithms. The proposed algorithm also has good adaptability in the multi-intersection road network.
+
+Keywords: intelligent transportation; adaptive control; deep reinforcement learning; self-attention network; proximal policy optimization
+
+0 引言 量持续上升，交通基础设施建设滞后、交通拥堵等近年来，随着人民生活水平的提高，汽车保有 问题也在不断加剧 。交通拥堵问题已成为当今各
+
+收稿日期：2023-05-22 修回日期：2023-12-08 录用日期：2024-01-29
+
+基金项目：国家自然科学基金/ National Natural Science Foundation of China (62162040)；甘肃省自然科学基金重点项目/ Key Program of the Natural Science Foundation of Gansu Province, China (22JR5RA226)；甘肃省高等学校创新基金项目/ Gansu Province Higher Education Innovation Fund-funded Project (2021A-028)。
+
+作者简介：张玺君(1980- )，男，甘肃临洮人，副教授。 *通信作者：zxjun@lut.edu.cn
+
+国城市面临的非常棘手的问题 。一方面，政府可以通过新增交通基础设施来改善交通拥堵；另一方面，提高交通信号控制效果，可以在短时间内以更低成本提高道路使用效率，缓解交通拥堵问题。
+
+随着人工智能技术的不断发展，同时具备深度学习的感知能力和强化学习的决策能力的深度强化学习(Deep Reinforcement Learning, DRL) 算法 ，有望解决传统交通信号控制方法的不足。
+
+为了提高基于 DRL 算法的交通信号控制策略的学习和控制效果，一方面，通过探索不同特征对环境信息的表达效果，从而能够用最少的特征全面表达环境 。陈喜群等[1]选择将交通特征如进口道车辆数、车辆速度、当前相位和历史相位等向量进行加权组合作为 DRL 算法的状态输入 。Wu Q. 等[2]提出 Efficient-MP(Efficient Max Pressure) 方法 ，利用排队长度来捕捉通行能力的关系作为强化学习(Reinforcement Learning, RL)算法状态 ，成为新的基准方法 。Zhang L. 等[3]利用排队长度作为状态标识，使用自注意力机制来捕获信号的相位相关性，实验结果优于基线方法 。Oroojlooy A. 等[4]提出包含两个注意力模型的 DRL 模型 AttendLight，一个注意力模型用来构建相位的特征，另一个注意力模型用来预测相位转换概率 。唐慕尧等[5]引入交通状态预测结果，与其他交通状态向量组合作为 DRL算法的状态输入，但是不同状态组合会产生冗余信息 ，导致模型训练的开销增大 ，制约算法的拟合度[6] 。DRL 中的深度神经网络能够提高函数逼近的准确性，特别是在处理高维和无限的情况下[7]，因此，YU P. 等[8]选择将车辆位置、速度和历史相位等矩阵进行组合，利用 DRL 算法中的深度神经网络直接提取特征，但这种方法会大幅增加算法的运算规模，很容易丢失重要信息导致算法效果下降。
+
+另一方面，不断改进 DRL 算法或者使用学习效果更好的算法，能够在有限的特征下尽可能挖掘潜在信息，从而提高学习效果 。Ma D.[9]等将深度神经网络模型应用于交叉口交通状态信息的挖掘，使模型不再仅仅依赖于有限的交通状态信息 。任安妮等[10]基于深度 Q 网络(Deep Q-network, DQN)算法提出了一种基于注意力机制的 DRL 信号控制算法 DQN_AM，旨在降低状态向量设计难度的同时挖掘更多的潜在信息，但并没有探索其他 DRL 算法结合注意力机制能否达到该目的。
+
+使用学习能力更高的 DRL 算法也能够提高交通信号控制策略的效果，GE Z. 等[11] 比较了基于 Q-
+
+Learning 的交通信号控制策略和基于 DQN 的交通信号控制策略，结果表明，基于 DQN 的控制策略比基于 Q-Learning 的控制策略更有效 。ZHU Y. 等[12]通过对智能交通信号控制系统中基于价值的方法，如 DQN 和 DDQN(Double Q-Learning)，以及基于策略的 DRL 算法 PPO(Proximal Policy Optimization)进行对比，证明在最优策略方面，PPO 的性能优于其他策略 。Li Y. 等[13]以车辆平均等待时间作为优化 目 标 ，在 单 交 叉 口 比 较 了 PPO、DQN、A2C (Advantage Actor Critic)和 FTC(Fixed-time Control)算法，实验证明，PPO 算法优于其他算法，且在多交叉口非均衡流量下表现出很好的可移植性和鲁棒性。
+
+多数交通信号控制的研究聚焦于组合有限的特征全面表达交通状态，或者引入新技术提升 DRL算法的特征提取能力，但两者相结合的研究甚少。基于此，为了从有限特征中挖掘潜在交通状态信息，从而降低交通状态设计难度，本文提出一种引入 自 注 意 力 网 络 的 DRL 算 法 GC_PPO(Global Context block_Proximal Policy Optimization) 。仅选择 进 入 口 车 辆 位 置 信 息 矩 阵 ，使 用 GC block (Global Context block) 挖掘空间相关性和潜在信息，作为 DRL 算法的输入；在 SUMO(Simulation of Urban MObility)构建实验环境，在单交叉口学习交通信号灯控制策略，并在多交叉口路网中验证所提算法的适应性。
+
+1 基于 DRL 的交通信号控制策略设计与优化
+
+1.1 状态
+
+使用离散交通状态编码(Discrete Traffic State Encode, DTSE)预处理交叉口实时交通信息，相较于直接使用交通状态图像作为信息输入，这种方法可以有效减少数据量，降低算法计算复杂度[14]。
+
+本文基于 DTSE 方法，采用非均匀量化和独热编码设计状态向量，仿真交叉口为双向 6 车道，如图 1 所示 。以交叉口由西向东进车口方向为例，沿着行驶方向，最左侧为专用左转车道，中间为直行车道，最右侧为专用右转车道，长度 500m 。靠近交通信号灯的 28 m 内以 7 m 为间隔划分[12]，往后依次增加间隔，既能精确表达信号灯附近的交通状况，又能降低状态量 。信号灯相位定义如图 1(b)所示， NS 表示南北方向直行，NSL 表示南北方向左转， EW 表示东西方向直行，EWL 表示东西放在左转。
+
+
+
+(a) 西进口道设计图 (b) 信号灯相位
+
+图 1 交叉口西进口道设计图和交叉口相位
+
+Fig. 1 Design drawing of west entrance of intersection and intersection phase
+
+Non-Local 网络[15]通过自注意力机制，仅需添加一层就可以为网络获得长程依赖 。而为了捕获长距离依赖关系，SENet[16](Squeeze-and-Excitation Networks)采用权值重标定来调整通道依赖，然而该方法不能充分利用全局上下文 。GCNet(Global
+
+Context Network)[17]充分结合了 Non-local 全局上下文建模能力强和 SENet节省计算量的优点 。为此，本 文 设 计 了 一 种 基 于 GC Block 的 算 法 模 型GC_PPO，整体结构如图 2 所示。
+
+
+
+图 2 GC_PPO算法整体结构图
+
+Fig. 2 GC_PPO algorithm overall structure diagram
+
+GC Block 是 GCNet 中的一个关键模块，核心思想是利用自注意力机制来加强全局上下文信息的利用 。该块由两个关键组件组成：全局上下文信息的聚合和特征重新缩放 。在全局上下文聚合中，
+
+GC block 使用自适应的方式来计算每个像素点与其他像素点之间的相似度，从而得到像素点之间的相关性矩阵 。在特征重新缩放中，GC block 使用所得到的相关性矩阵来对特征图进行重新加权，使得
+
+模型更加关注重要的全局上下文信息。
+
+GC_PPO 基于 GC Block 设计 PPO 算法的神经网络，使用这种网络提取交通状态特征时，主要步骤如下。
+
+Step 1 基于 DTSE 方法，采用非均匀量化和独热编码构建实时交通状态空间矩阵 M1 ，将 M1 输入到 GCNet Block 中，先展平为一维向量 M 。
+
+Step 2 将 M输入到 Context Modeling 模块，如
+
+图 2 所示，其将输入矩阵的每个元素都看作一个节点，并计算每个节点与其他节点之间的关系，形成一个关系矩阵，从而获得全局信息关系向量 。其中，αj 是全局 attention pooling 的权值，计算公式为
+
+
+
+式中：x 为输入的一维向量 M ；m 为位置索引；j为枚举所有可能的位置；W 为 1×1 线性变换矩阵。
+
+Step 3 通过 Transform 模块，可以将特征重新缩放，用相关性矩阵对特征图进行重新加权，使得模型更加关注重要的全局上下文信息，即
+
+
+
+式中：N 为一维向量 M 中元素的数量，由于两层
+
+Conv 变换增加了优化的难度，在 Conv 变换内部(在ReLU 之前)添加 Layer Normal 帮助模型优化，即
+
+di = LN(ci) (3)
+
+fi = ReLU(Wdi) (4)
+
+式中：LN 为 Layer Normal 操作；di 为 ci 经过 Layer Normal 操作处理之后的矩阵；选择 ReLU 函数作为神经元的激活函数；fi 通过引入非线性变换，能够使模型学习复杂的非线性关系。
+
+Step 4 将输入的特征图按照通道注意力权重进行加权，从而提高模型的性能，得到所需的观测空间矩阵 zi ，即
+
+zi = xi + Wfi (5)
+
+综上，整理式(1)~式(5)，得到利用 GC block 提取交通状态信息的计算模型为
+
+
+
+1.2 动作空间
+
+本文的动作是在预定义的信号相位组合中选择最优的信号相位组合 。绿灯信号相位的保持时
+
+间设置为 10 s，绿灯切换成黄灯后，黄灯持续时间设置为 4 s，当本次相位与上次相位一致时，绿灯保持时间设置为 5 s 。所定义的信号相位集合 A = {NS, NSL, EW, EWL} ，如图 1 所示。
+
+1.3 奖励函数
+
+奖励也称反馈，是衡量该动作质量的评价指标 。智能体在 t 时刻观察到当前环境的状态为 st ，执行动作 at 后得到环境对该动作的奖励 R(t) 。
+
+利用 SUMO 仿真软件中提供的 Traci 接口获取交叉口车辆等待时间，将奖励函数 R(t) 定义为相邻采样时间步 t 的进口道上车辆总等待时间之差，即
+
+R(t)= Ttotal(t)- Ttotal(t + 1) (7)
+
+式中：t 为从上次执行完绿灯相位到本次执行完绿灯相位所经过时间；Ttotal(t) 为当前交叉口进口道车辆累计等待时间；Ttotal(t + 1) 为执行完这一动作后交叉口进口道车辆累计等待时间。
+
+1.4 近端策略梯度算法
+
+本 文 以 PPO 算 法 作 为 智 能 体 的 基 准 算 法 ， GC_PPO 算法整体结构如图 2 所示。
+
+PPO 是一种用于强化学习的算法，它旨在解决DRL 中的策略优化问题，通过对当前策略和参考策略之间的距离进行限制来保证算法的稳定性和收敛性 。PPO 算法主要有两个部分：策略评估阶段和策略改进阶段 。在策略评估阶段，PPO 算法使用当前的策略来生成一些轨迹，并使用这些轨迹来计算当前策略的性能；在策略改进阶段，PPO 算法使用策 略 梯 度 方 法 更 新 策 略 参 数 ，并 使 用 Clipped Surrogate Objective 函数、梯度裁剪、重要性采样比率等方式来确保参数更新的稳定性和一致性。
+
+在算法迭代更新时，通过一组参数 θ 对策略进行参数化，观察当前策略在 t 时刻智能体处于状态st 所采取的行为概率 πθ(.|st) 与之前策略所采取行为概率 πθold(.|st) ，计算概率的比值控制新策略更新
+
+幅度，记作 t (θ) ，即
+
+
+
+式中 ：at 为 t 时刻智能体在状态 st 下所采取的行动 。
+
+在 PPO 中，通过直接剪断用于策略梯度的目标
+
+函数，得到更保守的更新，目标函数表示为
+
+
+
+式中： 为取以 x 为自变量函数 f(x) 的期望；ε 为
+
+超参数，用于控制剪裁幅度，默认设置为 0.2；clip为通过裁剪概率比达到优化差距不要太大的目的；
+
+t 为优势函数，定义为
+
+t = δt + (γλ)δt + 1 + … + … + (γλ)T - t + 1δT - 1 (10)
+
+δt = rt + γV(st + 1)- V(st) (11)式中：rt 为时间步长 t 中的即时奖励；γ 为折扣因子，用于控制未来奖励的重要程度；λ 为平滑指数； T 为采样时间步；δt 为 t 时刻的 TD 残差；V 状态值函数，是在状态 t 之后的动作序列上的累计奖励 Gt的数学期望，计算公式为
+
+V(st)= E{Gt |st = s} (12)
+
+Gt k rt +k (13)
+
+式 中 ：Gt 为 按 照 时 间 降 权 的 累 计 回 报 ；k 为 迭代轮数 。
+
+在网络权重参数更新时，引入重要性采样方法 。重要性采样方法用于估计旧策略下的价值函数，从而更新新的策略，其具备改善采样效率、解决策略偏移 问 题 和 增 强 学 习 稳 定 性 等 作 用 ，计算公式为
+
+x~p [f(x)] = x~q [f(x)p(x)q(x)] (14)
+
+式中：在 PPO 中，将两个采样策略分布函数的比值定义为重要性权重 IW ，用来体现在某个采样点策略分布函数 q 相较 于 策 略 分 布 函 数 p 的 参 考 程度，即
+
+IW = p(x)/q(x) (15)
+
+2 实验设计与结果分析
+
+2.1 实验设置
+
+本文使用 SUMO 开展仿真实验 。SUMO 是一个开源的、最受欢迎的交通状况仿真软件，可以通
+
+过使用 TraCI (Traffic Control Interface)接口获取道路和车辆信息，控制交通信号灯。
+
+在模型训练阶段，针对单个智能体，在 3 车道十字路口上，使用韦伯分布生成车流量，以相邻采样时间步 t 的进口道上车辆总等待时间之差作为奖励进行训练，训练 100 轮，以 SUMO 输出日志中的评价指标参数作为源数据，与其他方法对比。
+
+在模型验证阶段，使用单交叉口在 SUMO 中构建仿真环境进行 20 轮测试，为了验证所提算法的适应性，针对兰州市带状城市特点，使用七里河区兰州中心附近的 2×4 路网，利用 OpenStreetMap 下载路网，导入 SUMO 构建多交叉口不同流量场景进行实验，如图 3 所示 。每个交叉口对应一个智能体，智能体间独立运行，不协作 。 同时为了与新方法对比，使用济南市 3×4 路网和杭州市 4×4 路网在SUMO 中构建仿真环境，分别使用 3 个和 2 个不同的真实交通流量数据，进行 3 轮测试，以平均旅行时间(Average Travel Time, ATT) 作为评价指标 ，取3 轮均值与其他新方法对比。
+
+
+
+图 3 兰州市多交叉口路网图
+
+Fig. 3 Multi-intersection road network map
+
+2.2 超参数设置
+
+对于 GC_PPO 算法的基本配置参数，本实验设置的参数如表 1 所示。
+
+表 1 超参数设置
+
+Table 1 Hyperparameter settings
+
+参数
+
+回合数
+
+Actor 网络学习率
+
+Critic 网络学习率
+
+Clip 常量
+
+BatchSize
+
+隐藏层数量
+
+隐藏层宽度
+
+取值
+
+100
+
+0.001
+
+0.001
+
+0.2
+
+512
+
+2
+
+300
+
+2.3 评价指标
+
+本文使用以下 4 种重要指标来评价不同交通信号控制算法的性能：
+
+(1) 平均累计奖励(rewards)，所有车辆从进入车道到驶出车道所获得奖励总和的平均值。
+
+(2) 平均等待时间(waiting time)，所有车辆从进入车道到驶出车道等待时间的平均值。
+
+(3) 平均燃油消耗(fuel)，所有车辆进入车道到驶出车道的油耗平均值。
+
+(4) 平均 CO2 排放，所有车辆从进入车道到驶出车道的 CO2 排放量总和的平均值。
+
+(5) 平均旅行时间(ATT)，所有车辆从进入车道到驶出车道的平均用时。
+
+针对不同流量条件，使用 100 个随机种子 seed
+
+生成 100 组不同的车流信息，用以上 4 种指标作为算法的评价指标 。其中，平均累计奖励越高，表明该方法的性能越好；而平均燃油消耗、平均 CO2 排放和 ATT 越低，说明道路越不拥堵，性能越好。
+
+2.4 对比实验
+
+为了验证本算法的有效性，将本算法与以下基准算法进行比较：
+
+(1) 固定配时控制 FTC，根据韦伯斯特配时法预先定义一套交通信号控制方案，该方法在现有交通信号控制方案中广泛使用。
+
+(2) 基于 DQN 的交通信号控制算法，标准 DQN算法，与所提 GC_PPO 使用相同的状态、动作、奖励函数。
+
+(3) 基于 PPO 的交通信号控制算法，使用与本文所提 GC_PPO 相同的 PPO 算法和参数，且不对交通状态使用 GC block。
+
+(4) FRAP(Flip and Rotation and considers All Phase configurations)[18]，通过相位竞争建模，实现了对交通流中翻转、旋转等对称情况的不变性。
+
+(5) MPLight[2]，以 FRAP 方法为基础模型，将压
+
+力引入状态和奖励设计。
+
+(6) CoLight[19]，利用图注意力网络实现交叉口协作。
+
+(7) AttendLight[4]，利用注意力机制构建相位特征并预测相位转换概率。
+
+(8) PRGLight[20]，使用图神经网络预测交通状态，并根据当前观测到的交通状态和预测的状态调整相位持续时间。
+
+(9) TD3-BC[21]，仅在在线 RL 算法的值函数上添加一个行为克隆(BC)的正则项，并对状态进行归一化，就能达到最先进的离线 RL 算法的性能。
+
+2.5 数据集
+
+SUMO 环境中测试车辆的生成服从韦伯分布，其概率密度函数为
+
+
+
+式中：η 为比例参数，设为 1；β 为形状参数，设为2 。生成的测试车辆从任意路口进入路网，测试车辆生成参数如表 2 所示。
+
+表 2 测试车辆生成参数
+
+Table 2 Test vehicle generation parameters
+
+参数
+
+直行概率%
+
+左转概率%
+
+右转概率%
+
+加速度/(m.s-2)
+
+最大速度/(km.h-1)
+
+车辆最小间距/m
+
+取值
+
+75
+
+12.5
+
+12.5
+
+2.0
+
+30
+
+2.5
+
+2.6 实验结果分析
+
+本文实验中，设置两组交通流量用于算法模型的训练和测试，仿真步长均为 5000 s，具体参数如表 3 所示。
+
+表 3 不同测试环境车辆数设置
+
+Table 3 Number of vehicles in different test environments
+
+交叉口类型
+
+高流量车辆数/(veh.h-1)
+
+低流量车辆数/(veh.h-1)
+
+单交叉口
+
+1500
+
+1000
+
+多交叉口
+
+12000
+
+8000
+
+图 4~ 图 6，表 4~表 7 为实验结果，图中横坐标episode 为训练 、测试次数 ，结果中的平均等待时间、燃油消耗、CO2 排放量指标由 SUMO 生成的日志中分析取得。
+
+在单交叉口高流量环境中训练各算法，部分评价指标数据如图 4 所示 。图 4(a)是各算法的累计奖励对比，图 4(b)是各算法的车辆平均等待时间对比，随着测试轮次的增加，各算法截止训练结束时，累计奖励和车辆平均等待时间均趋向稳定 。从图 4可以看出，GC_PPO 与 PPO 在训练过程中的累计奖
+
+励和车辆平均等待时间差别不大，因此在 GC_PPO算法中，加入 GC block 提取交通状态潜在信息不会降低算法的收敛速度、性能和稳定性。
+
+在单交叉口环境下的 20 轮实验验证中，表 4 是低流量和高流量环境下评价指标数据的统计结果，图 5 是在高流量环境下每轮的详细数据对比图 。从表 4 图 5 可以看出，FTC 算法产生的车辆平均等待时间大于 DQN、PPO 和 GC_PPO 算法，可见基于DRL 的交通信号控制算法要远远好于传统的 FTC算法；进一步的，GC_PPO 相比 FTC、DQN 和 PPO算法，累计奖励更高、车辆平均等待时间更低，说明GC_PPO 控制效果优于 FTC、DQN 和 PPO 算法；同时 ，GC_PPO 控 制 效 果 优 于 PPO 算 法 ，说 明GC_PPO 算法中 GCNet Block 相比 PPO 中的全连接神经网络提取到了更为关键的信息。
+
+为了进一步验证在多交叉口环境中本文所提算法的有效性，使用兰州市七里河区兰州中心附近的路网进行测试，图 6 和表 5 是在多交叉口高流量环境中测试 20 轮，各个算法的评价指标的对比 。从图 6 和表 5 可以看出，GC_PPO 相比 FTC、DQN 和
+
+PPO 算法，累计奖励更高、车辆平均等待时间更低，说明 GC_PPO 能够适应多交叉口环境，且控制效果
+
+仍然优于 FTC、DQN 和 PPO 算法。
+
+
+
+图 4 单交叉口高流量环境下训练过程中各算法的评价指标对比
+
+Fig. 4 Comparison of evaluation indicators of each algorithm during training process in single intersection high-traffic environment
+
+
+
+图 5 单交叉口高流量环境下测试过程中各算法的评价指标对比
+
+Fig. 5 Comparison of evaluation indicators of each algorithm in test process in single intersection high traffic environment
+
+
+
+图 6 在多交叉口高流量环境下测试过程中各算法的评价指标对比
+
+Fig. 6 Comparison of evaluation indicators of each algorithm in test process in multi-intersection high traffic environment
+
+表 4 单交叉口中算法的性能
+
+Table 4 Performance of algorithm in a single intersection
+
+算法
+
+累计奖励 等待时间/s 燃油消耗/mL CO2 排放/g
+
+低流量 高流量 低流量 高流量 低流量 高流量 低流量 高流量
+
+FTC
+
+-81.09
+
+-168.84
+
+19.45
+
+39.14
+
+105.90
+
+115.30
+
+332.02
+
+361.48
+
+DQN
+
+-58.74
+
+-130.66
+
+16.88
+
+22.61
+
+101.75
+
+114.63
+
+325.36
+
+359.39
+
+PPO
+
+-42.97
+
+-68.50
+
+11.03
+
+16.94
+
+99.18
+
+107.66
+
+310.95
+
+337.54
+
+GC_PPO
+
+-35.00
+
+-53.99
+
+9.05
+
+13.85
+
+98.26
+
+106.03
+
+308.06
+
+332.44
+
+表 5 多交叉口中算法的性能
+
+Table 5 Performance of algorithm in multiple intersections
+
+算法
+
+累计奖励 等待时间/s 燃油消耗/mL CO2 排放/g
+
+低流量 高流量 低流量 高流量 低流量 高流量 低流量 高流量
+
+FTC
+
+-2132
+
+-7282
+
+138.56
+
+350.42
+
+320.37
+
+497.98
+
+1004.4
+
+1561.21
+
+DQN
+
+-1785
+
+-6595
+
+87.50
+
+266.13
+
+274.33
+
+374.87
+
+860.06
+
+1175.26
+
+PPO
+
+-1103
+
+-6012
+
+64.97
+
+237.70
+
+256.84
+
+352.52
+
+805.26
+
+1105.19
+
+GC_PPO
+
+-822.5
+
+-3805
+
+53.25
+
+152.60
+
+243.12
+
+333.26
+
+762.24
+
+1044.83
+
+为了与其他策略比较，使用济南市 3 种实际交通流量在 3×4 路网中测试，杭州市 2 种实际交通流量在 4×4 路网中测试 。所有的 RL 方法都经过了60 min 的模拟运行 ，所选性能指标为平均旅行时间 ATT，最终的结果是来自测试的 3 个独立结果的
+
+平均值 。从表 6 可以看出，GC_PPO 在交通流量济南_ 1、济南_3、杭州_ 1 和杭州_2 下，ATT 均小于其他方法 ；在济南_2 下 ，GC_PPO 的 ATT 虽然高于TD3-BC 方法，但小于其他方法。
+
+表 6 基于真实世界数据集的不同方法的性能比较
+
+Table 6 Performance comparison of different methods based on real-world datasets
+
+杭州1
+
+济南
+
+2
+
+268.57 274.32 251.22 250.29 257.52 242
+
+248.24
+
+方法
+
+FRAP
+
+MPLight
+
+CoLight
+
+AttendLight
+
+PRGLight
+
+TD3-BC
+
+GC_PPO
+
+1
+
+3
+
+269.20 268.00 248.87 248.82 261.74
+
+258.56 245
+
+2
+
+355.80 355.35 339.76 345.72 369.98
+
+344.88 323
+
+308.73 313.16 300.07 293.89 301.06
+
+284.77 282
+
+299.56 297.68 271.17 277.53 291.27
+
+.30 .06
+
+284.70 262
+
+.35 .30
+
+.77
+
+3 结论
+
+本文使用以自注意力机制为核心的 GC Block提取交通状态潜在信息，构建基于 PPO 的 DRL 算法 GC_PPO，在 SUMO 仿真软件中配置不同的测试环境，与基准算法进行比较 。结果表明：
+
+(1) 仅使用进入口车辆位置信息矩阵作为交通状态，能够降低交通状态设计难度，而本方法中的GC Block 能够增强 DRL 算法提取特征的能力，并且提取的交通状态潜在信息不会降低原算法的收敛速度、性能和稳定性。
+
+(2) 自注意力网络提取的交通状态的潜在信息，能够提高交通信号控制策略的学习和控制效果 。在构建的单交叉口环境中，各项评价指标均优于 FTC、DQN 和 PPO 等传统控制策略，其中在单交叉口高流量环境下，车辆平均等待时间分别降低了
+
+25.29，8.76，3.09 s。
+
+(3) 本文所提算法在多交叉口路网中仍然有效 。在兰州市 2×4 路网中与 FTC、DQN、PPO 进行对 比 ，车 辆 平 均 等 待 时 间 分 别 降 低 了 199.82， 113.53，85. 10 s；在济南市 3×4 路网中使用 3 种真实车流量数据与多种方法比较 ，本文所提算法在济南_ 1 和济南_3 真实车流量下优于其他方法，在济南_2 流量下次于 TD3-BC，优于其他方法；在杭州市 4×4 路网中使用 2 种真实车流量数据与多种方法比较，均优于其他方法。
+
+参考文献
+
+[1] 陈喜群, 朱奕璋, 吕朝锋 . 基于混合近端策略优化的交叉口信号相位与配时优化方法[J]. 交通运输系统工程与信息, 2023, 23(1): 106-113. [CHEN X Q, ZHU Y Z,
+
+LV C F. Signal phase and timing optimization method for
+
+intersection based on hybrid proximal policy optimization [J]. Journal of Transportation Systems Engineering and Information Technology, 2023, 23(1): 106-113.]
+
+[2] WU Q, ZHANG L, SHEN J, et al. Efficient pressure: Improving efficiency for signalized intersections[J]. ArXiv, 2021. DOI: 10.48550/arXiv.2112.02336.
+
+[3] ZHANG L, WU Q, SHEN J, et al. Expression might be enough: Representing pressure and demand for reinforcement learning based traffic signal control[C]// International Conference on Machine Learning. PMLR, 2022: 26645-26654.
+
+[4] OROOJLOOY A, NAZARI M, HAJINEZHAD D, et al. Attendlight: Universal attention-based reinforcement learning model for traffic signal control[J]. Advances in Neural Information Processing Systems, 2020, 33: 4079- 4090.
+
+[5] 唐慕尧, 周大可, 李涛 . 结合状态预测的深度强化学习交通信号控制[J]. 计算机应用研究, 2022, 39(8): 2311- 2315. [TANG M Y, ZHOU D K, LI T. Traffic signal control with deep reinforcement learning combined with state prediction[J]. Application Research of Computers， 2022, 39(8): 2311-2315.]
+
+[6] 马东方, 陈曦, 吴晓东, 等 . 基于强化学习的干线信号混合协同优化方法[J]. 交通运输系统工程与信息, 2022, 22(2): 145-153. [MA D F, CHEN X, WU X D, et al. Mixed-coordinated decision-making method for arterial signals based on reinforcement learning[J]. Journal of Transportation Systems Engineering and Information Technology, 2022, 22(2): 145-153.]
+
+[7] 刘利军, 王州, 余臻 . 一种改进的深度确定性策略梯度网络交通信号控制系统[J]. 四川大学学报(自然科学版), 2021, 58(4): 93-99. [LIU L J, WANG Z, YU Z. An improved deep deterministic policy gradient network traffic signal control system[J]. Journal of Sichuan University(Natural Science Edition), 2021, 58(4): 93-99.]
+
+[8] YU P, LUO J. Minimize pressure difference traffic signal control based on deep reinforcement learning[C]//2022 41st Chinese Control Conference (CCC), IEEE, 2022: 5493-5498.
+
+[9] MA D, ZHOU B, SONG X, et al. A deep reinforcement learning approach to traffic signal control with temporal traffic pattern mining[J]. IEEE Transactions on Intelligent Transportation Systems, 2021, 23(8): 11789- 11800.
+
+[10] 任安妮, 周大可, 冯锦浩, 等 . 基于注意力机制的深度强化学习交通信号控制[J].计算机应用研究, 2023, 40 (2): 430-434. [REN A N, ZHOU D K, FENG J H, et al. Attention mechanism-based deep reinforcement learning traffic signal control[J]. Application Research of
+
+Computers, 2023, 40(2): 430-434.]
+
+[11] GE Z. Reinforcement learning-based signal control strategies to improve travel efficiency at urban intersection[C]//2020 International Conference on Urban Engineering and Management Science (ICUEMS), IEEE, 2020: 347-351.
+
+[12] ZHU Y, CAI M, SCHWARZ C, et al. Intelligent traffic light via policy-based deep reinforcement learning [J]. International Journal of Intelligent Transportation Systems Research, 2022. DOI: 10.1007/S13177- 022- 00321-5.
+
+[13] LI Y, HE J, GAO Y. Intelligent traffic signal control with deep reinforcement learning at single intersection[C]// 2021 7th International Conference on Computing and Artificial Intelligence, 2021: 399-406.
+
+[14] 刘智敏, 叶宝林, 朱耀东, 等 . 基于深度强化学习的交通信号控制方法[J]. 浙江大学学报(工学版), 2022, 56 (6): 1249-1256. [LIU Z M, YE B L, ZHU Y D, et al. Traffic signal control method based on deep reinforcement learning[J]. Journal of Zhejiang University (Engineering Science), 2022, 56(6):1249-1256.]
+
+[15] WANG X, GIRSHICK R, GUPTA A, et al. Non-local neural networks[C]//Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, 2018: 7794-7803.
+
+[16] JIE H, LI S, GANG S. Squeeze-and-excitation networks [C]// 2018 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), IEEE, 2018.
+
+[17] CAO Y, XU J, LIN S, et al. GCNet: Non-local networks meet squeeze-excitation networks and beyond[C]// 2019 IEEE/CVF International Conference on Computer Vision Workshop (ICCVW), IEEE, 2020.
+
+[18] ZHENG G, XIONG Y, ZANG X, et al. Learning phase competition for traffic signal control[C]//Proceedings of the 28th ACM International Conference on Information and Knowledge Management, 2019: 1963-1972.
+
+[19] WEI H, XU N, ZHANG H, et al. Colight: Learning network-level cooperation for traffic signal control[C]// Proceedings of the 28th ACM International Conference on Information and Knowledge Management, 2019: 1913-1922.
+
+[20] ZHAO C, HU X，WANG G. PRGLight: A novel traffic light control framework with pressure-based reinforcement learning and graph neural network[C]. In IJCAI 2021 Reinforcement Learning for Intelligent Transportation Systems (RL4ITS) Workshop, 2021.
+
+[21] FUJIMOTO S, GU S S. A minimalist approach to offline reinforcement learning[J]. Advances in Neural Information Processing Systems, 2021, 34: 20132-20145.

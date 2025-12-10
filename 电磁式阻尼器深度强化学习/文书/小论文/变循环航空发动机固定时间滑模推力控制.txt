@@ -1,0 +1,801 @@
+2025 年 8 月
+
+第 46 卷 第 8 期
+
+推 进 技 术
+
+JOURNAL OF PROPULSION TECHNOLOGY
+
+Aug. 2025 Vol.46 No .8
+
+变循环航空发动机固定时间滑模推力控制 *
+
+孔劲达 ， 吴 桢 ， 魏 来 ， 杜 宪 ， 费中阳
+
+（大连理工大学 控制科学与工程学院 ，辽宁 大连 116024）
+
+摘 要 ：针对变循环航空发动机在复杂飞行环境中对推力精确 、快速的控制需求 ，提出一种固定时间滑模推力控制方法 。考虑到实际推力难以测量的问题 ，构建长短期记忆神经网络与自注意力机制相结合的估计模型 。为了抑制扰动和不确定性的影响 ，设计固定时间滑模控制器 。构造李雅普诺夫函数 ，分别分析了滑模面的可达性和闭环系统的稳定性 ，并给出到达时间和收敛时间的上界计算公式 。通过仿真实验验证所提方法的优越性 。结果表明 ，发动机推力估计精度能达到 99% ，且在该固定时间滑模控制器下 ，发动机具有稳定且快速的推力响应能力 ， 能在 4s 内到达推力参考值 ，体现出所提方法的工程应用价值。
+
+关键词： 变循环航空发动机 ； 长短期记忆网络 ； 自注意力机制 ； 固定时间滑模控制器 ；推力控制中图分类号：V233.7 文献标识码：A 文章编号：1001-4055（2025）08-2405067-10
+
+DOI： 10.3724/1001-4055. 2405067
+
+1 引 言
+
+航空发动机被誉为飞机的心脏［1］，在衡量一个国家 综 合 科 技 水 平 和 综 合 国 力 方 面 具 有 重 要 作 用［2］。传统的航空发动机气动热力循环特性固定 ，工作模式单一 ，难以满足新一代战斗机高推力和低巡航油耗的双重需求［3-4］。变循环发动机作为航空发动机的创新进展之一 ，结合了涡扇和涡喷发动机性能上的优点 ，增加了众多可调几何部件来改变发动机的循环参数 ，使发动机在整个飞行包线内兼备高推力和低燃油消耗的优势［5］，提高了发动机推进系统的整体性能 。
+
+推力作为衡量发动机性能的重要指标 ，现有的研 究 大 多 基 于 控 制 转 速 或 者 压 比来 间 接 实 现 发 动 机推力的闭环控制 。这些间接控制方法需要根据控制计划来实时映射推力的参考值 ，但是发动机在实际运行中 ，会出现参数和性能退化问题 ，导致控制计划出 现 偏 差 ，使 推 力 的 间 接 控 制 精 度 降 低［6］。此 外 ，在间接推力控制的研究中 ，由于无法得到推力的准确值 ，为保证发动机的正常工作 ，控制器的设计需要留
+
+有足够的安全裕度 ，会造成一定的工程保守性［7］。近年来 ，航空发动机直接推力控制得到广泛研究 。姚彦 龙 等［8］首 次 将 动 态 神 经 网 络 逆 控 制 用 于 航 空 发 动机直接推力控制 ，提升了控制精度 。王斌等［9］提出直接推力闭环反馈控制的双回路结构设计方案 ，内环控 制 转 速 ，外 环 控 制 推 力 ，有 利 于 实 现 各 回 路 控 制 参数的设计 。这些研究为直接推力控制的发展提供了重要思路和方法 ，能进一步优化航空发动机的性能和控制精度 。
+
+由于航空发动机的实际推力较大 ，无法进行直接测量 ，对实现直接推力控制造成了阻碍 。 为解决这一难题 ，需要进行推力估计器的设计 。在设计推力估计器时一般采用基于模型和数据驱动两种方法［10］。李 秋 红 等［11］对 非设计 点存 在 稳 态 跟 踪 滤 波误差的问题 ，提出一种基于控制器跟踪滤波器的推力估计方法 ，但存在响应滞后以及噪声环境下精度下降 的 问 题 。Momin 等［12］设 计 了 一 种 扩 展 卡 尔 曼 滤 波器 ，保证发动机在发生故障时 ，也能得到平稳准确的推力估计 。Wang 等［13］为解决不同工况下推力控制问题 ，提 出 了 一 种 基 于 分 数 阶 PID-非 线 性 模 型 预 测 控
+
+* 收稿日期 ：2024-05-28 ；修订日期 ：2024-11-28。
+
+基金项目 ：辽宁省振兴人才计划项目（ XLYC2203163）；燃气轮机基础科学中心项目（ P2022-C-V-001-001）。
+
+作者简介 ：孔劲达 ，硕士生 ，研究领域为航空发动机控制。
+
+通讯作者 ：费中阳 ，博士 ，教授 ，研究领域为航空发动机智能控制 。E-mail：zhongyangfei@dlut.edu.cn
+
+引用格式 ：孔劲达，吴 桢，魏 来，等 . 变循环航空发动机固定时间滑模推力控制［J］. 推进技术，2025，46（8）：2405067. （KONG J D，WU Z，WEI L，et al. Fixed-time sliding mode thrust control of variable cycle aero-engine［J］. Journal of Propulsion Technology，2025，46（8）：2405067.）
+
+制 。姚 彦 龙 等［14］融 合 遗 传 算 法 和 神 经 网 络 ，提 出 一种 自 适 应 遗 传 神 经 网 络 算 法 ，但 容 易 陷 入 局 部 最 优 ，并 且 对 参 数 选 择 比 较 敏 感 。 Sheng 等［15］将 最 小 二 乘支持向量机与引力搜索算法相结合 ，能够更好地获取优化参数 ，增强模型的泛化能力 ，得到更准确的推力估 计 。王 昭 等［16］采 用 粒 子 群 算 法 对 神 经 网 络 权 值进行寻优并训练 ，获取推力与可测参数之间的非线性关系，实现推力估计器的设计 。
+
+在此 基 础 上 ，本 文 针 对 变 循 环 发 动 机 固 有 特 性 ，提出一种固定时间滑模推力控制方法 ，相较于现有成果，本文的创新性如下：
+
+（1）变 循 环 发 动 机 作 为 一 类 复 杂 的 多 变 量 非 线性系统 ，具有内部结构复杂 ，可调参数及部件众多等特点 ，使其控制系统设计变得复杂 ，导致推力控制研究难度变大 。本文提出一种应用在变循环发动机上的推力控制方法 ，实现对推力的直接控制 ，保证了发动机响应的快速性和准确性 。
+
+（2）考 虑 到 基 于 模 型 的 方 法 依 赖 于 精 确 的 数 学模型 ，当模型无法完全准确描述实际系统时 ，其估计性能可能受到影响 。此外 ，神经网络方法虽然具备强大的非线性映射能力 ，但由于没有考虑到发动机状态参数的时间相关性 ，估计性能可能不理想 。 因此 ，本 文 提 出 一 种 长 短 期 记 忆 神 经 网 络 与 自 注 意 力机 制 相 结 合 的（ LSTM-SATT）估 计 模 型 ，该 模 型 对 长序列数据的处理能力更强 ，信息交互性和语义表征能力也有所提升，模型的稳定性和训练效果更好 。
+
+（3）变 循 环 发 动 机 在 实 际 工 作 过 程 中 会 受 到 扰动 、噪声等不确定性的影响 ，造成推力控制精度的损失 。此外 ，变循环发动机具有较高的推力响应速度需求 ，传统控制方法无法满足发动机对于鲁棒性和快速性的要求 。 为解决上述问题 ，本文设计了一种固定时间滑模控制器 。相较于传统滑模控制方法 ，闭环控制系统具有明确可计算的收敛时间上界 。所提方法有效提升了发动机的推力响应速度 ，同时增强了控制系统的鲁棒性 。
+
+2 问题描述
+
+本 文 采 用 的 变 循 环 发 动 机 结 构 与 文 献［17］相同 ，示 意 图 如 图 1 所 示 ，主 要 部 件 包 含 前 风 扇 、后 风扇 、核心风扇 、高压压气机 、主燃烧室 、高压涡轮 、中压涡轮 、双变燃烧室 、低压涡轮 、加力燃烧室和尾喷管等 。其中 ，前风扇 、后风扇 、低压涡轮与低压轴相连 ，核心风扇 、中压涡轮与中压轴相连 ，高压压气机 、高压涡轮与高压轴相连 。采用三涵道变循环气动热力布局 ，通过多涵道的变功能组合以及各涵道流量的 自 适 应 匹 配 ，可 以 实 现 高 涵 道 比 调 节 范 围 。 由 于变循环发动机的推力在飞行状态下不能直接进行测量 ，且通过转速和压比等间接控制推力的方法具有较大的保守性 。 因此 ，本文采用直接推力控制的方法以充分发挥发动机的性能 。
+
+为 实 现 这 一 目 标 ，需 要 有 效 地 估 计 发 动 机 推 力并设计适当的控制策略 。考虑到发动机的状态参数具 有 时 间 相 关 性 ，以 及 自 注 意 力 机 制 具 有 能 抓 取 关键 信 息 的 特 点 ，本 文 基 于 LSTM-SATT 模 型 构 造 推 力估计器 。 同时 ，为解决发动机在飞行过程中可能产生的不确定性 ，并满足发动机快速性和稳定性的要求 ，本文设计具有强鲁棒性的固定时间滑模控制器来 控 制 发 动 机 推 力 。 图 2 展 示 了 变 循 环 发 动 机 推 力控制的结构示意图 。首先通过推力估计器获取发动机推力 ，对推力进行辨识建模 ，并设计滑模控制器进行闭环控制 ，在不同模态下通过相应的执行机构控制发动机推力在固定时间内到达参考值 。
+
+为保证发动机在各种飞行状态下稳定运行 ，需遵 循 如 表 1 所 示 的 基 本 控 制 规 律 。其 中 ，Wfm 为 主 燃油 流 量 ，Wfs 为 双 变燃 油 流 量 ，Wfa 为 加 力燃 油 流 量 ，Tfa为加力燃烧温度 。 主要控制计划为在起飞及爬升阶段 ，通 过 Wfa 控 制 推 力 ，并 控 制 Wfm 和 Wfs 保 持 转 速 恒定 ，且 Tfa 不超 过 限 制 温度 。在 亚声 速巡航 阶段 ，通 过Wfm 控 制 推力 ，并关 闭 Wfs 和 Wfa 。在超声 速巡航 阶段 ，通过 Wfs 控制推力，保持 Wfm 不变，且关闭 Wfa。
+
+
+
+图 1 变循环发动机结构图
+
+
+
+图2 变循环发动机推力控制结构示意图
+
+表 1 基本控制规律对应表
+
+工况
+
+调节变量
+
+调节规律
+
+起飞及爬升
+
+Wfm
+
+Wfs
+
+Wfa
+
+Tfa
+
+保持高压压气机相对折合转速 1.0
+
+保持前风扇相对折合转速 1.0
+
+依据推力需求调节
+
+不超过 2 200 K
+
+亚声速巡航
+
+Wfm
+
+Wfs
+
+Wfa
+
+依据推力需求调节关闭
+
+关闭
+
+超声速巡航
+
+Wfm
+
+Wfs
+
+Wfa
+
+相似燃油流量维持设计值
+
+依据推力需求调节
+
+关闭
+
+3 推力估计器设计
+
+LSTM 是 对 循 环 神 经 网 络（ RNN）的 一 种 改 进 模型 ，旨 在 解 决 梯 度 消 失 和 梯 度 爆 炸 问 题［18］。 LSTM通过引入门控机制 ，有效延长了网络的记忆长度 ，能够更好地捕捉时间序列数据中的长期依赖关系 ，对于处理多变量输入 、非线性数据等问题具有较大优 势 。但 是 单 一 LSTM 模 型 对 于 输 入 信 息 的 权 重 分配是均衡的 ，无法区分信息的重要程度 ，可能导致重要信息的作用发挥不充分 ，进而影响模型的估计性能 。
+
+为 解 决 上 述 问 题 ，本 文 引 入 自 注 意 力 机 制（Self- Attention）。 其 能 够更好 地 捕 捉 输 入 序 列 中 不 同 位 置的信息 ，增强模型对序列之间的依赖关系 ，并提高重要特征的识别能力 。鉴于航空发动机输出推力受实时 变 化 的 特 征 因 子 等 多 维 特 征 影 响 ，采 用 Self-Atten - tion 机 制 ，深 入 挖 掘 历 史 关 键 信 息 ，给 予 关 键 节 点 更高的权重，优化模型输出［19］。
+
+针 对 输 出 推 力 估 计 问 题 ，在 LSTM 和 Self-Atten - tion 模 型 机 理 分 析 的 基 础 上 ，搭 建 如 图 3 所 示 的 推 力估计模型框架 。首先 ，对模型的初始参数进行设置 ，构造标准数据集 ，划分训练集和测试集 。其次 ，将训练 集 输 入 到 LSTM-SATT 模 型 中 进 行 训 练 ，为 避 免 训练 过 程 中 出 现 过 拟 合 现 象 ，引 入 Dropout 函 数 ，减 少
+
+神 经 元 之 间 的 共 适 应 性 ，提 高 模 型 的 泛 化 能 力［20］。然后 ，将输出结果通过激活函数进行非线性化 ，其中激 活 函 数 的 选 择 为 GELU 函 数 ，相 比 于 ReLU 函 数 ，其通过引入随机体现神经元输入的概率 ，能够增强训 练 过 程 的 鲁 棒 性［21］。最 后 ，通 过 全 连 接 层 进 行 回归 输出 。
+
+
+
+图3 推力估计模型结构
+
+本文针对某预研的变循环发动机 ，依据参数与发 动 机 推 力 之 间 的关 联 程 度 ，选 择 高 压 轴 转 速 Nh、中压 轴 转 速 Nm、低 压 轴 转 速 Nl、高 压 压 气 机 出 口 总 压phpc、低 压 涡 轮 出 口 总 温 Tlpt 和 主燃 油 流 量 Wfm，双 变燃油 流量 Wfs，加力燃 油 流量 Wfa，8 个 变量作 为 推力估计器 输 入 参 数 ，并 分 别 选 取 涡 扇 模 式 下（0 km，Ma0）最大加力状态、（ 11 km，Ma0.8）标准巡航状态和（ 11 km， Ma1.3）经济超巡状态进行试验 。
+
+构建 LSTM-SATT 模型为
+
+F = Γ LSTM - SATT( η ) （1）
+
+式 中 η 代 表 模 型 输 入 ，表 示 发 动 机 8 个 变 量 在 时 刻 t和 其 前 两 个 时 刻 的 状 态 。 因 此 ，η 由 一 个 3 × 8 的 矩阵 组 成 。 F 代 表 模 型 输 出 ，表 示 发 动 机 在 t 时 刻 的推力 。
+
+
+
+为排除单次数据采集的随机性影响 ，进行多次试 验 ，每 次 试 验 中 油 门 杆 的 调 节 增 量 不 同 ，但 初 始点 和 终 止 点 相 同 。设 置 工 况（0 km，Ma0）为 Case 1， （ 11 km，Ma0.8）为 Case 2，（ 11 km，Ma1.3）为 Case 3。选 取 其 中 三 组 数 据 集 作 为 训 练 集 ，在 剩 下 的 数 据 中选 取 一 组 作 为 测 试 集 。为 避 免 输 入 参 数 数 量 级 的 不同对训练精度的影响，对数据进行归一化处理 。训 练集 输 入 输 出 规 模 分 别 为（33 000，3，8），（33 000，1），测 试 集 输 入 输 出 规 模 为（ 11 000，3，8），（ 11 000，1）。其 中 ，输 入 数 据 第 一 项 为 样 本 数 量 ，第 二 项 为 时 间 步长 ，第 三项 为式（1）中 8 个 变量 ，输 出数 据第一项 为样本数量，第二项为发动机推力 。
+
+使 用 Adam 算 法 作 为估 计 器 的 参 数 优 化 器 ，选 择MSE 作 为 优 化 器 的 损 失 函 数 ，设 置 最 大 迭 代 次 数 为
+
+50，设 置 LSTM 层 数 为 30，定 义 初 始 学 习 率 为 0.01，且学 习 率 会 随 着 迭 代 次 数 的 增 加 而 下 降 ，设 置 Dropout参 数 为 0.1，连 接 自 注 意 力 机 制 层 ，激 活 函 数 选 择GELU 函 数 ，最 后 连 接 回 归 层 进 行 输 出 。 同 时 ，为 体现 LSTM-SATT 的 优 势 ，分 别 与 LSTM，RNN 和 BP 进行对比实验 。
+
+选 取 决 定 系 数（R2）、均 方 根 误 差（ RMSE）以 及 平均 绝 对 误 差（ MAE）作 为 估 计 器 的 性 能 指 标 。从 图 4可 以 直 观 看 出 在 3 种 不 同 工 况 下 ，使 用 LSTM-SATT估计器得到的准确度更高 ，相对误差更低 。 同时 ，从表 2 中的评估系数可以看出，相较于 LSTM，RNN 以及BP，本 文 提 出 的 估 计 器 具 有 更 高 的 R2 以 及 更 低 的RMSE 和 MAE，推力估计效果更好 。 由于引入了额外的 自 注 意 力 机 制模 块 ，增 加 了模 型 的 复 杂 性 ，同 时 需要存储和计算大量的注意力权重矩阵 ，内存消耗非常 大 ，运 行 所 耗 时 间 相 比 于 其 他 算 法 较 长 ，但 由 于 采用的是离线训练 ，且离线运行时间不对后续推力控制产生过大影响 ，故所提算法仍能很好地满足需求 。表 3 给 出 了 推 力 估 计 器 在 发 动 机 模 型 上 验 证 的 结 果以及在效率退化后估计器性能受到的影响 。可以看出 验 证 结 果 与 测 试 得 到 的 结 果 相 近 。其 中 ，δhpc，δhpt， δlpt 分 别 表 示 高 压 压 气 机 效 率 退 化 系 数 、高 压 涡 轮 出
+
+
+
+
+
+图4 推力估计结果
+
+口 总 温 效 率 退 化 系 数 、低 压 涡 轮 出 口 总 温 效 率 退 化系数，分别将三者下降 2%，可以看出与未退化之前结果相比波动较小 ，体现出本文估计器验证结果较好且具有较强的鲁棒性 。
+
+表2 推力估计器的估计性能
+
+工况
+
+算法
+
+R2
+
+RMSE
+
+MAE
+
+t/s
+
+Case 1
+
+LSTM-SATT
+
+0.999
+
+40.1
+
+34.1
+
+204
+
+LSTM
+
+0.957
+
+232.6
+
+284.9
+
+114
+
+RNN
+
+0.921
+
+639.8
+
+600.0
+
+7
+
+BP
+
+0.895
+
+738.1
+
+643.8
+
+6
+
+Case 2
+
+LSTM-SATT
+
+0.999
+
+64.4
+
+49.7
+
+188
+
+LSTM
+
+0.972
+
+366.9
+
+322.8
+
+117
+
+RNN
+
+0.941
+
+892.4
+
+612.6
+
+6
+
+BP
+
+0.923
+
+928.2
+
+593.6
+
+4
+
+Case 3
+
+LSTM-SATT
+
+0.999
+
+28.4
+
+23.7
+
+198
+
+LSTM
+
+0.973
+
+296.8
+
+268.2
+
+110
+
+RNN
+
+0.935
+
+542.3
+
+519.4
+
+7
+
+BP
+
+0.893
+
+717.6
+
+504.4
+
+5
+
+表3 效率退化后推力估计器估计性能
+
+工况
+
+拉偏参数
+
+R2
+
+RMSE
+
+MAE
+
+Case 1
+
+无
+
+0.999
+
+41.3
+
+37.1
+
+δhpc
+
+0.975
+
+156.9
+
+144.2
+
+δhpt
+
+0.976
+
+147.6
+
+138.6
+
+δlpt
+
+0.977
+
+146.5
+
+137.1
+
+Case 2
+
+无
+
+0.998
+
+76.1
+
+51.8
+
+δhpc
+
+0.985
+
+182.8
+
+171.9
+
+δhpt
+
+0.984
+
+207.1
+
+197.13
+
+δlpt
+
+0.985
+
+182.5
+
+164.1
+
+Case 3
+
+无
+
+0.998
+
+35.6
+
+30.1
+
+δhpc
+
+0.979
+
+184.2
+
+160.4
+
+δhpt
+
+0.983
+
+146.4
+
+142.8
+
+δlpt
+
+0.986
+
+115.5
+
+110.8
+
+4 固定时间滑模控制器设计
+
+为 提 升 系 统 响 应 的 快 速 性 ，Polyakov［22］首 次 提 出固定时间稳定的概念，具体阐述如下 。
+
+考虑非线性系统
+
+z. (t ) = f (z，t ) （3）
+
+式 中f ( z，t ) 是 一 个 非 线 性 系 统 方 程 ，z ∈ Rn 代 表 系 统状态，Rn 表示 n 维实数域 。
+
+定 义 1［23］：系 统（3）全 局 有 限 时 间稳定 ，当且 仅 当
+
+系统（3）全局渐近稳定 ，且系统（3）的解 z (t )在时间区间 (0，t (z (0 ) )) 内 收 敛 到 原 点 。其 中 ，t (z (0 ) )被 称 为收敛时间函数，z (0 )是系统初始状态 。
+
+定 义 2［22］：系 统（3）全 局 固定 时 间稳定 ，当且 仅 当
+
+系统（3）全局有限时间稳定 ，且收敛时间函数 t (z (0 ) )有 界 。 即 存 在 常 数 tmax > 0，使 得 t (z (0 ) ) ≤ tmax，对 于任意初始状态 z (0 )均成立 。
+
+引 理 1［22］：对 于 系 统（3），如果存 在 一个 正定 函 数V ( x ) > 0，满足以下条件
+
+V. (z (t ) ) ≤ - αVρ (z (t ) ) - βVμ (z (t ) ) （4）
+
+式 中 α > 0，β > 0，ρ > 1，μ ∈ (0，1) 均 为 给 定 参 数 ，则系统（3）全局固定时间稳定 。收敛时间满足
+
+
+
+经系统辨识 ，对变循环发动机工作点进行线性化，得到系统
+
+{x. = Ax + Bu
+
+（6）
+
+y = Cx + Du
+
+式中 x = [ ΔNh ΔNm ΔNl ]T，u = ΔWf，y = ΔF 分别代表系统状态 、系统输入和系统输出偏离稳态点的增
+
+量 。Nh，Nm 和 Nl 分别表示发动机的高压轴 、中压轴和低 压 轴 转 速 。 Wf 表 示 发 动 机 的 燃 油 流 量 。F 表 示 发动机的推力 。
+
+对固定时间滑模控制器进行设计 ，定义推力与推力参考值之间的偏差
+
+e (t ) = y (t ) - Fr = Cx (t ) + Du (t ) - Fr （7）
+
+式中 Fr 为发动机的推力参考值 。
+
+设计固定时间滑模函数
+
+
+
+（8）
+
+
+
+式 中 α 1 ∈ (0，1)，β 1 > 1，k 1 > 0 和 k2 > 0 是 给 定 参 数 。此外，定义理想滑模面为 s. = 0。
+
+设计固定时间滑模控制律
+
+ur(t ) = - C [ Ax (t ) + Bu (t )] +
+
+k 1 sgn (e (t ) )| e (t ) | α 1 + k2 sgn (e (t ) )| e (t ) |β1 + k3 sgn (s (t ) )| s (t ) | α2 + k4 sgn (s (t ))| s (t )|β2}
+
+（9）
+
+u  ur  （10）
+
+式中 ur 是系统输入 u 的导数 ，α 2 ∈ (0，1)，β 2 > 1，k3 > 0和 k4 > 0 是给定参数 。
+
+定 理 1：在 控 制 律（10）的 作 用 下 ，滑 模 面 s. = 0 具有固定时间可达性 。到达时间不超过
+
+
+
+证明：对滑模函数（8）进行求导，得到
+
+
+
+
+
+k 1 sgn (e (t ) )| e (t ) | α 1 + k2 sgn (e (t ) )| e (t ) |β1构造李雅普诺夫函数
+
+V1  （13）
+
+将式（10）代入式（12），得到
+
+s. (t ) = -k3 sgn (s (t ) )| s (t ) | α2 - k4 sgn (s (t ) )| s (t ) |β2
+
+（14）
+
+对 V1 (t )进行求导，并将式（14）代入，得到
+
+
+
+由 引 理 1 可 知 ，系 统状 态 在 固定 时 间 内 到 达 滑模面 s. = 0 。到达时间不超过 ts。
+
+当 系 统状 态 在 滑模 面 s. = 0 上运行 时 ，由式（8）得到滑动模态方程
+
+e. (t ) = -k 1 sgn (e (t ) )| e (t ) | α 1 - k2 sgn (e (t ) )| e (t ) |β1
+
+（16）
+
+定 理 2：在 控 制 律（10）的 作 用 下 ，系 统（16）在 固定时间内收敛 。收敛时间不超过
+
+
+
+证 明 ：对 滑 动 模 态 方 程（16），构 造 李 雅 普 诺 夫函数
+
+V2  （18）
+
+对 V2 (t )进行求导
+
+
+
+
+
+（19）
+
+由 引 理 1 可 知 ，系 统（16）在 固 定 时 间 内 收 敛 ，且收敛时间不超过 te。
+
+由定 理 1 可 知 ，系 统（6）状 态 在 时 间 区 间(0，ts ) 内到 达 滑 模 面 。进 入 滑 动 模 态 后 ，由 定 理 2 可 知 ，跟 踪误 差（16）的 收 敛 时 间 不 超 过 te 。 因 此 ，系 统（6）固 定时间收敛，且收敛时间不超过
+
+
+
+
+
+（20）
+
+5 仿真验证
+
+针对某 预研 的 变循 环 发 动 机 ，由 表 1 的 控 制 规 律可知 ：在起飞及爬升阶段 ，由加力燃油控制推力 ；在亚声速巡航阶段 ，由主燃油控制推力 ；在超声速巡航阶 段 ，由 双 变 燃 油 控 制 推 力 。 因 此 ，在 3 种 不 同 模 态下 ，分别给定对应燃油流量小幅增量 ，通过系统辨识得到状态空间矩阵
+
+
+
+C 1 = [ - 3.839 7 0.201 6 1.718 8 ] D 1 = 0.933 3
+
+A2 = êê --- ...   0.ú B 
+
+C2 = [ 1.465 9 - 0.205 4 0.997 2 ] D2 = 0.477 9
+
+A3 = êê --13. --3.3.1 -201434.03 ú B 
+
+C3 = [ 0.205 8 0.066 5 0.743 4 ] D 3 = 0.133 3 （21）
+
+控制器的给定参数如表4所示 。 为体现所提方法 的 优 越 性 ，选 取 文 献［24］中 的 方 法 进 行 对 比 ，文 献［24］中 采 用 渐 进 时 间 收 敛 滑 模 控 制 方 法 ，控 制 推 力到 达 参 考 值 ，收 敛 速 度 较 为 缓 慢 。 滑 模 函 数 和 控 制律为
+
+s (t ) = F (t ) - Fr = Cx (t ) + Du (t ) - Fr （22）
+
+
+
+u  ur  （24）
+
+表4 控制器参数
+
+参数
+
+Case 1
+
+Case 2
+
+Case 3
+
+α 1
+
+0.7
+
+0.6
+
+0.4
+
+β1
+
+1.7
+
+1.4
+
+5.0
+
+k1
+
+1
+
+1
+
+2
+
+k2
+
+2
+
+1
+
+2
+
+α2
+
+0.6
+
+0.1
+
+0.3
+
+β2
+
+4.0
+
+1.5
+
+2.0
+
+k3
+
+3
+
+1
+
+3
+
+k4
+
+3
+
+1
+
+2
+
+采 用 本 文 所 提 方 法 和 文 献［24］中 的 方 法 进 行 仿真 对 比 实 验 ，得 到 的 实 验 结 果 如 图 5 和 表 5 所 示 。从图 5（a）、图 5（e）和 图 5（f）可 以 看 出 ，在 起 飞 及 爬 升 、亚声速巡航和超声速巡航工况下 ，发动机实际推力收 敛 时 间 为 2.6 s，3.4 s 和 1.3 s，小 于 计 算 得 到 的 最 大收敛时间上界 4.8 s，5 s 和 1.8 s，满足固定时间约束和控 制 指 标 要 求 ，并 且 小 于 采 用 文 献［24］方 法 所 用 的实 际 推 力 收 敛 时 间 3.8 s，6.7 s 和2.4 s，体 现 出 系 统 收敛 速 度 的 提 升 。 同 时 从 图 5（b）和 图5（c）可 以 看 出 ，转 速 基 本 维 持 1 不 变 ，从 图 5（d）可 以 看 出 ，温 度 没 有超过 2 200 K，符合发动机基本控制规律 。
+
+保 持 上 述 条 件 不 变 ，在 起 飞 及 爬 升 工 况 的 100~
+
+
+
+
+
+图5 发动机推力响应结果图
+
+表5 实际系统收敛时间及其上界
+
+收敛时间/s
+
+Case 1
+
+Case 2
+
+Case 3
+
+t
+
+2.6
+
+3.4
+
+1.3
+
+t x
+
+4.8
+
+5.0
+
+1.8
+
+［24］ tf
+
+3.8
+
+6.7
+
+2.4
+
+110 s，以 及 亚 声 速 巡 航 和 超 声 速 巡 航 工 况 的 70~80 s内 ，分别将 高 压 压 气 机 效 率 下 降 2%，并 加 入 0.01 s 的滞 后 环 节 。从 图 5（a）、图 5（e）和 图 5（f）可 以 看 出 ，采用 本 文 方 法 系 统恢 复 稳 定 时 间 为 2.7 s，2.3 s 和 1.1 s，小于采用文献［24］方法的恢复时间4.2 s，2.8 s 和 1.3 s，且系统受到的波动更小 ，体现出在发动机受到拉偏和滞后的影响下，本文所提方法的鲁棒性更强 。
+
+6 结 论
+
+本文基于数据驱动和固定时间滑模控制理论对变循环发动机推力控制展开研究，得到如下结论：
+
+（1）LSTM-SATT 推力估计器结合了 LSTM 的长时依赖处理能力和 Self-Attention全局特征捕捉的特点，估 计 精 度 能 够 达 到 99%，高 于 LSTM，RNN 以 及 BP 估计器，体现出所设计估计器具有更好的估计性能 。
+
+（2）在 变 循 环 发 动 机 模 型 上 ，对 固 定 时 间 滑 模 控制器进行仿真实验 。在不同工况下 ，采用本文设计的 控 制 器 能 够 在 4 s 内 到 达 推 力 参 考 值 ，推 力 响 应 时间快于普通滑模控制器 ，满足固定时间的约束 ，并且具有更强的鲁棒性 ，验证了所提方法的优越性和工程可行性 。
+
+致 谢：感谢辽宁省振兴人才计划项目和燃气轮机基础科学中心项目的资助 。
+
+参考文献
+
+［ 1 ］ 鲍 梦 瑶 ，李 果 ，丁 水 汀 . 基 于 模 型 的 航 空 发 动 机 系统 安 全 性 研 究［J］. 航 空 动 力 学 报 ，2016 ，31（8）：
+
+2029-2039.
+
+BAO M Y，LI G，DING S T. Research on model-based safety analysis for aero-engine［J］. Journal of Aerospace Power，2016，31（8）：2029-2039.（in Chinese）
+
+［ 2 ］ 张绍基 . 航空发动机控制系统的研发与展望［J］. 航空动力学报，2004，19（3）：375-382.
+
+ZHAO S J. A review of aeroengine control system［J］.
+
+Journal of Aerospace Power ，2004 ， 19（3）：375-382. （in Chinese）
+
+［ 3 ］ 姚 华 . 未来航空发动机控制技术的发展趋势［J］. 航空科学技术，2012（6）： 1-6.
+
+YAO H. Development trend of aircraft engine control technology［J］. Aeronautical Science & Technology， 2012（6）： 1-6.（in Chinese）
+
+［ 4 ］ WU Z ， SHI Y ， FEI Z Y ， et al. Mode-recovered bumpless transfer control for aero-engines with switched models［J］. IEEE Transactions on Aerospace and Elec - tronic Systems，2024，60（2）：2183-2192.
+
+［ 5 ］ 陈 立 ，苟 学 中 ，陈 敏 . 变 循 环 发 动 机 起 动 建 模 及控 制 规 律 研 究［J］. 航 空 动 力 学 报 ，2024 ，39（2）： 253-261.
+
+CHEN L ，GOU X Z ，CHEN M. Research on starting modeling and control law of variable cycle engine［J］. Journal of Aerospace Power ，2024 ，39（2）：253-261. （in Chinese）
+
+［ 6 ］ ZHAO Y P，LI Z Q，HU Q K. A size-transferring radial basis function network for aero-engine thrust estimation ［J］. Engineering Applications of Artificial Intelligence， 2020，87：103253.
+
+［ 7 ］ 肖 红 亮 ，李 华 聪 ，李 嘉 ，等 . 变 循 环 发 动 机 模 型 参考 自 适 应 滑模 控 制 方 法研 究［J］. 西 北 工业 大 学 学 报 ， 2018，36（5）：824-830.
+
+XIAO H L，LI H C，LI J，et al. Research on variable cy- cle engine control based on model reference adaptive slid - ing mode control method［J］. Journal of Northwestern
+
+Polytechnical University ，2018 ，36（5）： 824-830. （in Chinese）
+
+［ 8 ］ 姚 彦 龙 ，孙 健 国 . 基 于 神 经 网 络 逆 控 制 的 发 动 机 直 接推力控制［J］. 推进技术，2008，29（2）：249-252.
+
+YAO Y L ，SUN J G. Aeroengine direct thrust control based on neural network inverse control［J］. Journal of Propulsion Technology ，2008 ，29（2）： 249-252. （in Chinese）
+
+［ 9 ］ 王 斌 ，王 曦 ，孔 祥 兴 ，等 . 基 于 未 知 输 入 观 测 器的 涡 扇 发 动 机 直 接 推 力 控 制［J］. 航 空 动 力 学 报 ， 2016，31（3）：692-699.
+
+WANG B，WANG X ，KONG X X，et al. Direct thrust control of turbofan engines based on unknown input ob - server［J］. Journal of Aerospace Power，2016，31（3）： 692-699.（in Chinese）
+
+［10］ VOLPONI A J. Gas turbine engine health management： past，present，and future trends［J］. Journal of Engineer- ing for Gas Turbines and Power，2014，136（5）：051201.
+
+［ 11 ］ 李 秋 红 ，孙 健 国 ，王 前 宇 . 航 空 发 动 机 推 力 估 计 新 方法［J］. 控制理论与应用，2011，28（2）： 185-191.
+
+LI Q H，SUN J G，WANG Q Y. A new method for esti- mating the thrust of aircraft engines［J］. Control Theory & Applications，2011，28（2）： 185-191.（in Chinese）
+
+［12］ MOMIN A J A，NAVA G，L'ERARIO G，et al. Nonlin - ear model identification and observer design for thrust es - timation of small-scale turbojet engines［ C］. Philadel- phia：International Conference on Robotics and Automa - tion（ ICRA），2022.
+
+［ 13 ］ WANG Y J，PAN M X，ZHOU W X，et al. Direct thrust control for variable cycle engine based on fractional order PID-nonlinear model predictive control under off-nomi- nal operation conditions［J］. Aerospace Science and Technology，2023，143：108726.
+
+［14］ 姚 彦 龙 ，孙 健 国 . 自 适 应 遗 传 神 经 网 络 算 法 在 推 力估 计 器 设 计 中 的 应 用［J］. 航 空 动 力 学 报 ，2007，22 （10）： 1748-1753.
+
+YAO Y L，SUN J G. Application of adaptive genetic neu - ral network algorithm in design of thrust estimator［J］. Journal of Aerospace Power ， 2007 ， 22（10）： 1748- 1753.（in Chinese）
+
+［15］ SHENG H L，ZHANG T H. Aircraft engine thrust esti- mator design based on GSA-LSSVM［J］. International Journal of Turbo & Jet-Engines ，2017 ，34（3）：279- 285.
+
+［16］ 王 昭，田小涛，黄 萌，等 . 基于 PSO-BP 神经网络的 固 冲 发 动 机 推 力 估 计 器 设 计［J］. 航 空 动 力 学 报 ， 2022，37（7）： 1487-1494.
+
+WANG Z ，TIAN X T ， HUANG M ， et al. Design of thrust estimator in the solid rocket ramjet based on PSO- BP neural network［J］. Journal of Aerospace Power， 2022，37（7）： 1487-1494.（in Chinese）
+
+［17］ 张 煜 华 ，袁 伟 ，邹 涛 ，等 . 高 通 流 三 外 涵 变 循 环发 动 机 建 模 技 术 研 究［J］. 推 进 技 术 ：2024，45（8）：
+
+2306059.
+
+ZHANG Y H，YUAN W，ZOU T，et al. Modeling tech - nology of high-flow triple-bypass variable cycle engine ［J］. Journal of Propulsion Technology ，2024 ，45（8）： 2306059.（in Chinese）
+
+［18］ 王 欣，孟天宇，周俊曦 . 基于注意力与 LSTM 的航空发 动 机 剩余 寿命 预 测［J］. 科 学 技 术 与 工 程 ，2022，22 （7）：2784-2792.
+
+WANG X ，MENG T Y ，ZHOU J X. Remaining useful life prediction for aircraft engine using attention based LSTM［J］. Science Technology and Engineering，2022， 22（7）：2784-2792.（in Chinese）
+
+［19］ 刘 香 凝 ，赵 洋 ，王 荣 刚 . 基 于 自 注 意 力 机 制 的 多 阶段 无 监 督 单 目 深 度估 计 网 络［J］. 信 号 处 理 ，2020，36
+
+（9）： 1450-1456.
+
+LIU X N，ZHAO Y，WANG R G. Self-attention based multi-stage network for unsupervised monocular depth es - timation［J］. Journal of Signal Processing ， 2020 ， 36
+
+（9）： 1450-1456.（in Chinese）
+
+［20］ WU H B，GU X D. Towards dropout training for convolu - tional neural networks［J］. Neural Networks，2015，71： 1-10.
+
+［ 21 ］ GUO M H，XU T X ，LIU J J ，et al. Attention mecha- nisms in computer vision ：a survey［J］. Computational Visual Media，2022，8（3）：331-368.
+
+［22］ POLYAKOV A. Nonlinear feedback design for fixed- time stabilization of linear control systems［J］. IEEE Transactions on Automatic Control，2012，57（8）：2106- 2110.
+
+［ 23 ］ BHAT S P ，BERNSTEIN D S. Finite-time stability of continuous autonomous systems［J］. SIAM Journal on Control and Optimization，2000，38（3）：751-766.
+
+［24］ RICHTER H. A multi-regulator sliding mode control strategy for output-constrained systems［J］. Automatica， 2011，47（10）：2251-2259.
+
+（编辑：白 鹭）
+
+Fixed-time sliding mode thrust control of variable
+
+cycle aero-engine
+
+KONG Jinda ，WU Zhen ，WEI Lai ，DU Xian ，FEI Zhongyang
+
+（School of Control Science and Engineering ，Dalian University of Technology ，Dalian 116024 ，China）
+
+Abstract： In this paper，a class of fixed-time sliding mode control is proposed for the variable cycle aero- engine to satisfy the accurate and fast thrust control in complex flying environments. Considering the issue that the actual thrust value is undetectable in practice，an estimation model combining long short-term memory neural network and self-attention mechanism is constructed. To suppress the disturbance and uncertainty effect，the fixed-time sliding mode controller is proposed. By utilizing the Lyapunov function approach，both reachability and stability are well addressed for the sliding surface and the closed-loop system，respectively，with specific calculations for the upper bounded settling time and convergence time. Simulation results validate merits of the proposed method，the results show that the engine thrust estimator achieves a thrust estimation accuracy of up to 99%，and under the proposed fixed-time sliding mode controller，the engine performs elegantly with stable and fast thrust response，achieving the thrust reference value within 4 s，which verifies the practicality in engineering.
+
+Key words： Variable cycle aero-engine ； Long short-term memory network ； Self-attention mechanism； Fixed time sliding mode controller ；Thrust control
+
+Received：2024-05-28；Revised：2024-11-28 .
+
+DOI：10.3724/1001-4055 . 2405067
+
+Foundation items：Liaoning Revitalization Talents Program（XLYC2203163）； Science Center for Gas Turbine Project（ P2022-C- V-001-001）.
+
+Corresponding author：FEI Zhongyang，E-mail：zhongyangfei@dlut.edu.cn
