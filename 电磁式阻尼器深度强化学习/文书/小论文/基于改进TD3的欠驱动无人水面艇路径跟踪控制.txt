@@ -1,0 +1,765 @@
+第 4 5 卷 第 3 期
+
+2 0 2 4 年 9 月
+
+上 海 海 事 大 学 学 报
+
+Journal of Shanghai Maritime University
+
+Vol.45 No.3 Sept.2024
+
+DOI:10.13340/j.jsmu.202307310166 文章编号：1672-9498(2024)03-0001-09
+
+基于改进 TD3 的欠驱动无人水面艇路径跟踪控制
+
+曲星儒，江雨泽，李初，龙飞飞，张汝波*
+
+(大连民族大学机电工程学院，辽宁大连116600)
+
+摘要：针对模型参数未知和海洋环境干扰下的欠驱动无人水面艇(unmanned surface vehicles,USV) 路径跟踪问题，提出一种基于改进双延迟深度确定性策略梯度(twin delayed deep deterministic policy gradient,TD3)的控制方法。在运动学层次上，设计基于视线制导的航速航向联合制导律，引 导 USV 准确跟踪期望路径。在动力学层次上，设计基于改进 TD3 的强化学习动力学控制器；采用 基于时间差分误差的优先经验回放技术，建立包含路径跟踪成功和失败采样信息的双经验池，通过 自适应比例系数调整每批次回放数据的组成结构；搭建包含长短期记忆网络的评价网络和策略网 络，利用历史状态序列信息提高路径跟踪控制器的训练效率。仿真结果表明，基于改进 TD3 的控 制方法可有效提高欠驱动USV 的跟踪精度。该方法不依赖USV 模型，可为USV 路径跟踪控制提 供参考。
+
+关键词：无人水面艇；路径跟踪控制；双延迟深度确定性策略梯度；优先经验回放；长短期记忆 网络
+
+中图分类号：U664.82 文献标志码：A
+
+Path following control for under-actuated unmanned surface vehicles based on improved TD3
+
+QU Xingru,JIANG Yuze,LI Chu,LONG Feifei,ZHANG Rubo*
+
+(College of Mechanical and Electronic Engineering,Dalian Minzu University,Dalian 116600,Liaoning,China)
+
+Abstract: To investigate the path following issue of under-actuated unmanned surface vehicles(USVs) with model parameter uncertainties and marine environment disturbances,a control method based on the improved twin delayed deep deterministic policy gradient(TD3)is proposed.Within the kinematic level,a speed-heading joint guidance law based on the line-of-sight guidance is designed,which can guide USVs to follow the desired path accurately.Within the dynamic level,the reinforcement learning dynamics controller based on the improved TD3 is developed.By using the prioritized experience replay
+
+收稿日期：2023-07-31 修回日期：2024-04-25
+
+基金项目：国家自然科学基金(61673084);中央高校基本科研业务费(04442024046)
+
+作者简介：曲星儒(1991一),男，山东威海人，讲师，博士，研究方向为海洋机器人决策与控制技术，(E-mail)quxingru@126 .com;
+
+江雨泽(2000一),男，辽宁抚顺人，硕士研究生，研究方向为无人艇控制与决策，(E-mail)jyz_0605@126.com;
+
+李初(2002一),男，河南周口人，硕士研究生，研究方向为无人艇规划与运动控制，(E-mail)lichu0618@163.com;
+
+龙飞飞(1978一),男，辽宁大连人，教授，博士，研究方向为机器人技术，(E-mail)longfeifei@dlnu.edu.cn;
+
+张汝波(1963一),男，辽宁大连人，教授，博士，研究方向为智能控制与机器人技术，(E-mail)zhangrubo@dlnu.edu.com
+
+* 通信联系人。
+
+http://www.smujournal.cn hyxb@shmtu.edu.cn
+
+2 上 海 海 事 大 学 学 报 第45卷
+
+technology based on the temporal difference error,double experience pools which include the successful and failed sampling information of path following are constructed,and the adaptive proportion coefficient is used to adjust the structure of each batch replay data.The critic network and the actor network which include the long short-term memory network are developed,and the sequence information of historical states is utilized to enhance the training efficiency of the path following controller.The simulation results show that the control method based on the improved TD3 can effectively enhance the tracking accuracy of under-actuated USVs.The proposed method doesn't depend on the USV model and it can provide reference for path following control of USVs.
+
+Key words: unmanned surface vehicle;path following control;twin delayed deep deterministic policy gradient;prioritized experience replay;long short-term memory network
+
+0 引 言
+
+无人水面艇(unmanned surface vehicle,USV)是 指以自主或半自主方式执行任务的水上智能平台， 因体积小、隐蔽性强、灵活性高等优点在军用和民用 领域得到广泛应用¹-2]。在执行不同的任务时，路 径跟踪控制是保障其自主作业的关键技术之一。由 于 USV 作业时易受到海洋环境干扰，适应能力强和 智能程度高的路径跟踪控制方法具有较高的应用价 值。欠驱动USV 路径跟踪控制是指系统在不受时 间约束的前提下，从初始状态出发，逐渐驶入预先设 定的参数化期望路径，并沿着该路径航行[³。
+
+目前，对路径跟踪控制的研究主要在运动学制 导和动力学控制两个层次上[4]。在运动学制导研 究中，通常基于当前位置和目标点位置等信息设计 制导律，为系统动态调节提供引导；在动力学控制研 究中，通过求解执行机构相关控制量，USV 能够根 据制导律生成的期望信号航行，实现路径跟踪相关 误差的收敛并保持良好的跟踪性能[⁵。CHEN 等 6 针对未知环境扰动下的路径跟踪控制问题，设计了 一种自适应滑模路径跟踪控制器，并结合相关制导 律，实现对期望路径的跟踪。刘磊等7针对自抗扰 路径跟踪控制器参数量大且整定困难的问题，利用 模糊控制提出了一种模糊自抗扰控制方法，能够对 控制器中的参数进行在线整定及优化。刘正锋 等8对规划得到的期望路径，设计了基于模型预测 控制的路径跟踪控制器，仿真结果显示其具有较好 的路径跟踪性能。白一鸣等9设计了一种基于积 分滑模的路径跟踪鲁棒控制器，并引入径向基神经 网络，利用其逼近特性估计未知环境扰动。然而，上 述控制方法的实现需满足模型参数部分已知的条 件，难以完成 USV 模型参数完全未知条件下的快 速、精确跟踪控制。
+
+深度强化学习的出现和发展给 USV 路径跟踪
+
+http://www.smujournal.cn hyxb@shmtu.edu.cn
+
+控制研究提供了新的解决方案。深度强化学习既具 备强化学习强大的决策能力，也具备深度神经网络 出色的表征与拟合能力，能够有效克服传统控制方 法复杂度高、难度大以及公式冗杂等难题10]。 WO0 等 1 利用深度确定性策略梯度算法，设计了 USV 路径跟踪控制器，并与传统PID 控制进行比较 分析，实现了对期望路径的高精度跟踪。 HAN 等¹2]针对 USV 动力学控制问题，设计了深度强化 学习抗干扰跟踪控制器，采用径向基神经网络估计 系统受到的未知外部干扰。 SUN 等¹³针对路径跟 踪控制训练易陷入局部最优的问题，提出了基于优 化采样池和平均运动评价网络的深度强化学习路径 跟踪控制方法，仿真结果证明该方法可有效提升深 度确定性策略梯度算法的训练效率。 ZHENG 等14] 考虑时变风浪干扰，设计了基于最大熵深度强化学 习的自抗扰控制器，实现了USV 对直线和曲线路径 的跟踪控制。然而，针对路径跟踪这类较复杂的控 制问题，上述方法忽略了历史信息的时序关联性。 MENG等15在双延迟深度确定性策略梯度(twin delayed deep deterministic policy gradient,TD3)中 引 入 了 长 短 期 记 忆 网 络 (long short-term memory, LSTM), 有效解决了动作值延迟反馈问题，提高了方 法本身的序列建模和信息利用能力，但未将此方法 应用于实际USV 路径跟踪控制问题。此外，上述方 法均采用单经验回放池来储存采样信息，且每批次 回放数据组成结构并未优化处理，导致样本的利用 效率较低，影响训练性能。
+
+本文针对模型参数未知和海洋环境干扰下欠驱 动 USV 路径跟踪控制问题，从运动学和动力学两个 层次开展研究，提出一种基于改进 TD3 的路径跟踪 控制方法。首先，设计航速航向联合制导律，并通过 李雅普诺夫理论证明其稳定性。针对传统经验回放 池样本利用效率较低的问题，通过时间差分误差计 算每组经验数据优先级权重，根据采样概率实现优
+
+第 3 期 曲星儒，等：基于改进TD3 的欠驱动无人水面艇路径跟踪控制 3
+
+先经验回放。同时，采用双经验池储存路径跟踪成 功和失败的经验数据，并通过自适应比例系数调整 每批次回放数据的组成结构。考虑历史状态信息对 控制器训练效果的影响，分别在策略网络和评价网 络中引入LSTM,提升对任务环境的记忆能力和适 应能力。根据路径跟踪任务建立状态空间，依据 USV 控制输入建立动作空间，并设计能够缓解稀疏 奖励的混合奖励函数。最后，通过仿真和对比分析 验证本文所提方法的有效性。
+
+1 预备知识及问题描述
+
+1.1 强化学习
+
+强化学习以马尔科夫决策过程为基本框架，通 过智能体与环境不断交互作出更好的决策16]。基 本模型可用四元组{S,A,P,R'} 表示，其中：S 表 示 全部状态集合；A 表示全部动作集合；P 表示状态转 移概率分布函数P(s+1 |s,a),s 和 a 分别表示当前 时刻的状态和动作，s₁+1为下一时刻的状态；R′表 示 奖励集合。在训练过程中积累的回报值G,为
+
+
+
+式中：γ为折扣率，满足γ∈[0,1];r'+ 为 t时刻之后 的奖励，i=1,2,…,k+1。
+
+判断策略μ是否为最佳策略的主要依据是价值 函数，包括状态价值函数 V(s) 和动作价值函数 Q(s,a), 可表示为
+
+
+
+(2)
+
+式中：E 为策略μ下的期望。
+
+最佳控制策略μ*应满足
+
+μ*=arg max V(s)=arg max Q(s,a) (3)
+
+1.2 LSTM
+
+LSTM 具有较好的“记忆”功能，可对重要数据 信息进行保留，对一些无关噪声进行删除，极大程度 上改善循环神经网络易梯度消失的状况，并减少神 经网络的记忆负担。其单个神经元结构见图1:x, 为 t时刻每个神经元的输入；h_1 为 t-1 时刻的状 态 ；C,_ 1为 t-1 时刻的“记忆细胞”;σ为Sigmoid 函 数 ；tanh为激活函数；f,为遗忘门；0,为输出门；i,为 更新门；g,为候选细胞状态。
+
+
+
+图 1 LSTM 单个神经元结构
+
+当信息输入神经元时，先经过遗忘门f,(f, 的 作 用是遗忘掉一些无关紧要的信息):
+
+f,=σ(W₁x,+W₂h₁_ 1+b₁) (4)
+
+通过更新门i, 对重要信息进行更新：
+
+i,=σ(W₃x,+W₄h₁-1+b₂) (5)
+
+更新记忆细胞为 C,=C₁-1Of,+g,◎i,=
+
+C,-1◎f,+tanh(W₅x,+W₆h,_1+b₃)⊙i,(6)
+
+式中：◎为对应点相乘。
+
+输出门o, 为
+
+0,=σ(W₇x,+W₈h,-1 +b₄) (7)
+
+下一时刻状态h, 为
+
+h,=0,Otanh C (8)
+
+式(4)～(8)中：W₄ 为系数矩阵，q=1,2,… 为
+
+偏置项，g=1,2,3,4;tanh 为激活函数。
+
+1.3 欠驱动USV 运动模型
+
+根据文献[17],欠驱动USV 水平面三自由度运 动模型可表示为
+
+(9)
+
+式中：η=(x,y,ψ),x 、y 和ψ分别为 USV的纵向坐 标、横向坐标和艏向角；R(η)为运动坐标系到大地 坐标系的转换矩阵；v=(u,v,r)T,u、v 和 r 分别为 USV 纵向速度、横向速度和转艏角速度；Td=(Tud, Tod,Tra)T,Tud、Ta和 T,a分别为u、v 和 r 方向上的时变 海洋环境干扰；T=(T,0,T,)T,Tu 和┐,分别为路径 跟踪所需的纵向推力和转艏力矩。
+
+R(η)具体可表示为
+
+ (10) M 为惯性矩阵，满足M=MT>0, 可表示为
+
+ (11) C(v) 表示科里奥利向心矩阵，满足 C(v)=
+
+-C(v)T, 可表示为
+
+http://www.smujournal.cn hyxb@shmtu.edu.cn
+
+4 上 海 海 事 大 学 学 报 第45卷
+
+
+
+(12)
+
+D(v) 为流体阻尼矩阵，可表示为
+
+
+
+(13)
+
+式中：m=m-X,m₂2 =m-Y;,m₂₃=mxg-Y;, m₃2=mxg-N;,m₃3=I-N;, 这里 m 为 USV 质量， m₁、m₂2、m₂3、m₃2和 m₃ 为惯性质量参数，X 、Y; 、 Y; 、N;和 N; 为附加质量参数，xg 为 USV 重心的纵 向位置，I 为转动惯量；c₁ 3(v)= -mv-m₂ 3r,
+
+C₂3(v)=-m₁₁u, 这里c₁₃(v) 和 c₂3(v) 为科氏向心力 参数；d₁(v)=-X-Xu|ulu|-Xlul²,d₂2(v)=
+
+-Y,-Y v|,d₂3(v)=-Y,-Yr |v|-Y₁r, d₂(v)=-N,-N₁|v|-N|r|,d₃3(v)=-N,-
+
+N₁rlv|-Nr |r|,这 里 d(v) 、d₂₂(v) 、d₂₃(v)、
+
+d₃2(v)和 d₃ (v) 为水力阻尼参数，X、X|uu、X、Y、 Y, 、Y 、Y 、YI 、N, 、N, 、N 、NI 、N 和 NI 为
+
+水动力导数。
+
+欠驱动 USV 水平面路径跟踪示意图见图2: (x(@),yp(@)) 表示期望的参数化路径；@为与时 间无关的路径参数。期望路径切向角为
+
+α =atan2(y'(@),x'(@)) (14)
+
+式中：y'(@)=dy,/dw;x'(@)=dx,/aw。
+
+路径跟踪误差(包括纵向误差xe 和横向误差
+
+ye) 可表示为
+
+
+
+(15)
+
+
+
+图2 欠驱动USV 水平面路径跟踪示意图
+
+本文控制目标：针对海洋环境干扰下欠驱动 USV 系统，设计基于航速航向制导的深度强化学习 路径跟踪控制器，保证USV 以期望航速和航向跟踪 期望路径，使得路径跟踪误差收敛至任意小，即
+
+(16)
+
+http://www.smujournal.cn hyxb@shmtu.edu.cn
+
+式中：δ、和δ,均为较小的正的常数。
+
+2 路径跟踪控制器设计
+
+欠驱动USV路径跟踪控制设计流程见图3。在 运动学层次上，针对期望路径设计航速航向联合制 导律，为 USV 提供期望航速和期望航向；在动力学 层次上，考虑模型参数未知和时变海洋环境干扰，设 计基于深度强化学习的路径跟踪控制器，使得 USV 以期望航速和航向跟踪期望路径，完成控制目标 (式(16))。
+
+
+位置误差
+
+USV运动模型
+
+力和力矩
+
+运动学设计 运动制导
+
+运动状态
+
+状态更新
+
+动力学设计
+
+强化学习
+
+航速航向
+
+路径跟踪环境
+
+奖励评估
+
+图3 欠驱动USV 路径跟踪控制设计流程
+
+2.1 基于航速航向联合制导的运动学设计
+
+基于视线制导原理，在运动学层次上设计USV 航速航向联合制导律，使其以期望速度和期望角度 跟踪上期望路径。
+
+根据式(9)和(15),路径跟踪误差动态可表 示为
+
+ (17) 式中：u. 为沿着期望路径的虚拟点速度。
+
+u 。=@√x'²(ũ)+y'²(ũ) (18)
+
+考虑欠驱动USV 的侧滑角β:
+
+β=arctan(v/u) (19)
+
+式(17)可写为
+
+
+
+(20)
+
+考虑同时调整纵向、横向误差，以及加快路径跟 踪误差的收敛，设计航速航向联合制导律4:
+
+(21)
+
+式中：k₁>0;△ 为视线距离， 一般为 USV 长度的 1.5~3.0倍；β,为期望侧滑角，βp=arctan(v/up)。
+
+此外，设计虚拟点速度：
+
+u 。=Upcos(βp+ψ-α)+k₂xe (22)
+
+式中：k₂>0;Up=√u²+v²。
+
+为保证联合制导系统的稳定性，选择关于路径
+
+跟踪误差的李雅普诺夫函数：
+
+(23)
+
+其关于时间的导数为
+
+V=xx。+yey。=
+
+xe(ucos(ψ-α)-usin(ψ-α)tan β+αye-uc)+
+
+
+
+
+
+(24)
+
+将式(21)和(22)代入式(24),可得
+
+
+
+
+
+ (25)
+
+因为0<cos β≤1,所以有 V≤-h₂x²-k₁y², 说 明跟踪误差xe 和 y。在联合制导律的作用下能够收 敛到零。
+
+2.2 基于深度强化学习的动力学设计
+
+基于深度强化学习中的TD3 算法求解 USV 路 径跟踪控制所需要的纵向推力和转艏力矩，使其速 度和角度信号收敛至期望值，实现不依赖系统模型 的路径跟踪控制。
+
+TD3算法可以使USV 面对不同的路径信息，做 出价值更高的动作。该算法基于Actor-Critic框架， 使用Actor 网络拟合策略函数执行动作，使用Critic 网络拟合动作价值函数，评判 Actor 网络性能。现 有 TD3 算法中的单一经验回放池会导致训练效率 低，为此，提出一种基于优先经验回放的双经验池回 放技术，通过自适应比例系数自动调整回放数据组 成结构，提高样本的利用效率，并避免陷入局部最 优。同时，考虑路径跟踪历史状态对训练性能的影 响，采用LSTM 分别构建 Actor 网络和 Critic 网络处 理序列数据，帮助网络结构高效利用历史信息并作 出更好的决策[18]。
+
+改进后的TD3 算法结构见图4。在经验采集阶 段，Actor 网络根据当前时刻的状态s 采取动作a, 奖 励函数根据当前时刻的状态s 和动作a 产生奖励值 r', 环境中状态空间更新为下一时刻状态si+1。将此
+
+过程产生的4个采样信息定义为 一 组经验数据 ζ(t)={s,a,r',s₁+1}, 并将其储存进所设计的经验 回放池D 中 。
+
+
+经验回放池D
+
+成功经验池Da-
+
+优先级权重
+
+失败经验池D
+
+a
+
+(s,a)
+
+Critic网络 Critic网络
+
+更新 Q(s,a|θ₁)
+
+r'
+
+策略梯度
+
+Q(s,a,θ)
+
+(s,a,r',s+1)
+
+S±1目标网络 S+1
+
+环境 状态更新 奖励函数
+
+Critic网络 Critic 网络
+
+Actor网络 a+1
+
+Actor网络 a
+
+损失函数
+
+主网络
+
+Qmin
+
+ζ(t)
+
+mini-batch
+
+更新
+
+M₂
+
+M₁
+
+1
+
+图4 改进后的TD3算法结构
+
+针对由经验回放数据时序相关性引起的训练不 稳定现象，利用基于时间差分误差的优先经验回放 技术，计算每组经验数据的采样概率，通过基于优先 经验回放的非均匀采样来高效利用每组经验数据， 有效缓解局部最优并提高训练效率。其中，样本的 优先级l 通过时间差分误差e,计算：
+
+(26)
+
+式中：9为目标值；∈为一个极小值。第n 个样本被 采样的概率为
+
+(27)
+
+式中：N 为 mini-batch 数量；ln 和 l 分别为第n 和第 五个样本的优先级。在此基础上，针对单经验回放 池在训练前期缺乏高质量采样数据的问题，设计基 于路径跟踪成功和失败经验的双经验回放池，采用 自适应调节机制选取每个经验池的采样数量，通过 调整每批次经验回放的数据组成，提高训练速度和 样本的利用效率。定义自适应比例系数k 为
+
+
+
+(28)
+
+式中：F 为当前的训练回合数；Fmax为最大训练回 合 ；f为采样系数。因此，在成功经验池 DH 中的采 样数据量M₁ 和在失败经验池 D 中的采样数据量
+
+M₂ 可表示为
+
+
+
+(29)
+
+在训练阶段，按照采样顺序分别从成功和失败 经验池中获得回放经验数据。目标 Actor 网络根据 回放经验中下一时刻状态s₁+1计算动作值a₁+1,目 标 Critic网络根据 s₁+1和 a₁+1计 算 Qmin(Qmin表示目标 网络中2个Critic 网络产生的2个动作价值函数值 中的较小值)。在主网络中，Critic 网络通过对损失 函数梯度下降的方式进行更新，其中损失函数由奖 励值r'、Qmin和 Critic 网络产生的Q(s,a|θ;) 计算得 到，θ;为主网络中2个Critic 网络参数，i=1,2。 主 网络中Actor 网络更新时，根据 Critic 网络产生的 Q(s,a|θ₁) 计算策略梯度，并通过梯度上升的方式 进行更新。a 为 Actor 网络根据该时刻状态直接产 生的动作值，a=μ(s |w),w 为 Actor 网络参数。最 后，通过软更新的方式更新目标网络参数。
+
+网络参数具体更新，即基于TD3算法的目标策 略平滑正则化特性，向目标动作中加入随机噪声ε:
+
+a+1 =μ'(sz+1 lw′)+ε (30)
+
+式中：μ'为目标网络策略；w′为 目标 Actor 网络参数。 目标值9为
+
+9 =r'+γQmin(s₁+1,a₁+1 |θ') (31) 式中：θ'为目标 Critic 网络参数。
+
+损失函数L(θ;)为
+
+L(θ;)=(9-Q(s,a|θ))² (32)
+
+主网络中的策略梯度可表示为
+
+▽J(w)=
+
+
+
+经过B 个周期后对目标网络参数进行软更新：
+
+
+
+(34)
+
+式中：ξ为学习率，ζ∈(0,1)。
+
+在 Critic 网络和 Actor网络中引入 LSTM 层，整 体网络结构依旧保持 Actor-Critic 框架，其中 LSTM 层输入为一段序列，序列长度可用L 表示。Actor网 络结构见图5,根据环境中USV 实时航行信息，将连 续 t 个时刻状态值放入序列中，之后输入LSTM 中 生成最终隐状态 h,, 最后经过多层感知机(multi- layer perceptron,MLP)后生成USV 路径跟踪控制所 需要的推力 Tu 和 力 矩 T, 。Critic 网络的结构与 Actor 网络的类似，最终的输出为动作价值函数值。
+
+最后，针对欠驱动 USV 路径跟踪控制问题，分 别设计状态空间、动作空间和混合奖励函数，其中：
+
+
+
+图5 Actor 网络结构图
+
+状态空间表示USV 能够感知到的环境信息，是其决 策和评估收益的依据；动作空间为USV 实际控制输 入，包括推力u 和力矩T,;奖励函数用来引导 USV
+
+跟踪期望路径。设计t 时刻的状态空间为 s,=(xe,ye,ψ,ψe,u,v,r,ue,Tu,;-1,Tr,t-1)(35)
+
+式中：Tu,1-1和 Tr,-1分别为上一 时刻的控制输入； Ue=u-Up,ψe=ψ-ψp。
+
+考虑USV 当前的位置相对于期望路径的误差、 实际航速航向相对于制导信号的误差，设计奖励函 数r′:
+
+r′=λ(2exp(-k₃|ue|)-1)+2exp(-k₄|ψe|)+
+
+2exp(-k₅√x²+y²)-2 (36)
+
+式中：kp>0,λ>0,p=3,4,5 。 采用指数函数计算奖 励值可限制奖励大小，避免奖励过高。设计奖励函 数 r2:
+
+r2 =exp(-k₆|p|)+exp(-k₆|p,1)-1 (37) 式中：k₆>0;pr 和 pr 分别为2个控制输入的标准 差，标准差越小说明数据的波动越小，最后获得的奖 励值越高。结合式(36)和(37),设计 USV 路径跟 踪控制的混合奖励：
+
+r′=r′+k₇r2 (38)
+
+式 中：k₇ >0, 且有k₇ ∈(0 ,1)。
+
+基于改进 TD3 的 USV 动力学控制器伪代码 如下：
+
+输入：学习率ξ、lc和 lac,正则化因子ε,折扣率 γ,每回合训练最大步数K, 目标网络更新周期 B,最 大训练回合Fmax,mini-batch 数量N
+
+初始化：主网络参数θ₁、θ ₂和w, 目标网络参数 θ'←θ₁,θ2←θ₂,w'←—w, 成功经验池 DH,失败经验池 D.,USV 航行环境
+
+1.for n₁=1,…,Fmaxdo
+
+2. for n₂=1,…,K do
+
+3. 基于当前状态s, 在随机噪声下选取动作
+
+a~μ(s |w)+ε,并获取奖励值 r'和下一时
+
+刻状态s₁+1
+
+第 3 期 曲星儒，等：基于改进TD3 的欠驱动无人水面艇路径跟踪控制 7
+
+4. 根据时间差分误差 e,赋予每组(s,a,r', s₁+1) 优先级权重
+
+l=le,|+ ∈
+
+5. 储存指定(s,a,r',s₁+1)至经验池 DH 和 D
+
+6. 计算每组样本的采样概率
+
+
+
+7. 按照采样概率，从 DH 中采样M₁ 组经验值， 从 D 中采样M₂ 组经验值进行数据回放
+
+8. 计算损失函数L(θ;)
+
+L(θ;)=(0-Q(s,a|θ;))²
+
+9. 更新 Critic 网络参数θ;
+
+θi←θi-l 。V,L(θ;)
+
+10. if t=1 to B do
+
+11. 更新 Actor网络参数w w←w+l▽„J(w)
+
+12. 更新目标网络
+
+
+
+13. end if
+
+14. end for
+
+15.end for
+
+输出：Actor 网 络 参 数 w,Critic 网络参数θ₁ 和θ₂
+
+3 仿 真 验 证
+
+为验证所提路径跟踪控制方法的有效性和优越 性，基于文献[19]中欠驱动 USV 模型进行仿真，并 将改进的TD3 算法与其他控制方法进行对比分析， 包括基于TD3算法的控制方法和PID 控制方法[20]。
+
+对于运动学制导，相关参数设置如下：k₁=0.2, k₂=2,△=3 。 对于动力学控制，相关参数设置如下： k₃=1.5,k₄=6,k₅=1,k₆=1,k₇=0.3,λ=0.8 。 训
+
+练超参数和改进的TD3 网络参数见表1和表2。
+
+考 虑LSTM-TD3( 在TD3中 加 入LSTM 层)不同 序列长度对训练效率的影响，图6给出了1000回 合下序列长度分别为10、15和20时的奖励曲线。 当序列长度为10时，奖励曲线在训练过程中振荡较 明显；当序列长度由15增到20时，两者的奖励差异 较小，且最后所获得的奖励值基本相同。因此，在本 文的改进方法中序列长度选取20,并与其他控制方 法进行对比。改进的TD3 和 TD3 的奖励曲线对比 见图7,改进方法的奖励曲线在训练前期收敛较快， 收敛后获得的奖励值更高，且在训练过程中表现较 稳定。
+
+表 1 训练超参数
+
+参数
+
+数值
+
+折扣率γ
+
+0.99
+
+最大训练回合Fmax
+
+1000
+
+每回合训练最大步数K
+
+1000
+
+学习率1.和la
+
+0.001
+
+优化器
+
+Adam
+
+策略梯度阈值g
+
+1
+
+正则化因子ε
+
+0.00005
+
+采样系数f
+
+0.8
+
+mini-batch数量N
+
+128
+
+表2 改进的TD3网络参数
+
+参数
+
+维度数量
+
+Actor网络输入层
+
+11
+
+Critic网络输入层
+
+13
+
+全连接层
+
+200
+
+Actor网络中LSTM层
+
+100
+
+Critic网络中LSTM层
+
+100
+
+Actor网络输出层
+
+2
+
+Critic网络输出层
+
+1
+
+奖励值
+
+
+4000┌
+
+3000
+
+2000
+
+1000
+
+0-
+
+-1000
+
+-2000
+
+-30000 200
+
+一 LSTM-TD3 L=20 ……LSTM-TD3 L=15 ---LSTM-TD3 L=10
+
+400 600 800 1000 训练回合
+
+图6 不同序列长度下的LSTM-TD3 奖励曲线
+
+奖励值
+
+
+4000
+
+3000
+
+2000-
+
+1000-
+
+0
+
+-1000
+
+-2000
+
+-3000
+
+—改进TD3 ---TD3
+
+800 1000
+
+200 400 600 训练回合
+
+图7 改进TD3和TD3奖励曲线对比
+
+训练完成后，采用改进 TD3 和传统TD3 的最优 策略进行模型参数未知和时变环境干扰下 USV 路 径跟踪控制测试。仿真时长为200 s,USV 初始位姿 η=(- 10,0,0),初始速度v=(0,0,0)T 。 时变海 洋干扰为
+
+http://www.smujournal.cn hyxb@shmtu.edu.cn
+
+8 上 海 海 事 大 学 学 报 第 4 5 卷
+
+
+
+(39)
+
+参数化期望路径为
+
+
+
+(40)
+
+仿真结果见图8～12。由图8可知，在本文提 出的改进TD3 控制作用下，USV 能够快速精准地跟 踪期望路径，且在路径转弯处的超调量较小。然而， 在 TD3和 PID 控制作用下，USV 在开始时向期望路 径收敛较缓慢，且在路径转弯处存在较大的瞬态 误 差 。
+
+
+
+Y/m
+
+X/m
+
+图8 USV 路径跟踪控制行为
+
+横 向 误 差 / m 纵 向 误 差 / m
+
+
+200
+
+时 间 / s
+
+图9 USV 路径跟踪误差
+
+向 角
+
+误 差 / r a d 速 度 误 差 /
+
+(m/s)
+
+
+2
+
+--- TD3
+
+0
+
+- 1
+
+-2
+
+0.15 0 -0.15
+
+150 200
+
+— 改进TD3
+
+-0.30 0
+
+50 100
+
+时 间 / s
+
+图10 USV 速度跟踪误差和艏向角跟踪误差
+
+由图9可以看出，在模型未知和时变海洋干扰 下，基于改进TD3的路径跟踪控制方法能使USV 跟 踪误差快速、精准地收敛到平衡点，而基于TD3 控 制方法在路径转弯处的跟踪误差明显比改进方法的 大，基于PID 控制的跟踪误差峰值最大且横向误差
+
+http://www.smujournal.cn hyxb@shmtu.edu.cn
+
+易出现抖振。由图10可以看出，在经验回放机制优 化和LSTM 层的作用下，控制系统的暂态性能和稳 态性能得到显著提升。由图11可以看出，随着跟踪 误差的减小，USV 航速和航向渐趋于期望值，其中， 速度轻微振荡是由于，当经过路径拐点时欠驱动系 统需要调节航速来跟踪期望路径。由图12可知，通 过计算连续20组控制输入的标准差判断数据波动 情况，并基于此形成防抖奖励，有效缓解了控制 抖 振 。
+
+
+
+向角/rad速度/(m/s)
+
+时间/s
+
+图11 USV 速度和艏向角
+
+
+
+转舶力矩/
+
+(Nm) 纵向推力/N
+
+图12 USV 路径跟踪控制输入
+
+4 结 论
+
+针对模型参数未知和海洋环境干扰下的欠驱动 USV 路径跟踪控制问题，本文提出了一种基于改进 TD3的路径跟踪控制方法。考虑现有TD3 经验回 放机制样本利用效率较低，采用优先经验回放技术 处理路径跟踪控制采样数据，通过时间差分误差赋 予每组样本优先级权重。建立基于成功和失败采样 数据的双经验池，并设计自适应比例系数，随着训练 回合数的增加自动地调整回放数据的组成比例。考 虑历史状态信息对路径跟踪性能的影响，构建了基 于LSTM 的策略网络和评价网络。根据 USV 航行 情况建立状态空间和动作空间，并设计混合奖励函 数引导其跟踪期望路径。仿真结果验证了所提出的 深度强化学习路径跟踪控制方法的有效性和优越 性。该研究成果可为复杂海洋环境下USV 路径跟 踪控制提供参考。
+
+参考文献：
+
+[1] 彭艳，葛磊，李小毛，等.无人水面艇研究现状与发展趋势[J]. 上海大学学报(自然科学版),2019,25(5):645-654.DOI:10.12066/ j.issn.1007-2861.2041.
+
+[2]张晓东，刘世亮，刘宇，等.无人水面艇收放技术发展趋势探讨[J]. 中国舰船研究，2018,13(6):50-57.DOI:10.19693/j.issn.1673- 3185.01258.
+
+[3]刘昌鑫，高剑，徐德民.一种欠驱动 AUV 模型预测路径跟踪控制方法[J]. 机械科学与技术，2017,36(11):1653-1657.DOI:10. 13433/j.cnki.1003-8728.2017.1103.
+
+[4]QU XR,LIANG X,HOU YH,et al.Path-following control of unmanned surface vehicles with unknown dynamics and unmeasured velocities[J]. Journal of Marine Science and Technology,2021,26:395-407.DOI:10.1007/s00773-020-00744-3.
+
+[5]KOH S,ZHOU B,FANG H,et al.Real-time deep reinforcement learning based vehicle navigation[J].Applied Soft Computing Journal,2020, 96:106694.DOI:10.1016/j.asoc.2020.106694.
+
+[6]CHEN X,LIU Z,ZHANG JQ,et al.Adaptive sliding-mode path following control system of the underactuated USV under the influence of ocean currents[J].Journal of Systems Engineering and Electronics,2018,29(6):1271-1283.DOI:10.21629/jsee.2018.06.14.
+
+[7]刘磊，范云生，沈心乐.无人水面艇模糊自抗扰路径跟踪控制的研究与验证[J]. 船舶工程，2023,45(1):120-128. DOI:10.13788/j.
+
+cnki.cbgc.2023.01.19.
+
+[8]刘正锋，张隆辉，魏纳新，等.限制区域水面无人艇路径规划与跟踪控制研究[J]. 船舶力学，2021,25(9):1127-1136. DOI:10.3969/ j.issn.1007-7294.2021.09.001.
+
+[9]白一鸣，刘磊，韩新洁.基于改进自适应积分视线制导方法的欠驱动无人水面艇路径跟踪控制[J]. 上海海事大学学报，2021,42(4): 12-19.DOI:10.13340/j.jsmu.2021.04.003.
+
+[10]王珂，卜祥津，李瑞峰，等.景深约束下的深度强化学习机器人路径规划[J]. 华中科技大学学报(自然科学版),2018,46(12):77-82. DOI:10.13245/j.hust.181214.
+
+[11]WOO J,YU C,KIM N.Deep reinforcement learning-based controller for path following of an unmanned surface vehicle[J].Ocean Engineering, 2019,183:155-166.DOI:10.1016/j.oceaneng.2019.04.099.
+
+[12]HAN ZQ,WANGYT,SUN Q.Straight-path following and formation control of USVs using distributed deep reinforcement learning and adaptive neural network[J].IEEE/CAA Journal of Automatica Sinica,2023,10(2):572-574.DOI:10.1109/JAS.2023.123255.
+
+[13]SUN Y S,RAN XR,ZHANG GC,et al.AUV path following controlled by modified deep deterministic policy gradient[J].Ocean Engineering, 2020,210:107360.DOI:10.1016/j.oceaneng.2020.107360.
+
+[14]ZHENGYM,TAOJ,SUN QL,et al.Soft actor-critic based active disturbance rejection path following control for unmanned surfacevessel under wind and wave disturbances[J].Ocean Engineering,2022,247:110631.DOI:10.1016/j.oceaneng.2022.110631.
+
+[15]MENG LH,GORBET R,KULIC D.Memory-based deep reinforcement learning for POMDPs[C]//2021 IEEE/RSJ Intermational Conference on
+
+Intelligent Robots and Systems(IROS).IEEE,2021:5619-5626.DOI:10.1109/IROS51168.2021.9636140.
+
+[16]夏家伟，朱旭芳，罗亚松，等.基于深度强化学习的无人艇轨迹跟踪算法研究 [J]. 华中科技大学学报(自然科学版),2023,51(5):74- 80.DOI:10.13245/j.hust.228371.
+
+[17]FOSSEN TI.Handbook of marine craft hydrodynamics and motion control[M].Hoboken,New Jersey:John Wiley &Sons,2011.
+
+[18]刘钊，周壮壮，张明阳，等.基于双延迟深度确定性策略梯度的船舶自主避碰方法[J]. 交通信息与安全，2022,40(3):60-74. DOI: 10.3963/j.jssn.1674-4861.2022.03.007.
+
+[19]王宁，高颖，王仁慧.状态测量不确定和动力学未知的无人艇固定时间容错控制[J]. 自动化学报，2023,49(5):1050-1061.DOI:10. 16383/j.aas.c220482.
+
+[20]柳晨光，初秀民，毛庆洲，等.无人船自适应路径跟踪控制系统[J]. 机械工程学报，2020,56(8):216-227.DOI:10.3901/JME.2020.
+
+08.216.
+
+(编辑 葛亚娟)
+
+http://www.smujournal.cn hyxb@shmtu.edu.cn
