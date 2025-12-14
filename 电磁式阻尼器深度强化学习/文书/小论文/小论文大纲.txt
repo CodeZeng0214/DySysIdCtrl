@@ -3,7 +3,7 @@
 # 小论文大纲：基于时间感知GRU-Attention-TD3的电磁式阻尼器振动控制研究
 
 ## 1. 标题 (Title)
-**中文标题**：考虑时滞与采样不确定性的电磁阻尼器时间感知GRU-Attention-TD3振动控制
+**中文标题**：基于时间感知GRU-Attention-TD3的电磁式阻尼器振动控制研究
 **英文标题**：Time-Aware GRU-Attention-TD3 for Vibration Control of Electromagnetic Dampers Considering Time Delays and Sampling Uncertainty
 
 ## 2. 摘要 (Abstract)
@@ -80,7 +80,7 @@
 
 % 正文
 {
-# 基于时间感知GRU-DDPG的电磁式吸振器振动控制研究
+# 基于时间感知GRU-Attention-TD3的电磁式阻尼器振动控制研究
 
 ## 摘要
 
