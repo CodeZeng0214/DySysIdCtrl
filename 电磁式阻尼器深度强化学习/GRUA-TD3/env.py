@@ -4,6 +4,7 @@ from scipy.linalg import expm
 import torch
 
 from data import EpisodeRecorder
+from controller import BaseController
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -11,164 +12,198 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class ElectromagneticDamperEnv:
     """Two-DOF electromagnetic damper simulation with optional delay and dt noise.
-
+    二自由度电磁阻尼器仿真，具有可选的延迟和时间步长噪声。
     The environment owns all timing effects (dt noise, action delay) so the agent stays algorithmically clean.
+    环境拥有所有时间效应（时间步长噪声，动作延迟），因此代理保持算法的纯净。
     """
 
     def __init__(
-        self,
-        A: np.ndarray,
-        B: np.ndarray,
-        C: np.ndarray,
-        D: np.ndarray,
-        E: np.ndarray,
-        F: Optional[np.ndarray] = None,
-        Ts: float = 1e-3,
-        T: float = 1.0,
-        state0: Optional[np.ndarray] = None,
-        obs_indices: Optional[List[int]] = None,
-        x1_limit: Optional[float] = None,
-        use_dt_noise: bool = False,
-        dt_noise_std: float = 0.0,
-        delay_enabled: bool = False,
-        delay_mean_steps: int = 1,
-        delay_std_steps: float = 0.0,
-        include_dt_in_obs: bool = False,
-        include_delay_in_obs: bool = False,
-        z_func: Optional[Callable[[float], float]] = None,
-        r_func: Optional[Callable[[np.ndarray, float, np.ndarray], float]] = None,
-        f_func: Optional[Callable[[float], float]] = None,
+        self, A: np.ndarray, B: np.ndarray, C: np.ndarray, D: np.ndarray, E: Optional[np.ndarray] = None, F: Optional[np.ndarray] = None,
+        Ts: float = 1e-3, T: float = 1.0,
+        state0: Optional[np.ndarray] = None, x1_limit: Optional[float] = None,
+        use_dt_noise: bool = False, dt_noise_std: float = 0.0,
+        delay_enabled: bool = False, delay_mean_steps: int = 1, delay_std_steps: int = 0,
+        obs_indices: Optional[List[int]] = None, include_dt_in_obs: bool = False, include_delay_in_obs: bool = False,
+        z_func: Optional[Callable] = None, r_func: Optional[Callable] = None, f_func: Optional[Callable] = None,
     ) -> None:
         self.A = A
         self.B = B
         self.C = C
         self.D = D
-        self.E = E
-        self.F = F if F is not None else np.zeros((A.shape[0], 1))
+        self.E = E if E is not None else np.zeros((A.shape[0], 2)) # 地基扰动输入矩阵
+        self.F = F if F is not None else np.zeros((A.shape[0], 1)) # 外部激励输入矩阵
 
-        self.Ts = Ts
-        self.T = T
-        self.state0 = state0 if state0 is not None else np.zeros(6)
-        self.obs_indices = obs_indices if obs_indices is not None else [3]
-        self.x1_limit = x1_limit
+        self.Ts = Ts # 默认时间步长
+        self.T = T # 总仿真时间
+        self.time = 0.0 # 当前的仿真时间
 
-        self.use_dt_noise = use_dt_noise
-        self.dt_noise_std = dt_noise_std
+        self.x1_limit = x1_limit # x1位置的限制
 
-        self.delay_enabled = delay_enabled
-        self.delay_mean_steps = max(1, delay_mean_steps)
-        self.delay_std_steps = delay_std_steps
-        self.include_dt_in_obs = include_dt_in_obs
-        self.include_delay_in_obs = include_delay_in_obs
+        self.use_dt_noise = use_dt_noise # 是否启用时间步长噪声
+        self.dt_noise_std = dt_noise_std # 时间步长噪声的标准差比例
+        self.dt_history = [] # 记录时间步长的历史
 
-        self.z_func = z_func
-        self.r_func = r_func
-        self.f_func = f_func
+        self.delay_enabled = delay_enabled # 是否启用动作延迟
+        self.delay_mean_steps = int(max(1, delay_mean_steps)) # 延迟的平均步数
+        self.delay_std_steps = int(delay_std_steps) # 延迟的标准差步数
+        self.delay_time = 0.0 # 当前的延迟时间
+        self.delay_step = 0 # 当前的延迟步数
 
-        self.all_state = self.state0.copy()
-        self.time = 0.0
-        self._precompute_discrete(self.Ts)
-        self._init_delay_buffers(self.delay_mean_steps)
+        self.obs_indices = obs_indices if obs_indices is not None else [3] # 观测变量的索引
+        self.include_dt_in_obs = include_dt_in_obs # 是否在观测中包含时间步长
+        self.include_delay_in_obs = include_delay_in_obs # 是否在观测中包含延迟时间
+
+        self.state0 = state0 if state0 is not None else np.zeros(6) # 环境的初始状态
+        self.z_func = z_func # 地基扰动函数
+        self.f_func = f_func # 外部激励函数
+        self.r_func = r_func # 奖励函数
+
+        self._state = self.state0.copy() # 当前的状态
+        self._precompute_discrete(self.Ts) # 预计算离散时间系统矩阵
+ 
 
     # ------------------------------------------------------------------
     # Public API
-    def reset(self, state0: Optional[np.ndarray] = None) -> np.ndarray:
-        self.all_state = self.state0.copy() if state0 is None else state0.copy()
+    def reset(self, state0: Optional[np.ndarray] = None, z_func: Optional[Callable] = None, f_func: Optional[Callable] = None) -> np.ndarray:
+        """环境初始化，\n
+        可以重新设置初始状态和函数"""
+        # 重新设置初始状态和函数
+        if state0 is not None: 
+            self.state0 = state0.copy()
+        if z_func is not None: 
+            self.z_func = z_func
+        if f_func is not None: 
+            self.f_func = f_func
+
+        # 重置环境状态
         self.time = 0.0
-        delay_len = self.delay_mean_steps if self.delay_enabled else 1
-        self._init_delay_buffers(delay_len)
+        self.dt_history = []
+        self.delay_time = 0.0
+        self.delay_step = 0
+        self._state = self.state0.copy()
+
         return self.observe()
 
     def observe(self) -> np.ndarray:
-        base = np.array([self.all_state[i] for i in self.obs_indices], dtype=float)
+        """获取当前观测值，包含指定的状态变量和可选的时间步长及延迟时间"""
+        base = np.array([self._state[i] for i in self.obs_indices], dtype=float)
         extras = []
         if self.include_dt_in_obs:
-            extras.append(self.last_dt)
+            extras.append(self.dt_history[-1] if self.dt_history else self.Ts)
         if self.include_delay_in_obs:
             extras.append(self.delay_time)
         if extras:
             base = np.concatenate([base, np.array(extras, dtype=float)])
         return base
+    
+    def get_all_state(self) -> np.ndarray:
+        """获取完整的环境状态向量"""
+        return self._state.copy()
 
     def step(self, action: float) -> Tuple[np.ndarray, float, bool, dict]:
-        applied_action = self._apply_delay(action)
-        dt = self._sample_dt()
-        self._precompute_discrete(dt)
+        """单步推进，不再延迟动作，延迟只体现在观测对齐。\n
+        info 中包含每一步采样的时间步长和延迟步数。"""
+        if self.delay_enabled:
+            self.delay_step = self._sample_delay_steps() # 采样延迟步数
+            self.delay_time = self._cal_delay_time(self.delay_step) # 计算对应的延迟时间
+        
+        # 如果启用时间步长噪声，则采样新的时间步长并重新离散系统矩阵
+        dt = self.Ts
+        if self.use_dt_noise:
+            dt = self._sample_dt()
+            self._precompute_discrete(dt)
+        self.dt_history.append(dt)
 
-        before = self.all_state.copy()
-        next_state = self._integrate(applied_action, dt)
-        self.all_state = next_state
+        # 推进系统状态
+        state = self._state.copy()
+        next_state = self._integrate(action, dt)
+        self._state = next_state
+
+        # 计算奖励
+        reward = self.r_func(state, action, next_state) if self.r_func else 0.0
+        next_obs = self.observe()
+
+        # 注意，info 中包含当前的观测值、状态、时间、采样的时间步长和延迟步数、下一个状态
+        info = {"state": state, "time": self.time, "next_obs": next_obs, "next_state": next_state, "dt": dt, "delay_step": self.delay_step, "delay_time": self.delay_time}
+        
+        # 更新仿真时间
         self.time += dt
-
-        reward = self.r_func(before, applied_action, next_state) if self.r_func else 0.0
-        obs = self.observe()
         done = self.time >= self.T
-        info = {"dt": dt, "delay_time": self.delay_time, "applied_action": applied_action}
-        return obs, reward, done, info
+        
+        return next_obs, reward, done, info
 
-    def run_episode(self, policy=None, record: bool = True) -> EpisodeRecorder:
-        recorder = EpisodeRecorder()
-        self.reset()
+    def run_episode(self, state0: Optional[np.ndarray] = None,
+                    z_func: Optional[Callable] = None, f_func: Optional[Callable] = None,
+                    controller: BaseController=None, record: bool = True) -> EpisodeRecorder:
+        """运行完整的仿真过程，直到达到总时间T。\n
+        可以重新设置初始状态和函数，并使用指定的控制器进行控制。\n"""
+        # 创建记录器
         if record:
-            recorder.append(state=self.all_state.copy(), action=0.0, reward=0.0, dt=self.last_dt, time=self.time, delay_time=self.delay_time)
+            recorder = EpisodeRecorder() 
+        
+        # 重置控制器状态
+        if controller is not None and hasattr(controller, "reset"):
+            controller.reset()
+
+        # 仿真主循环
+        self.reset(state0=state0, z_func=z_func, f_func=f_func) # 重置环境
         done = False
         while not done:
-            obs = self.observe()
-            act = float(policy(obs)) if policy is not None else 0.0
-            obs_next, reward, done, info = self.step(act)
+            obs = self.observe() # 获取当前观测值
+            action = controller.select_action(obs=obs) if controller is not None else 0.0 # 选择动作
+            next_obs, reward, done, info = self.step(action) # 环境步进
+            
+            # 记录步进前观测、步进前状态、采取动作、获得奖励、步进前时间、步进时间步长、延迟时间
             if record:
-                recorder.append(state=self.all_state.copy(), action=act, reward=reward, dt=info["dt"], time=self.time, delay_time=info["delay_time"])
+                recorder.append(obs_history=obs.copy(), state_history=info["state"], action_history=action, reward_history=reward, 
+                                time_history=info["time"], dt_history=info["dt"],  delay_time=info["delay_time"])
         return recorder
 
     # ------------------------------------------------------------------
     # Internal helpers
     def _integrate(self, action: float, dt: float) -> np.ndarray:
-        X = self.all_state[[0, 1, 3, 4]].copy()
-        z = self._get_ground_motion(dt)
-        f = self._get_force()
-        X_next = self.Ad @ X.reshape(-1, 1) + self.Bd @ np.array([[action]]) + self.Ed @ z + self.Fd @ f
+        """使用离散系统矩阵推进状态"""
+        # 提取系统状态向量和计算地基扰动及外部激励
+        X = self._state[[0, 1, 3, 4]].copy() # 系统状态向量：[x1, x1_dot, x2, x2_dot]
+        z = self._get_ground_motion(dt) # 地基扰动向量：[z_dot, z]
+        f = self._get_force() # 外部激励向量：[f]
 
+        # 计算下一个状态
+        X_next = self._Ad @ X.reshape(-1, 1) + self._Bd @ np.array([[action]]) + self._Ed @ z + self._Fd @ f 
+
+        # 位置限制，防止吸振器位移发散
         if self.x1_limit is not None and abs(X_next[0] - X_next[2]) > self.x1_limit:
             X_next[0] = self.x1_limit * np.sign(X_next[0] - X_next[2]) + X_next[2]
             X_next[1] = 0.0
 
+        # 计算输出变量
         Y = self.C @ X_next + self.D @ np.array([[action]])
 
-        next_state = self.all_state.copy()
+        # 更新完整状态向量
+        next_state = self._state.copy()
         next_state[[0, 3]] = X_next[[0, 2]].reshape(-1)
         next_state[[1, 4]] = X_next[[1, 3]].reshape(-1)
         next_state[[2, 5]] = Y.reshape(-1)
         return next_state
-
-    def _apply_delay(self, action: float) -> float:
-        if not self.delay_enabled:
-            self.last_dt = self.Ts
-            self.delay_time = 0.0
-            return float(action)
-
-        desired_len = self._sample_delay_steps()
-        self._resize_delay_buffers(desired_len)
-        self.action_queue.append(float(action))
-        applied_action = self.action_queue.pop(0)
-
-        # Update delay time estimate using current dt
-        self.delay_time = self.last_dt * max(0, len(self.action_queue))
-        return float(applied_action)
+    
+    def _cal_delay_time(self, delay_steps: int) -> float:
+        """计算给定延迟步数对应的延迟时间"""
+        return sum(self.dt_history[-delay_steps:])
 
     def _sample_dt(self) -> float:
         if not self.use_dt_noise:
-            self.last_dt = self.Ts
             return self.Ts
         noise = np.random.normal(0.0, self.dt_noise_std * self.Ts)
         dt = float(np.clip(self.Ts + noise, 0.5 * self.Ts, 1.5 * self.Ts))
-        self.last_dt = dt
         return dt
 
     def _sample_delay_steps(self) -> int:
+        """从正态分布中采样延迟步数"""
         raw = np.random.normal(self.delay_mean_steps, self.delay_std_steps)
         return max(1, int(round(raw)))
 
     def _precompute_discrete(self, dt: float) -> None:
+        """离散化系统矩阵"""
         n = self.A.shape[0]
         m1 = self.B.shape[1]
         m2 = self.E.shape[1]
@@ -179,25 +214,13 @@ class ElectromagneticDamperEnv:
         M[:n, n + m1:n + m1 + m2] = self.E
         M[:n, n + m1 + m2:] = self.F
         expM = expm(M * dt)
-        self.Ad = expM[:n, :n]
-        self.Bd = expM[:n, n:n + m1]
-        self.Ed = expM[:n, n + m1:n + m1 + m2]
-        self.Fd = expM[:n, n + m1 + m2:]
-
-    def _init_delay_buffers(self, delay_len: int) -> None:
-        self.action_queue: List[float] = [0.0 for _ in range(max(1, delay_len))]
-        self.last_dt = self.Ts
-        self.delay_time = 0.0
-
-    def _resize_delay_buffers(self, desired_len: int) -> None:
-        desired_len = max(1, desired_len)
-        if desired_len > len(self.action_queue):
-            padding = [self.action_queue[0]] * (desired_len - len(self.action_queue))
-            self.action_queue = padding + self.action_queue
-        elif desired_len < len(self.action_queue):
-            self.action_queue = self.action_queue[-desired_len:]
+        self._Ad = expM[:n, :n]
+        self._Bd = expM[:n, n:n + m1]
+        self._Ed = expM[:n, n + m1:n + m1 + m2]
+        self._Fd = expM[:n, n + m1 + m2:]
 
     def _get_ground_motion(self, dt: float) -> np.ndarray:
+        """计算地基扰动向量：[z_dot, z]"""
         if self.z_func is None:
             return np.zeros((2, 1))
         z_t = self.z_func(self.time)
@@ -206,6 +229,7 @@ class ElectromagneticDamperEnv:
         return np.array([[z_dot], [z_t]], dtype=float)
 
     def _get_force(self) -> np.ndarray:
+        """计算外部激励向量：[f]"""
         if self.f_func is None:
             return np.zeros((1, 1))
         return np.array([[self.f_func(self.time)]], dtype=float)

@@ -6,11 +6,29 @@ from typing import Optional
 import numpy as np
 import torch
 
-from agent import TD3Agent
+from controller import TD3Agent
 from buffer import ReplayBuffer
 from data import EpisodeRecorder, TrainingHistory, save_checkpoint, load_checkpoint, latest_checkpoint
 from env import ElectromagneticDamperEnv
 from fx import tolerance_reward, zero, sin_wave
+
+
+def delayed_sequence(window: deque, delay_steps: int, seq_len: int) -> np.ndarray:
+    """Delayed sequence for GRU policy input."""
+    delay = max(0, min(delay_steps, len(window) - 1))
+    hist = list(window)
+    end = len(hist) - delay
+    start = max(0, end - seq_len)
+    view = hist[start:end]
+    if len(view) < seq_len:
+        pad = [hist[0]] * (seq_len - len(view))
+        view = pad + view
+    return np.stack(view, axis=0)
+
+
+def delayed_obs(window: deque, delay_steps: int) -> np.ndarray:
+    delay = max(0, min(delay_steps, len(window) - 1))
+    return list(window)[-1 - delay]
 
 
 def build_env():
@@ -134,9 +152,11 @@ def train(
     epsilon = 1.0
     for ep in range(history.current_episode, n_episodes):
         obs = env.reset()
-        state_window = deque([obs.copy() for _ in range(seq_len)], maxlen=seq_len)
+        buffer_len = seq_len + 50  # keep extra history to cover sampled delays
+        state_window = deque([obs.copy() for _ in range(buffer_len)], maxlen=buffer_len)
+        current_delay = env.delay_step
         ep_rec = EpisodeRecorder()
-        ep_rec.append(state=env.all_state.copy(), action=0.0, reward=0.0, dt=env.last_dt, time=env.time, delay_time=env.delay_time)
+        ep_rec.append(state=env._state.copy(), action=0.0, reward=0.0, dt=env.dt_history[-1] if env.dt_history else env.Ts, time=env.time, delay_time=env.delay_time)
 
         done = False
         step = 0
@@ -146,15 +166,24 @@ def train(
         updates = 0
 
         while not done:
-            state_input = np.stack(state_window, axis=0) if arch == "gru" else state_window[-1]
+            if arch == "gru":
+                state_input = delayed_sequence(state_window, current_delay, seq_len)
+                state_for_buffer = delayed_obs(state_window, current_delay)
+            else:
+                state_input = delayed_obs(state_window, current_delay)
+                state_for_buffer = state_input
             action = agent.select_action(state_input, add_noise=True, noise_scale=epsilon)
             next_obs, reward, done, info = env.step(action)
-            buffer.add(state_window[-1], action, reward, next_obs, done)
-
-            ep_rec.append(state=env.all_state.copy(), action=action, reward=reward, dt=info["dt"], time=env.time, delay_time=info["delay_time"])
-            ep_reward += reward
             state_window.append(next_obs)
+            next_delay = info.get("delay_step", 0)
+            next_state_view = delayed_obs(state_window, next_delay)
+
+            buffer.add(state_for_buffer, action, reward, next_state_view, done, delay=current_delay)
+
+            ep_rec.append(state=env._state.copy(), action=action, reward=reward, dt=info["dt"], time=env.time, delay_time=info["delay_time"])
+            ep_reward += reward
             step += 1
+            current_delay = next_delay
 
             if len(buffer) > min_buffer:
                 batch = buffer.sample(batch_size, use_sequence=(arch == "gru"))

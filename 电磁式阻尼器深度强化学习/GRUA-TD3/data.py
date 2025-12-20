@@ -7,16 +7,18 @@ from typing import Any, Dict, Iterable, List, Optional
 
 
 class EpisodeRecorder:
-    """Flexible per-episode recorder that auto-accepts new fields."""
+    """灵活的单轮记录器，自动接受新字段。"""
 
     def __init__(self) -> None:
-        self._data: Dict[str, List[Any]] = defaultdict(list)
+        self._data: Dict[str, List[Any]] = defaultdict(list) # 使用defaultdict自动初始化列表
 
     def append(self, **fields: Any) -> None:
+        """添加一条记录，可以包含任意字段。"""
         for key, value in fields.items():
             self._data[key].append(value)
 
     def __len__(self) -> int:
+        """返回记录的条目数。"""
         if not self._data:
             return 0
         return len(next(iter(self._data.values())))
@@ -25,6 +27,7 @@ class EpisodeRecorder:
         return {k: np.array(v) for k, v in self._data.items()}
 
     def clear(self) -> None:
+        """清空所有记录。"""
         self._data.clear()
 
 

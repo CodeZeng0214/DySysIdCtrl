@@ -1,5 +1,6 @@
 import copy
-from typing import Dict, Tuple
+from collections import deque
+from typing import Dict, Tuple, Optional
 
 import numpy as np
 import torch
@@ -8,6 +9,74 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from networks import build_actor_critic, device
+from fx import ACTION_BOUND
+
+
+def _delayed_sequence(window: deque, delay_steps: int, seq_len: int) -> np.ndarray:
+    delay = max(0, min(delay_steps, len(window) - 1))
+    hist = list(window)
+    end = len(hist) - delay
+    start = max(0, end - seq_len)
+    view = hist[start:end]
+    if len(view) < seq_len:
+        pad = [hist[0]] * (seq_len - len(view))
+        view = pad + view
+    return np.stack(view, axis=0)
+
+
+def _delayed_obs(window: deque, delay_steps: int) -> np.ndarray:
+    delay = max(0, min(delay_steps, len(window) - 1))
+    return list(window)[-1 - delay]
+
+
+class BaseController:
+    """Interface for episode rollout controllers."""
+    def __init__(self) -> None:
+        self.obs_state_history = [] # 记录观测状态的历史
+
+    def reset(self, first_obs: np.ndarray) -> None:
+        self.obs_state_history = []
+        raise NotImplementedError
+
+    def select_action(self, obs: np.ndarray, obs_state_history=None) -> float:
+        """基于当前观测值选择动作"""
+        raise NotImplementedError
+
+class PassiveController(BaseController):
+    """Open-circuit passive damper (always zero control)."""
+
+    def reset(self, first_obs: np.ndarray) -> None:
+        pass
+
+    def select_action(self, obs: np.ndarray) -> float:
+        return 0.0
+
+
+class PIDController(BaseController):
+    """Simple PID on a chosen state index (defaults to x2 displacement at index 3)."""
+
+    def __init__(self, kp: float, ki: float, kd: float, target: float = 0.0, state_index: int = 3, dt: float = 1e-3, u_max: float = ACTION_BOUND) -> None:
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.target = target
+        self.state_index = state_index
+        self.dt = dt
+        self.u_max = u_max
+        self.integral = 0.0
+        self.prev_err = 0.0
+
+    def reset(self, first_obs: np.ndarray) -> None:
+        self.integral = 0.0
+        self.prev_err = float(self.target - first_obs[self.state_index])
+
+    def select_action(self, obs: np.ndarray, delay_steps: int = 0) -> float:
+        err = float(self.target - obs[self.state_index])
+        self.integral += err * self.dt
+        deriv = (err - self.prev_err) / self.dt if self.dt > 0 else 0.0
+        self.prev_err = err
+        u = self.kp * err + self.ki * self.integral + self.kd * deriv
+        return float(np.clip(u, -self.u_max, self.u_max))
 
 
 class TD3Agent:
@@ -73,7 +142,8 @@ class TD3Agent:
 
     # ------------------------------------------------------------------
     def update(self, batch, use_sequence: bool, policy_update: bool = True) -> Tuple[float, float]:
-        states, actions, rewards, next_states, dones = batch
+        # delays are included in batch for logging/compatibility but not used by vanilla TD3
+        states, actions, rewards, next_states, dones, _delays = batch
         self.total_it += 1
 
         with torch.no_grad():
@@ -152,3 +222,25 @@ class TD3Agent:
         self.critic1_optim.load_state_dict(payload["critic1_optim"])
         self.critic2_optim.load_state_dict(payload["critic2_optim"])
         self.total_it = int(payload.get("total_it", 0))
+
+
+class TD3Controller(BaseController):
+    """Wrapper around TD3Agent that handles delayed inputs for MLP or GRU."""
+
+    def __init__(self, agent: TD3Agent) -> None:
+        self.agent = agent
+        buffer_len = agent.seq_len + 50
+        self.window: deque = deque(maxlen=buffer_len)
+
+    def reset(self, first_obs: np.ndarray) -> None:
+        self.window.clear()
+        for _ in range(self.window.maxlen):
+            self.window.append(first_obs.copy())
+
+    def select_action(self, obs: np.ndarray, delay_steps: int = 0) -> float:
+        self.window.append(obs.copy())
+        if self.agent.arch == "gru":
+            state_input = _delayed_sequence(self.window, delay_steps, self.agent.seq_len)
+        else:
+            state_input = _delayed_obs(self.window, delay_steps)
+        return self.agent.select_action(state_input, add_noise=True)
