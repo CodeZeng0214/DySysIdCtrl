@@ -1,7 +1,7 @@
 import copy
 from collections import deque
-from typing import Dict, Tuple, Optional
-
+from typing import Dict, Tuple
+from buffer import ReplayBuffer
 import numpy as np
 import torch
 import torch.nn as nn
@@ -32,15 +32,20 @@ def _delayed_obs(window: deque, delay_steps: int) -> np.ndarray:
 class BaseController:
     """Interface for episode rollout controllers."""
     def __init__(self) -> None:
-        self.obs_state_history = [] # 记录观测状态的历史
+        self.obs_state_history = []  # 记录观测状态的历史
+        self.arch = "base" # 控制器架构类型
 
     def reset(self, first_obs: np.ndarray) -> None:
         self.obs_state_history = []
         raise NotImplementedError
 
-    def select_action(self, obs: np.ndarray, obs_state_history=None) -> float:
-        """基于当前观测值选择动作"""
+    def select_action(self, obs: np.ndarray, delay_steps: int = 0, noise_scale: float = 1.0) -> float:
+        """基于当前观测值选择动作，可选延迟和噪声尺度"""
         raise NotImplementedError
+    
+    def update(self, replay_buffer: ReplayBuffer):
+        """基于重放缓冲区数据更新控制器参数"""
+        pass
 
 class PassiveController(BaseController):
     """Open-circuit passive damper (always zero control)."""
@@ -48,7 +53,7 @@ class PassiveController(BaseController):
     def reset(self, first_obs: np.ndarray) -> None:
         pass
 
-    def select_action(self, obs: np.ndarray) -> float:
+    def select_action(self, obs: np.ndarray, epsilon=0, rand_prob=0) -> float:
         return 0.0
 
 
@@ -79,18 +84,13 @@ class PIDController(BaseController):
         return float(np.clip(u, -self.u_max, self.u_max))
 
 
-class TD3Agent:
-    """TD3 with pluggable Actor/Critic (MLP or GRU)."""
+class TD3Controller(BaseController):
+    """TD3 控制器，内置延迟历史对齐，可用于 MLP/GRU/Attention 结构。"""
 
     def __init__(
-        self,
-        state_dim: int,
-        action_dim: int,
+        self, state_dim: int, action_dim: int,
         action_bound: float,
-        arch: str = "mlp",
-        hidden_dim: int = 128,
-        gru_hidden: int = 64,
-        gru_layers: int = 1,
+        gru_hidden: int = 64, gru_layers: int = 1, hidden_dim: int = 128, 
         seq_len: int = 1,
         gamma: float = 0.99,
         tau: float = 0.005,
@@ -102,7 +102,8 @@ class TD3Agent:
         clip_grad: float = 0.0,
         use_attention: bool = True,
     ) -> None:
-        self.arch = arch.lower()
+        super().__init__()
+        self.arch = 'mlp'
         self.seq_len = max(1, seq_len)
         self.gamma = gamma
         self.tau = tau
@@ -124,15 +125,19 @@ class TD3Agent:
         self.critic2_optim = optim.Adam(self.critic2.parameters(), lr=critic_lr)
 
         self.total_it = 0
+        self.window: deque = deque(maxlen=self.seq_len + 50)
 
     # ------------------------------------------------------------------
-    def select_action(self, state, add_noise: bool = True, noise_scale: float = 1.0) -> float:
+    def reset(self, first_obs: np.ndarray) -> None:
+        self.window.clear()
+        for _ in range(self.window.maxlen):
+            self.window.append(first_obs.copy())
+
+    # ------------------------------------------------------------------
+    def _policy_action(self, state, add_noise: bool = True, noise_scale: float = 1.0) -> float:
         self.actor.eval()
         with torch.no_grad():
-            if self.arch == "gru":
-                state_tensor = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-            else:
-                state_tensor = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+            state_tensor = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
             action = self.actor(state_tensor).cpu().numpy().flatten()
         self.actor.train()
         if add_noise:
@@ -140,58 +145,77 @@ class TD3Agent:
             action = np.clip(action + noise, -self.action_bound, self.action_bound)
         return float(action[0])
 
+    def select_action(self, obs: np.ndarray, delay_steps: int = 0, noise_scale: float = 1.0) -> float:
+        self.window.append(obs.copy())
+        if self.arch == "gru":
+            state_input = _delayed_sequence(self.window, delay_steps, self.seq_len)
+        else:
+            state_input = _delayed_obs(self.window, delay_steps)
+        return self._policy_action(state_input, add_noise=True, noise_scale=noise_scale)
+
     # ------------------------------------------------------------------
-    def update(self, batch, use_sequence: bool, policy_update: bool = True) -> Tuple[float, float]:
-        # delays are included in batch for logging/compatibility but not used by vanilla TD3
-        states, actions, rewards, next_states, dones, _delays = batch
+    def update(self, replay_buffer: ReplayBuffer, use_sequence: bool) -> Tuple[float, float]:
+        """更新Actor和Critic网络"""
         self.total_it += 1
+        
+        # 1. 从回放池中采样
+        states, actions, rewards, next_states, dones, _delays = replay_buffer.sample()
 
         with torch.no_grad():
+            # 目标策略平滑正则化
             noise = (torch.randn_like(actions) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
-            next_act = (self.target_actor(next_states) + noise).clamp(-self.action_bound, self.action_bound)
-            target_q1 = self.target_critic1(next_states, next_act) if self.arch == "mlp" else self.target_critic1(next_states, next_act)
-            target_q2 = self.target_critic2(next_states, next_act) if self.arch == "mlp" else self.target_critic2(next_states, next_act)
+            next_action = (self.target_actor.forward(next_states) + noise).clamp(-self.action_bound, self.action_bound)
+            
+            # 计算目标Q值，取两个Critic的最小值
+            target_q1 = self.target_critic1(next_states, next_action)
+            target_q2 = self.target_critic2(next_states, next_action)
             target_q = torch.min(target_q1, target_q2)
             target_value = rewards + self.gamma * target_q * (1 - dones)
-
-        # Critic update
-        current_q1 = self.critic1(states, actions) if self.arch == "mlp" else self.critic1(states, actions)
-        current_q2 = self.critic2(states, actions) if self.arch == "mlp" else self.critic2(states, actions)
+        
+        # 2. 更新两个Critic网络
+        current_q1 = self.critic1(states, actions)
+        current_q2 = self.critic2(states, actions)
         critic1_loss = F.mse_loss(current_q1, target_value)
         critic2_loss = F.mse_loss(current_q2, target_value)
 
         self.critic1_optim.zero_grad()
         critic1_loss.backward()
+        # 梯度裁剪
         if self.clip_grad:
             torch.nn.utils.clip_grad_norm_(self.critic1.parameters(), self.clip_grad)
         self.critic1_optim.step()
 
         self.critic2_optim.zero_grad()
         critic2_loss.backward()
+        # 梯度裁剪
         if self.clip_grad:
             torch.nn.utils.clip_grad_norm_(self.critic2.parameters(), self.clip_grad)
         self.critic2_optim.step()
 
+        # 3. 延迟策略更新
         actor_loss_value = 0.0
-        if policy_update and self.total_it % self.policy_freq == 0:
+        if self.total_it % self.policy_freq == 0:
+            # 更新Actor网络
             policy_actions = self.actor(states)
             actor_loss = -self.critic1(states, policy_actions).mean()
             self.actor_optim.zero_grad()
             actor_loss.backward()
+            # 梯度裁剪
             if self.clip_grad:
                 torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.clip_grad)
             self.actor_optim.step()
-            actor_loss_value = float(actor_loss.item())
-
+            # 软更新目标网络
             self._soft_update(self.actor, self.target_actor)
             self._soft_update(self.critic1, self.target_critic1)
             self._soft_update(self.critic2, self.target_critic2)
-
+            
+            actor_loss_value = float(actor_loss.item())
         critic_loss_value = float((critic1_loss + critic2_loss).item() / 2)
         return critic_loss_value, actor_loss_value
 
     # ------------------------------------------------------------------
     def _soft_update(self, src: nn.Module, tgt: nn.Module) -> None:
+        """软更新目标网络参数"""
         for p_t, p_s in zip(tgt.parameters(), src.parameters()):
             p_t.data.copy_(self.tau * p_s.data + (1 - self.tau) * p_t.data)
 
@@ -223,24 +247,7 @@ class TD3Agent:
         self.critic2_optim.load_state_dict(payload["critic2_optim"])
         self.total_it = int(payload.get("total_it", 0))
 
-
-class TD3Controller(BaseController):
-    """Wrapper around TD3Agent that handles delayed inputs for MLP or GRU."""
-
-    def __init__(self, agent: TD3Agent) -> None:
-        self.agent = agent
-        buffer_len = agent.seq_len + 50
-        self.window: deque = deque(maxlen=buffer_len)
-
-    def reset(self, first_obs: np.ndarray) -> None:
-        self.window.clear()
-        for _ in range(self.window.maxlen):
-            self.window.append(first_obs.copy())
-
-    def select_action(self, obs: np.ndarray, delay_steps: int = 0) -> float:
-        self.window.append(obs.copy())
-        if self.agent.arch == "gru":
-            state_input = _delayed_sequence(self.window, delay_steps, self.agent.seq_len)
-        else:
-            state_input = _delayed_obs(self.window, delay_steps)
-        return self.agent.select_action(state_input, add_noise=True)
+class GRUA_TD3_Controller(TD3Controller):
+    def __init__(self) -> None:
+        super().__init__()
+        self.arch = 'seq'

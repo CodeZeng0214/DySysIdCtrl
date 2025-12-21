@@ -10,15 +10,23 @@ def zero(t: float) -> float:
 
 
 def sin_wave(amplitude: float = 0.01, frequency: float = 1.0, phase: float = 0.0) -> Callable[[float], float]:
+    """生成一个正弦波函数。\n
+     参数：
+        amplitude: 振幅
+        frequency: 频率（Hz）
+        phase: 相位（弧度）"""
     def func(t: float) -> float:
         return amplitude * np.sin(2 * np.pi * frequency * t + phase)
     return func
 
 
 def tolerance_reward(tolerance: float = 1e-3) -> Callable[[np.ndarray, float, np.ndarray], float]:
-    def reward_fn(obs: np.ndarray, action: float, next_obs: np.ndarray) -> float:
-        x2 = obs[3]
-        next_x2 = next_obs[3]
+    """生成一个基于容差的奖励函数。\n
+    参数：
+        tolerance: 容差范围"""
+    def reward_fn(state: np.ndarray, action: float, next_state: np.ndarray) -> float:
+        x2 = state[3] # 主结构位移
+        next_x2 = next_state[3] # 下一步主结构位移
         reward = 0.0
         if abs(next_x2) <= tolerance:
             reward += (tolerance - abs(next_x2)) / tolerance

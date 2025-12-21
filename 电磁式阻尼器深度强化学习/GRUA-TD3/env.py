@@ -47,7 +47,7 @@ class ElectromagneticDamperEnv:
         self.delay_mean_steps = int(max(1, delay_mean_steps)) # 延迟的平均步数
         self.delay_std_steps = int(delay_std_steps) # 延迟的标准差步数
         self.delay_time = 0.0 # 当前的延迟时间
-        self.delay_step = 0 # 当前的延迟步数
+        self.delay_step: int = 0 # 当前的延迟步数
 
         self.obs_indices = obs_indices if obs_indices is not None else [3] # 观测变量的索引
         self.include_dt_in_obs = include_dt_in_obs # 是否在观测中包含时间步长
@@ -79,7 +79,7 @@ class ElectromagneticDamperEnv:
         self.time = 0.0
         self.dt_history = []
         self.delay_time = 0.0
-        self.delay_step = 0
+        self.delay_step: int = 0
         self._state = self.state0.copy()
 
         return self.observe()
@@ -200,7 +200,7 @@ class ElectromagneticDamperEnv:
     def _sample_delay_steps(self) -> int:
         """从正态分布中采样延迟步数"""
         raw = np.random.normal(self.delay_mean_steps, self.delay_std_steps)
-        return max(1, int(round(raw)))
+        return max(0, int(round(raw)))
 
     def _precompute_discrete(self, dt: float) -> None:
         """离散化系统矩阵"""

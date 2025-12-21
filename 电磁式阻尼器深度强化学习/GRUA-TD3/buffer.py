@@ -18,7 +18,7 @@ class ReplayBuffer:
         self.rewards = np.zeros((capacity, 1), dtype=np.float32)
         self.next_states = np.zeros((capacity, state_dim), dtype=np.float32)
         self.dones = np.zeros((capacity, 1), dtype=np.float32)
-        self.delays = np.zeros((capacity, 1), dtype=np.int32)
+        self.delay_steps = np.zeros((capacity, 1), dtype=np.int32)
         self.ptr = 0
         self.size = 0
 
@@ -29,7 +29,7 @@ class ReplayBuffer:
         self.rewards[idx] = reward
         self.next_states[idx] = next_state
         self.dones[idx] = float(done)
-        self.delays[idx] = int(delay)
+        self.delay_steps[idx] = int(delay)
         self.ptr = (self.ptr + 1) % self.capacity
         self.size = min(self.size + 1, self.capacity)
 
@@ -45,7 +45,7 @@ class ReplayBuffer:
             rewards = torch.tensor(self.rewards[idx], device=device)
             next_states = torch.tensor(self.next_states[idx], device=device)
             dones = torch.tensor(self.dones[idx], device=device)
-            delays = torch.tensor(self.delays[idx], device=device)
+            delays = torch.tensor(self.delay_steps[idx], device=device)
             return states, actions, rewards, next_states, dones, delays
 
         # sequence sampling requires contiguous windows within an episode (no done inside the window except maybe last)
@@ -68,7 +68,7 @@ class ReplayBuffer:
         rewards = torch.tensor(self.rewards[idx_seq[:, -1]], device=device)
         next_states = torch.tensor(self.next_states[idx_seq], device=device)
         dones = torch.tensor(self.dones[idx_seq[:, -1]], device=device)
-        delays = torch.tensor(self.delays[idx_seq[:, -1]], device=device)
+        delays = torch.tensor(self.delay_steps[idx_seq[:, -1]], device=device)
         return states, actions, rewards, next_states, dones, delays
 
     def reset(self) -> None:
