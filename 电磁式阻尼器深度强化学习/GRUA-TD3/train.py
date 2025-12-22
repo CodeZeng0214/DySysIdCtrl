@@ -139,22 +139,10 @@ def train(env: ElectromagneticDamperEnv, controller: BaseController, buffer: Rep
         while not done:
             obs = env.observe() # 获取当前观测值
 
-            # if arch == "gru":
-            #     state_input = delayed_sequence(state_window, current_delay, seq_len)
-            #     state_for_buffer = delayed_obs(state_window, current_delay)
-            # else:
-            #     state_input = delayed_obs(state_window, current_delay)
-            #     state_for_buffer = state_input
-
-
             action = controller.select_action(obs=obs, epsilon=explore_noise) # 选择动作
             next_obs, reward, done, info = env.step(action)
 
-            # state_window.append(next_obs)
-            # next_delay = info.get("delay_step", 0)
-            # next_state_view = delayed_obs(state_window, next_delay)
-
-            # buffer.add(state_for_buffer, action, reward, next_state_view, done, delay=current_delay)
+            buffer.add(obs, action, reward, next_obs, done, delay=info["delay_step"]) # 添加到经验回放池
 
             ep_recorder.append(obs_history=obs.copy(), state_history=info["state"], action_history=action, reward_history=reward, 
                                 time_history=info["time"], dt_history=info["dt"],  delay_time=info["delay_time"])

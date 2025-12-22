@@ -59,6 +59,7 @@ class ElectromagneticDamperEnv:
         self.r_func = r_func # 奖励函数
 
         self._state = self.state0.copy() # 当前的状态
+        self.state_history: List[np.ndarray] = [] # 按时间顺序保存历史状态，用于延迟观测对齐
         self._precompute_discrete(self.Ts) # 预计算离散时间系统矩阵
  
 
@@ -81,12 +82,21 @@ class ElectromagneticDamperEnv:
         self.delay_time = 0.0
         self.delay_step: int = 0
         self._state = self.state0.copy()
+        self.state_history = [self._state.copy()]
 
         return self.observe()
 
     def observe(self) -> np.ndarray:
-        """获取当前观测值，包含指定的状态变量和可选的时间步长及延迟时间"""
-        base = np.array([self._state[i] for i in self.obs_indices], dtype=float)
+        """获取当前观测值，包含指定的状态变量和可选的时间步长及延迟时间\n
+        如果有时延，则返回历史中的延迟状态（前 delay_step 步）。"""
+        # 计算延迟对齐的状态索引，越界时回退到最早可用状态
+        if self.delay_step > 0 and self.state_history:
+            idx = max(0, len(self.state_history) - 1 - self.delay_step)
+            state_ref = self.state_history[idx]
+        else:
+            state_ref = self._state
+
+        base = np.array([state_ref[i] for i in self.obs_indices], dtype=float)
         extras = []
         if self.include_dt_in_obs:
             extras.append(self.dt_history[-1] if self.dt_history else self.Ts)
@@ -118,13 +128,14 @@ class ElectromagneticDamperEnv:
         state = self._state.copy()
         next_state = self._integrate(action, dt)
         self._state = next_state
+        self.state_history.append(next_state.copy())
 
         # 计算奖励
         reward = self.r_func(state, action, next_state) if self.r_func else 0.0
         next_obs = self.observe()
 
         # 注意，info 中包含当前的观测值、状态、时间、采样的时间步长和延迟步数、下一个状态
-        info = {"state": state, "time": self.time, "next_obs": next_obs, "next_state": next_state, "dt": dt, "delay_step": self.delay_step, "delay_time": self.delay_time}
+        info = {"state": state, "time": self.time, "next_state": next_state, "dt": dt, "delay_step": self.delay_step, "delay_time": self.delay_time}
         
         # 更新仿真时间
         self.time += dt
@@ -161,6 +172,14 @@ class ElectromagneticDamperEnv:
 
     # ------------------------------------------------------------------
     # Internal helpers
+    def get_delay_state_seq(self, state_window: List[np.ndarray], delay_steps: int, seq_len: int) -> np.ndarray:
+        """根据给定的延迟步数和序列长度，从状态窗口中提取对应的延迟状态序列"""
+        assert len(state_window) >= delay_steps + seq_len, "状态窗口长度不足以提取所需的延迟序列"
+        start_idx = len(state_window) - delay_steps - seq_len
+        end_idx = len(state_window) - delay_steps
+        seq = np.array(state_window[start_idx:end_idx], dtype=float)
+        return seq
+
     def _integrate(self, action: float, dt: float) -> np.ndarray:
         """使用离散系统矩阵推进状态"""
         # 提取系统状态向量和计算地基扰动及外部激励

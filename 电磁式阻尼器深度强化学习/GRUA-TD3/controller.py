@@ -11,24 +11,6 @@ import torch.optim as optim
 from networks import build_actor_critic, device
 from fx import ACTION_BOUND
 
-
-def _delayed_sequence(window: deque, delay_steps: int, seq_len: int) -> np.ndarray:
-    delay = max(0, min(delay_steps, len(window) - 1))
-    hist = list(window)
-    end = len(hist) - delay
-    start = max(0, end - seq_len)
-    view = hist[start:end]
-    if len(view) < seq_len:
-        pad = [hist[0]] * (seq_len - len(view))
-        view = pad + view
-    return np.stack(view, axis=0)
-
-
-def _delayed_obs(window: deque, delay_steps: int) -> np.ndarray:
-    delay = max(0, min(delay_steps, len(window) - 1))
-    return list(window)[-1 - delay]
-
-
 class BaseController:
     """Interface for episode rollout controllers."""
     def __init__(self) -> None:
@@ -43,9 +25,10 @@ class BaseController:
         """基于当前观测值选择动作，可选延迟和噪声尺度"""
         raise NotImplementedError
     
-    def update(self, replay_buffer: ReplayBuffer):
+    def update(self, replay_buffer: ReplayBuffer, batch_size: int, use_sequence: bool):
         """基于重放缓冲区数据更新控制器参数"""
-        pass
+        raise NotImplementedError
+    
 
 class PassiveController(BaseController):
     """Open-circuit passive damper (always zero control)."""
@@ -53,7 +36,7 @@ class PassiveController(BaseController):
     def reset(self, first_obs: np.ndarray) -> None:
         pass
 
-    def select_action(self, obs: np.ndarray, epsilon=0, rand_prob=0) -> float:
+    def select_action(self, obs: np.ndarray, delay_steps: int = 0, noise_scale: float = 1.0) -> float:
         return 0.0
 
 
@@ -75,7 +58,7 @@ class PIDController(BaseController):
         self.integral = 0.0
         self.prev_err = float(self.target - first_obs[self.state_index])
 
-    def select_action(self, obs: np.ndarray, delay_steps: int = 0) -> float:
+    def select_action(self, obs: np.ndarray, delay_steps: int = 0, noise_scale: float = 1.0) -> float:
         err = float(self.target - obs[self.state_index])
         self.integral += err * self.dt
         deriv = (err - self.prev_err) / self.dt if self.dt > 0 else 0.0
@@ -90,7 +73,8 @@ class TD3Controller(BaseController):
     def __init__(
         self, state_dim: int, action_dim: int,
         action_bound: float,
-        gru_hidden: int = 64, gru_layers: int = 1, hidden_dim: int = 128, 
+        arch: str = "mlp",
+        gru_hidden: int = 64, gru_layers: int = 1, hidden_dim: int = 128,
         seq_len: int = 1,
         gamma: float = 0.99,
         tau: float = 0.005,
@@ -103,7 +87,7 @@ class TD3Controller(BaseController):
         use_attention: bool = True,
     ) -> None:
         super().__init__()
-        self.arch = 'mlp'
+        self.arch = arch.lower()
         self.seq_len = max(1, seq_len)
         self.gamma = gamma
         self.tau = tau
@@ -145,21 +129,26 @@ class TD3Controller(BaseController):
             action = np.clip(action + noise, -self.action_bound, self.action_bound)
         return float(action[0])
 
-    def select_action(self, obs: np.ndarray, delay_steps: int = 0, noise_scale: float = 1.0) -> float:
-        self.window.append(obs.copy())
-        if self.arch == "gru":
-            state_input = _delayed_sequence(self.window, delay_steps, self.seq_len)
-        else:
-            state_input = _delayed_obs(self.window, delay_steps)
+    def select_action(self, obs: np.ndarray, noise_scale: float = 1.0) -> float:
+        """基于当前观测值选择动作，自动处理延迟历史对齐和噪声添加"""
+        self.obs_state_history.append(obs.copy()) # 记录观测状态历史
+        if self.arch == "mlp":
+            state_input = obs
+        elif self.arch == "seq":
+            state_input = self.obs_state_history[-self.seq_len:] # 取最近 seq_len 个观测状态
         return self._policy_action(state_input, add_noise=True, noise_scale=noise_scale)
 
     # ------------------------------------------------------------------
-    def update(self, replay_buffer: ReplayBuffer, use_sequence: bool) -> Tuple[float, float]:
+    def update(self, replay_buffer: ReplayBuffer, batch_size: int, use_sequence: bool = True) -> Tuple[float, float]:
         """更新Actor和Critic网络"""
         self.total_it += 1
-        
-        # 1. 从回放池中采样
-        states, actions, rewards, next_states, dones, _delays = replay_buffer.sample()
+
+        use_seq = use_sequence and self.arch == "gru"
+        states, actions, rewards, next_states, dones, _delays = replay_buffer.sample(
+            batch_size=batch_size,
+            use_sequence=use_seq,
+            apply_delay=True,
+        )
 
         with torch.no_grad():
             # 目标策略平滑正则化
@@ -246,8 +235,3 @@ class TD3Controller(BaseController):
         self.critic1_optim.load_state_dict(payload["critic1_optim"])
         self.critic2_optim.load_state_dict(payload["critic2_optim"])
         self.total_it = int(payload.get("total_it", 0))
-
-class GRUA_TD3_Controller(TD3Controller):
-    def __init__(self) -> None:
-        super().__init__()
-        self.arch = 'seq'
