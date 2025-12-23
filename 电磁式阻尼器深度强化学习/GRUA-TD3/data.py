@@ -5,7 +5,9 @@ import torch
 from collections import defaultdict
 from typing import Any, Dict, Tuple, List, Optional
 import matplotlib.pyplot as plt
+import inspect
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class EpisodeRecorder:
     """灵活的单轮记录器，自动接受新字段。"""
@@ -54,11 +56,13 @@ class TrainingHistory:
         self.checkpoint_name: str = ""
 
     def log(self, **metrics: float) -> None:
+        """记录一组指标，自动扩展新指标。"""
         for key, value in metrics.items():
             self._metrics[key].append(float(value))
         self.current_episode += 1
 
     def to_dict(self) -> Dict[str, Any]:
+        """导出训练历史记录为字典格式。"""
         return {
             "checkpoint_name": self.checkpoint_name,
             "current_episode": self.current_episode,
@@ -67,6 +71,7 @@ class TrainingHistory:
 
     @classmethod
     def from_dict(cls, payload: Dict[str, Any]) -> "TrainingHistory":
+        """从字典加载训练历史记录。"""
         obj = cls()
         obj.checkpoint_name = payload.get("checkpoint_name", "")
         obj.current_episode = int(payload.get("current_episode", 0))
@@ -76,9 +81,14 @@ class TrainingHistory:
 
     def metric_arrays(self) -> Dict[str, np.ndarray]:
         return {k: np.array(v) for k, v in self._metrics.items()}
+    
+    def get_metrics(self) -> Dict[str, List[float]]:
+        """获取原始的指标数据字典。"""
+        return self._metrics
 
 
 def save_checkpoint(path: str, agent_state: Dict[str, Any], episode: EpisodeRecorder, history: TrainingHistory, extra: Optional[Dict[str, Any]] = None) -> None:
+    """保存训练检查点，包括控制器状态、当前回合数据和训练历史记录。"""
     os.makedirs(os.path.dirname(path), exist_ok=True)
     payload = {
         "agent": agent_state,
@@ -90,7 +100,8 @@ def save_checkpoint(path: str, agent_state: Dict[str, Any], episode: EpisodeReco
 
 
 def load_checkpoint(path: str) -> Dict[str, Any]:
-    payload = torch.load(path, map_location="cpu", weights_only=False)
+    """加载训练检查点，返回包含控制器状态、当前回合数据和训练历史记录的字典。"""
+    payload = torch.load(path, map_location=device, weights_only=False)
     return payload
 
 
@@ -101,6 +112,7 @@ def save_json(path: str, data: Dict[str, Any]) -> None:
 
 
 def latest_checkpoint(directory: str, suffix: str = ".pth") -> Optional[str]:
+    """获取目录下最新的检查点文件路径，若无则返回 None。"""
     if not os.path.isdir(directory):
         return None
     files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(suffix)]
@@ -110,142 +122,107 @@ def latest_checkpoint(directory: str, suffix: str = ".pth") -> Optional[str]:
 
 
 ## 通用的绘图函数模块
-def plot_data(
-    x_values_list: List[np.ndarray],
-    y_values_list: List[np.ndarray],
-    figsize: Tuple[int, int] = (16, 9),
-    subplot: Optional[Tuple[int, int]] = None,
-    plot_title: Optional[str] = None,
-    subplot_titles: Optional[List[str]] = None,
-    colors: Optional[List[str]] = None,
-    line_styles: Optional[List[str]] = None,
-    legends: Optional[List[str]] = None,
-    show_legend: bool = True,
-    legend_loc: str = "best",
-    xlabel: Optional[str] = None,
-    ylabel: Optional[str] = None,
-    xlim: Optional[Tuple[float, float]] = None,
-    ylim: Optional[Tuple[float, float]] = None,
-    show_grid: bool = False,
-    log_scale: bool = False,
-    save_path: Optional[str] = None,
-    show: bool = True,
+def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[List[Tuple]] = None,
+              figsize: Tuple[int, int] = (16, 9), sub_shape: Optional[Tuple[int, int]] = None, 
+              plot_title: Optional[str] = None, subplot_titles: Optional[List[str]] = None,
+              colors: Optional[List[str]] = None, line_styles: Optional[List[str]] = None,
+              legends: Optional[List[str]] = None, show_legend: bool = True, legend_loc: str = "best",
+              xlabel: Optional[str] = None, ylabel: Optional[str] = None,
+              xlim: Optional[Tuple[float, float]] = None, ylim: Optional[Tuple[float, float]] = None,
+              show_grid: bool = False, log_scale: bool = False,
+              save_path: Optional[str] = None, show: bool = True,
 ) -> None:
     """
     通用绘图：支持单图或子图栅格、多条曲线、自定义样式和保存。
 
     主要参数说明：
-    - x_values_list / y_values_list: 支持列表或单个 ndarray，长度需一致；当 y_values_list 是嵌套列表时，表示“每个子图一组多条曲线”。
-    - subplot: (rows, cols)。若提供则按顺序填充子图；不足的子图留空。
+    - x_value / y_values: 支持单个 ndarray，y_values 可以是 1D 或 2D；当 y_values 是 2D 时，表示多条曲线。
+    - sub_group: 分组信息，若提供则按组绘制子图，每组内多条曲线。
+    - sub_shape: (rows, cols) 子图布局，若未提供则自动计算。
     - subplot_titles: 与子图数相同的标题列表（可选）。
     - colors/line_styles/legends: 可选的样式列表；若传入嵌套列表则按子图分别使用；否则对所有曲线复用。
     - log_scale: y 轴对数坐标。
     - save_path: 路径字符串；若提供则保存为 svg（文件名由 plot_title 或默认 plot.svg）。
     """
-
-    # 规范化输入：支持 y_values_list 为 [curve1, curve2,...] 或 [[subplot1_curve...], [subplot2_curve...]]
-    if not isinstance(y_values_list, list):
-        y_values_list = [y_values_list]
-    is_grouped = subplot is not None and any(isinstance(v, (list, tuple)) for v in y_values_list)
-
-    # 处理 x 列表，允许同样的嵌套结构或单个共享 x
-    if x_values_list is None:
-        if is_grouped:
-            x_values_list = [[np.arange(len(c)) for c in curves] for curves in y_values_list]
+    # 设置中文字体和GPU
+    plt.rcParams['font.sans-serif'] = ['SimHei']
+    plt.rcParams['axes.unicode_minus'] = False
+    # 规范化 y 输入：接受 ndarray（1D/2D）或列表，统一转换为列表结构
+    if isinstance(y_values, np.ndarray):
+        if y_values.ndim == 1:
+            y_values = y_values.reshape(-1, 1)
+        elif y_values.ndim == 2:
+            pass
         else:
-            x_values_list = [np.arange(len(y_values_list[i])) for i in range(len(y_values_list))]
-    if not isinstance(x_values_list, list):
-        x_values_list = [x_values_list]
+            raise ValueError("y_values ndarray 仅支持 1D 或 2D")
+    elif isinstance(y_values, list):
+        y_values = np.array(y_values).reshape(-1, y_values[0].__len__())
 
-    if is_grouped:
-        # 子图数量 num_groups = len(y_values_list) 
-        if subplot is None:
-            raise ValueError("分组曲线绘制需要提供 subplot 布局")
-    else:
-        num_curves = len(y_values_list)
-        if len(x_values_list) not in (1, num_curves):
-            raise ValueError("x_values_list 长度必须为 1 或与 y_values_list 相同")
+    # 规范化 y 输入：接受 ndarray（1D/2D）或列表，统一转换为列表结构
+    if x_values is None: # 自动生成 x_value
+        x_values = np.tile(np.arange(y_values.shape[0]), y_values.shape[1])
+    if isinstance(x_values, np.ndarray):
+        if x_values.ndim == 1:
+            x_values = x_values.reshape(-1, 1)
+        elif x_values.ndim == 2:
+            pass
+        else:
+            raise ValueError("x_values ndarray 仅支持 1D 或 2D")
+    elif isinstance(x_values, list):
+        x_values = np.array(x_values).reshape(-1, x_values[0].__len__())
 
     # 布局：单图或子图
-    if subplot:
-        rows, cols = subplot
-        fig, axes = plt.subplots(rows, cols, figsize=figsize, squeeze=False)
-        axes_flat = axes.flatten()
+    num_subplots = len(sub_group)
+    if sub_shape:
+        rows, cols = sub_shape
     else:
-        fig, ax = plt.subplots(figsize=figsize)
-        axes_flat = [ax]
+        rows, cols = 1, num_subplots
+    fig, axes = plt.subplots(rows, cols, figsize=figsize, squeeze=False)
+    axes_flat = axes.flatten()
 
     if plot_title:
         fig.suptitle(plot_title, fontsize=16)
 
     # 样式选择辅助
-    def pick_style(arr, sub_idx, curve_idx):
+    def pick_style(arr, curve_idx):
         if arr is None:
             return None
-        if arr and isinstance(arr[0], (list, tuple)):
-            group = arr[sub_idx] if sub_idx < len(arr) else []
-            return group[curve_idx] if curve_idx < len(group) else None
         return arr[curve_idx] if curve_idx < len(arr) else None
 
-    # 绘制
-    if is_grouped:
-        for g_idx, curves in enumerate(y_values_list):
-            ax = axes_flat[g_idx] if g_idx < len(axes_flat) else axes_flat[-1]
-            x_group = x_values_list[g_idx] if g_idx < len(x_values_list) else x_values_list[0]
-            if not isinstance(curves, (list, tuple)):
-                curves = [curves]
-            for c_idx, yv in enumerate(curves):
-                xv = x_group[0] if isinstance(x_group, (list, tuple)) and len(x_group) == 1 else (x_group[c_idx] if isinstance(x_group, (list, tuple)) else x_group)
-                if len(xv) != len(yv):
-                    raise ValueError(f"子图 {g_idx} 曲线 {c_idx} 的 x 与 y 长度不匹配: {len(xv)} vs {len(yv)}")
-                color = pick_style(colors, g_idx, c_idx)
-                label = pick_style(legends, g_idx, c_idx)
-                style = pick_style(line_styles, g_idx, c_idx) or "-"
-                ax.plot(xv, yv, color=color, linestyle=style, label=label)
-
-            if log_scale:
-                ax.set_yscale("log")
-            if xlim:
-                ax.set_xlim(xlim)
-            if ylim:
-                ax.set_ylim(ylim)
-            if show_grid:
-                ax.grid(True)
-            if show_legend and legends:
-                ax.legend(loc=legend_loc, fontsize=12)
-            if subplot and subplot_titles and g_idx < len(subplot_titles):
-                ax.set_title(subplot_titles[g_idx])
-    else:
-        for idx, yv in enumerate(y_values_list):
-            ax = axes_flat[idx] if idx < len(axes_flat) else axes_flat[-1]
-            xv = x_values_list[0] if len(x_values_list) == 1 else x_values_list[idx]
-            if len(xv) != len(yv):
-                raise ValueError(f"曲线 {idx} 的 x 与 y 长度不匹配: {len(xv)} vs {len(yv)}")
-
-            color = pick_style(colors, 0, idx)
-            label = pick_style(legends, 0, idx)
-            style = pick_style(line_styles, 0, idx) or "-"
+    # 绘制：按分组在子图中绘制多条曲线
+    for g_idx, grp in enumerate(sub_group):
+        ax = axes_flat[g_idx] if g_idx < len(axes_flat) else axes_flat[-1]
+        for idx in grp:
+            if idx >= y_values.shape[1]:
+                raise IndexError(f"sub_group 索引 {idx} 超出 y_values 列数 {y_values.shape[1]}")
+            xv = x_values[:, idx]
+            yv = y_values[:, idx]
+            if xv.shape[0] != yv.shape[0]:
+                raise ValueError(f"子图 {g_idx} 曲线 {idx} 的 x 与 y 长度不匹配: {len(xv)} vs {len(yv)}")
+            color = pick_style(colors, idx)
+            label = pick_style(legends, idx)
+            style = pick_style(line_styles, idx) or "-"
             ax.plot(xv, yv, color=color, linestyle=style, label=label)
 
-            if log_scale:
-                ax.set_yscale("log")
-            if xlim:
-                ax.set_xlim(xlim)
-            if ylim:
-                ax.set_ylim(ylim)
-            if show_grid:
-                ax.grid(True)
-            if show_legend and legends:
-                ax.legend(loc=legend_loc, fontsize=12)
-            if subplot and subplot_titles and idx < len(subplot_titles):
-                ax.set_title(subplot_titles[idx])
+        if log_scale:
+            ax.set_yscale("log")
+        if xlim:
+            ax.set_xlim(xlim)
+        if ylim:
+            ax.set_ylim(ylim)
+        if show_grid:
+            ax.grid(True)
+        if show_legend and legends:
+            ax.legend(loc=legend_loc, fontsize=12)
+        if subplot_titles and g_idx < len(subplot_titles):
+            ax.set_title(subplot_titles[g_idx])
 
     # 统一标签（仅对首个轴设置，子图可通过 subplot_titles 区分）
     if xlabel:
-        for ax in axes_flat[-cols:] if subplot else [axes_flat[0]]:
+        for ax in axes_flat[-cols:]:
             ax.set_xlabel(xlabel, fontsize=12)
     if ylabel:
-        for ax in axes_flat[::cols] if subplot else [axes_flat[0]]:
+        for ax in axes_flat[::cols]:
             ax.set_ylabel(ylabel, fontsize=12)
 
     fig.tight_layout(rect=(0, 0, 1, 0.96) if plot_title else None)
@@ -258,3 +235,61 @@ def plot_data(
         plt.show()
     else:
         plt.close(fig)
+
+def format_special_type(obj):
+    """
+    将特殊类型（numpy数组、函数）转换为可读字符串，其他类型保持原样。
+    """
+    # 处理numpy数组
+    if isinstance(obj, np.ndarray):
+        # 转为列表后，标注为numpy.ndarray类型（保留形状信息）
+        return f"numpy.ndarray(shape={obj.shape}, dtype={obj.dtype}, data={obj.tolist()})"
+    elif isinstance(obj, list):
+        return str([format_special_type(item) for item in obj])
+    # 处理函数（包括自定义函数、lambda、partial等）
+    elif callable(obj):
+        # 1. 普通函数/类方法：提取函数名
+        if inspect.isfunction(obj) or inspect.ismethod(obj):
+            func_name = obj.__name__
+            try:
+                source = inspect.getsource(obj)
+                label = "Lambda" if func_name == "<lambda>" else "Function"
+                return f"{label}: \n    ```python\n     {source}\n```    "
+            except (inspect.InspectError, OSError):
+                return "Lambda function" if func_name == "<lambda>" else f"Function: {func_name}"
+        # 3. 其他可调用对象（如partial）：返回repr
+        else:
+            return repr(obj)
+    
+    # 处理其他类型（如int、str、list等）
+    else:
+        return obj
+
+def format_dict(input_dict)-> str:
+    """
+    递归处理字典中的所有值，转换特殊类型后返回原生字符串。
+    """
+    formatted_dict = {}
+    for key, value in input_dict.items():
+        # 若值是字典，递归处理
+        if isinstance(value, dict):
+            formatted_dict[key] = format_dict(value)
+        else:
+            formatted_dict[key] = format_special_type(value)
+    return formatted_dict
+
+def make_dirs(project_name: str) -> Tuple[str, str, str]:
+    """确保目录存在，若不存在则创建。"""
+    # 创建项目主目录
+    project_path = os.path.join("savedata", project_name)
+    os.makedirs(project_path, exist_ok=True)
+
+    # 创建检查点保存目录
+    save_checkpoint_path = os.path.join(project_path, "checkpoints")
+    os.makedirs(save_checkpoint_path, exist_ok=True)
+
+    # 创建绘图保存目录
+    save_plot_path = os.path.join(project_path, "plots")
+    os.makedirs(save_plot_path, exist_ok=True)
+
+    return project_path, save_checkpoint_path, save_plot_path

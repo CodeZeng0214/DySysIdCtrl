@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from typing import Tuple
+from typing import List, Tuple
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -50,7 +50,7 @@ class ReplayBuffer:
             self.delay_steps[order],
         )
     
-    def sample(self, batch_size: int, use_sequence: bool = False, apply_delay: bool = True) -> Tuple[torch.Tensor, ...]:
+    def sample(self, batch_size: int, use_sequence: bool = False) -> Tuple[torch.Tensor, ...]:
         """采样一个批次的数据。\n
         如果 use_sequence 为 True，则采样序列数据，返回形状为 (batch_size, seq_len, state_dim) 的状态序列等。\n
         如果 use_sequence 为 False，则采样单步数据，返回形状为 (batch_size, state_dim) 的状态等。\n
@@ -60,7 +60,7 @@ class ReplayBuffer:
         # 获取按时间顺序排列的各字段视图
         states_arr, actions_arr, rewards_arr, next_states_arr, dones_arr, delays_arr = self._chronological_views()
 
-        idxs: np.ndarray = self._sample_indices(batch_size, use_sequence, apply_delay, dones_arr, delays_arr)
+        delay_save_np, idxs= self._sample_indices(batch_size, use_sequence, dones_arr, delays_arr)
 
         # 根据采样的索引提取数据
         if not use_sequence or self.seq_len == 1:
@@ -76,49 +76,67 @@ class ReplayBuffer:
             # 序列采样，提取对应索引范围内的数据序列
             assert idxs.ndim == 2, "序列抽样情况下，索引应为二维数组"
             idx_seqs = idxs
-            state_seqs = torch.tensor(states_arr[idx_seqs[:,0]:idx_seqs[:,1], :], device=device) # 序列状态数据，形状为 (batch_size, seq_len, state_dim)
-            action_seqs = torch.tensor(actions_arr[idx_seqs[:,1], :], device=device) # 动作数据，形状为 (batch_size, action_dim)
-            reward_seqs = torch.tensor(rewards_arr[idx_seqs[:,1], :], device=device) # 奖励数据，形状为 (batch_size, 1)
-            next_state_seqs = torch.tensor(next_states_arr[idx_seqs[:,1], :], device=device) # 下一个状态数据，形状为 (batch_size, state_dim)
-            done_seqs = torch.tensor(dones_arr[idx_seqs[:,1], :], device=device) # 结束标志数据，形状为 (batch_size, 1)
+            s = torch.tensor(idx_seqs[:, 0]).unsqueeze(1)  # (batch_size, 1)
+            # 生成每个样本的时间步索引：0到seq_len-1 → 广播到(batch_size, seq_len)
+            time_indices = torch.arange(self.seq_len, device=states_arr.device).unsqueeze(0)  # (1, seq_len)
+            batch_time_indices = s + time_indices  # (batch_size, seq_len) → 每个样本的时间步索引
+            state_seqs = torch.tensor(states_arr[batch_time_indices], device=device) # 序列状态数据，形状为 (batch_size, seq_len, state_dim)
+            action_seqs = torch.tensor(actions_arr[idx_seqs[:,1].flatten()+delay_save_np-1, :], device=device) # 动作数据，形状为 (batch_size, action_dim)
+            reward_seqs = torch.tensor(rewards_arr[idx_seqs[:,1].flatten()+delay_save_np-1, :], device=device) # 奖励数据，形状为 (batch_size, 1)
+            next_state_seqs = torch.tensor(next_states_arr[batch_time_indices], device=device) # 下一个状态数据，形状为 (batch_size, seq_len, state_dim)
+            done_seqs = torch.tensor(dones_arr[idx_seqs[:,1].flatten()+delay_save_np-1, :], device=device) # 结束标志数据，形状为 (batch_size, 1)
             return state_seqs, action_seqs, reward_seqs, next_state_seqs, done_seqs            
                 
     def reset(self) -> None:
         self.ptr = 0
         self.size = 0
 
-    def _sample_indices(self, batch_size: int, use_sequence: bool, apply_delay: bool,
-                       dones_arr: np.ndarray, delays_arr: np.ndarray) -> np.ndarray:
+    def _sample_indices(self, batch_size: int, use_sequence: bool,
+                       dones_arr: np.ndarray, delays_arr: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """采样符合条件的索引，用于后续数据提取。"""
-        # 非序列采样，直接随机采样单步数据
-        if not use_sequence or self.seq_len == 1:
-            idxs = np.random.randint(0, self.size, size=batch_size*2) # 多采样以备筛选
-            if apply_delay:
-                # 如果应用延迟，确保采样的索引不会导致越界
-                idxs = np.array([i - delays_arr[i, 0] for i in idxs if i - delays_arr[i, 0] >= 0]) # 调整索引以考虑延迟
+        apply_delay = (delays_arr[:].sum() > 0) # 检查是否有延迟信息需要处理
+        idxs = np.random.randint(0, self.size, size=batch_size*2) # 多采样以备筛选
+        delays_save_list: List[int] = delays_arr[idxs, 0].tolist() # 采样索引对应的延迟步数
+        
+        if apply_delay:
+            # 延迟采样，剔除不符合条件的样本
+            for i, idx in enumerate(idxs):
+                delay = delays_arr[idx, 0]
+                if idx - delay < 0:
+                    delays_save_list.pop(i) # 移除不符合条件的延迟步数
+            # 如果应用延迟，确保采样的索引不会导致越界
+            idxs = np.array([i - delays_arr[i, 0] for i in idxs if i - delays_arr[i, 0] >= 0]) # 调整索引以考虑延迟
 
         # 序列采样，基于上面得到的延迟索引进行筛选
         idx_seqs = [] # 存储符合条件的索引
+        pop_idxs = [] # 记录需要剔除的样本索引
         if use_sequence and self.seq_len > 1:
-            for idx in idxs:
+            for i, idx in enumerate(idxs):
                 # 剔除不满足序列长度的样本
                 need = self.seq_len # 需要的历史长度
                 if idx + 1 < need:
+                    pop_idxs.append(i)
                     continue
                 start = idx - need + 1
                 # 剔除跨回合边界的样本
                 window_dones = dones_arr[start : idx + 1] # 采样窗口内的 done 标志
                 if window_dones[:-1].sum() != 0: # 中间有 done 标志，说明跨回合
+                    pop_idxs.append(i)
                     continue
                 idx_seqs.append((start, idx + 1)) # 记录有效的起止索引
-        
+
+        # 移除不符合条件的样本
+        for i in sorted(pop_idxs, reverse=True):
+            delays_save_list.pop(i) 
+        delays_save_np = np.array(delays_save_list, dtype=np.int32) # 转为 numpy 数组
+
         # 从有效索引中随机选择所需数量并返回
-        if not use_sequence or self.seq_len == 1:
-            idxs = np.random.choice(idxs, size=batch_size if len(idxs) >= batch_size else len(idxs), replace=False) # 重新不放回采样
-            return idxs # 返回采样索引，形状为 (batch_size,)
+        if not use_sequence or self.seq_len == 1:# 非序列采样，直接随机采样单步数据
+            sampled_indices = np.random.choice(np.arange(len(idxs)), size=batch_size if len(idxs) >= batch_size else len(idxs), replace=False) # 重新不放回采样
+            return np.array([delays_save_np[i] for i in sampled_indices]), np.array([idxs[i] for i in sampled_indices]) # 返回采样索引，形状为 (batch_size,)
         elif use_sequence and self.seq_len > 1:
-            idx_seqs = np.random.choice(len(idx_seqs), size=batch_size if len(idx_seqs) >= batch_size else len(idx_seqs), replace=False) # 重新不放回采样
-            return np.array(idx_seqs) # 返回采样结束索引，形状为 (batch_size, 2)
+            sampled_indices = np.random.choice(np.arange(len(idx_seqs)), size=batch_size if len(idx_seqs) >= batch_size else len(idx_seqs), replace=False) # 重新不放回采样
+            return np.array([delays_save_np[i] for i in sampled_indices]), np.array([idx_seqs[i] for i in sampled_indices]) # 返回采样结束索引，形状为 (batch_size, 2)
         else:
             idxs = np.array([]) # 空数组
             raise ValueError("取样没有得到有效索引")

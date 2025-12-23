@@ -24,7 +24,7 @@ def tolerance_reward(tolerance: float = 1e-3) -> Callable[[np.ndarray, float, np
     """生成一个基于容差的奖励函数。\n
     参数：
         tolerance: 容差范围"""
-    def reward_fn(state: np.ndarray, action: float, next_state: np.ndarray) -> float:
+    def tolerance_rewardfx(state: np.ndarray, action: float, next_state: np.ndarray) -> float:
         x2 = state[3] # 主结构位移
         next_x2 = next_state[3] # 下一步主结构位移
         reward = 0.0
@@ -39,4 +39,4 @@ def tolerance_reward(tolerance: float = 1e-3) -> Callable[[np.ndarray, float, np
             reward += -np.log10(abs(next_x2) / tolerance)
         reward -= abs(action) / ACTION_BOUND
         return float(np.clip(reward / 4.0, -1.0, 1.0))
-    return reward_fn
+    return tolerance_rewardfx

@@ -1,5 +1,4 @@
 import copy
-from collections import deque
 from typing import Dict, Tuple
 from buffer import ReplayBuffer
 import numpy as np
@@ -21,13 +20,23 @@ class BaseController:
         self.obs_state_history = []
         raise NotImplementedError
 
-    def select_action(self, obs: np.ndarray, delay_steps: int = 0, noise_scale: float = 1.0) -> float:
-        """基于当前观测值选择动作，可选延迟和噪声尺度"""
+    def select_action(self, obs: np.ndarray, noise_scale: float = 1.0) -> float:
+        """基于当前观测值选择动作，可噪声尺度"""
         raise NotImplementedError
     
-    def update(self, replay_buffer: ReplayBuffer, batch_size: int, use_sequence: bool):
+    def update(self, replay_buffer: ReplayBuffer, batch_size: int):
         """基于重放缓冲区数据更新控制器参数"""
         raise NotImplementedError
+        
+    def export_state(self) -> Dict[str, object]:
+        """导出控制器状态以进行检查点保存"""
+        raise NotImplementedError
+
+    
+    def load_state(self, state_dict: Dict[str, object]) -> None:
+        """从检查点加载控制器状态"""
+        raise NotImplementedError
+
     
 
 class PassiveController(BaseController):
@@ -71,58 +80,49 @@ class TD3Controller(BaseController):
     """TD3 控制器，内置延迟历史对齐，可用于 MLP/GRU/Attention 结构。"""
 
     def __init__(
-        self, state_dim: int, action_dim: int,
-        action_bound: float,
-        arch: str = "mlp",
-        gru_hidden: int = 64, gru_layers: int = 1, hidden_dim: int = 128,
-        seq_len: int = 1,
-        gamma: float = 0.99,
-        tau: float = 0.005,
-        policy_noise: float = 0.2,
-        noise_clip: float = 0.5,
-        policy_freq: int = 2,
-        actor_lr: float = 1e-3,
-        critic_lr: float = 1e-3,
-        clip_grad: float = 0.0,
-        use_attention: bool = True,
-    ) -> None:
+        self, arch: str = "mlp", 
+        norm: bool = False, simple_nn: bool = False,
+        state_dim: int = 6, action_dim: int = 1, action_bound: float = 5.0,
+        gru_hidden: int = 64, gru_layers: int = 1, hidden_dim: int = 128, 
+        seq_len: int = 1, fc_seq_len: int = 5,
+        actor_lr: float = 2e-06, critic_lr: float = 1e-05, clip_grad: float = 1.0, tau: float = 0.002,
+        gamma: float = 0.99, policy_noise: float = 0.2, noise_clip: float = 0.5, policy_freq: int = 2, 
+        ) -> None:
         super().__init__()
-        self.arch = arch.lower()
-        self.seq_len = max(1, seq_len)
-        self.gamma = gamma
-        self.tau = tau
-        self.policy_noise = policy_noise
-        self.noise_clip = noise_clip
-        self.policy_freq = policy_freq
-        self.action_bound = action_bound
-        self.clip_grad = clip_grad if clip_grad and clip_grad > 0 else None
+        self.action_bound = action_bound # 动作边界
+        self.arch = arch.lower() # 控制器架构类型
+        self.seq_len = max(1, seq_len) # 序列长度，至少为1
+        self.gamma = gamma # 折扣因子
+        self.tau = tau # 软更新系数
+        self.policy_noise = policy_noise # 策略噪声标准差
+        self.noise_clip = noise_clip # 策略噪声裁剪范围
+        self.policy_freq = policy_freq # 策略更新频率
+        self.clip_grad = clip_grad if clip_grad and clip_grad > 0 else None # 梯度裁剪阈值
 
-        self.actor, self.critic1 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, use_attention)
-        _, self.critic2 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, use_attention)
+        self.actor, self.critic1 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn)
+        _, self.critic2 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn)
 
-        self.target_actor = copy.deepcopy(self.actor)
-        self.target_critic1 = copy.deepcopy(self.critic1)
-        self.target_critic2 = copy.deepcopy(self.critic2)
+        # 使用深拷贝创建目标网络，隔离网络的权重
+        self.target_actor,self.target_critic1 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn)
+        _, self.target_critic2 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn)
 
         self.actor_optim = optim.Adam(self.actor.parameters(), lr=actor_lr)
         self.critic1_optim = optim.Adam(self.critic1.parameters(), lr=critic_lr)
         self.critic2_optim = optim.Adam(self.critic2.parameters(), lr=critic_lr)
 
-        self.total_it = 0
-        self.window: deque = deque(maxlen=self.seq_len + 50)
+        self.total_it = 0 # 总更新迭代计数
 
     # ------------------------------------------------------------------
-    def reset(self, first_obs: np.ndarray) -> None:
-        self.window.clear()
-        for _ in range(self.window.maxlen):
-            self.window.append(first_obs.copy())
+    def reset(self) -> None:
+        self.obs_state_history = []  # 重置观测状态历史
 
     # ------------------------------------------------------------------
-    def _policy_action(self, state, add_noise: bool = True, noise_scale: float = 1.0) -> float:
+    def _policy_action(self, state: np.ndarray, add_noise: bool = True, noise_scale: float = 1.0) -> float:
+        """基于当前状态序列计算动作，支持添加噪声"""
         self.actor.eval()
         with torch.no_grad():
             state_tensor = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-            action = self.actor(state_tensor).cpu().numpy().flatten()
+            action = self.actor.forward(state_tensor).cpu().numpy().flatten()
         self.actor.train()
         if add_noise:
             noise = np.random.normal(0, self.action_bound * self.policy_noise * noise_scale, size=action.shape)
@@ -136,19 +136,16 @@ class TD3Controller(BaseController):
             state_input = obs
         elif self.arch == "seq":
             state_input = self.obs_state_history[-self.seq_len:] # 取最近 seq_len 个观测状态
+        state_input = np.array(state_input, dtype=np.float32)
         return self._policy_action(state_input, add_noise=True, noise_scale=noise_scale)
 
     # ------------------------------------------------------------------
-    def update(self, replay_buffer: ReplayBuffer, batch_size: int, use_sequence: bool = True) -> Tuple[float, float]:
+    def update(self, replay_buffer: ReplayBuffer, batch_size: int) -> Tuple[float, float]:
         """更新Actor和Critic网络"""
         self.total_it += 1
 
-        use_seq = use_sequence and self.arch == "gru"
-        states, actions, rewards, next_states, dones, _delays = replay_buffer.sample(
-            batch_size=batch_size,
-            use_sequence=use_seq,
-            apply_delay=True,
-        )
+        use_seq = (False or self.arch == "seq")
+        states, actions, rewards, next_states, dones = replay_buffer.sample(batch_size=batch_size, use_sequence=use_seq)
 
         with torch.no_grad():
             # 目标策略平滑正则化
@@ -186,7 +183,7 @@ class TD3Controller(BaseController):
         if self.total_it % self.policy_freq == 0:
             # 更新Actor网络
             policy_actions = self.actor(states)
-            actor_loss = -self.critic1(states, policy_actions).mean()
+            actor_loss: torch.Tensor = -self.critic1(states, policy_actions).mean()
             self.actor_optim.zero_grad()
             actor_loss.backward()
             # 梯度裁剪
@@ -210,6 +207,7 @@ class TD3Controller(BaseController):
 
     # ------------------------------------------------------------------
     def export_state(self) -> Dict[str, object]:
+        """导出控制器状态字典，用于保存模型。"""
         return {
             "arch": self.arch,
             "actor": self.actor.state_dict(),
@@ -225,6 +223,7 @@ class TD3Controller(BaseController):
         }
 
     def load_state(self, payload: Dict[str, object]) -> None:
+        """从状态字典加载控制器模型参数。"""
         self.actor.load_state_dict(payload["actor"])
         self.critic1.load_state_dict(payload["critic1"])
         self.critic2.load_state_dict(payload["critic2"])
@@ -235,3 +234,15 @@ class TD3Controller(BaseController):
         self.critic1_optim.load_state_dict(payload["critic1_optim"])
         self.critic2_optim.load_state_dict(payload["critic2_optim"])
         self.total_it = int(payload.get("total_it", 0))
+
+
+def build_controller(TD3_PARAMS):
+    controller = TD3Controller(arch=TD3_PARAMS["arch"], 
+                               norm=TD3_PARAMS['norm'], simple_nn=TD3_PARAMS['simple_nn'],
+                               state_dim=TD3_PARAMS['state_dim'], action_dim=1, action_bound=TD3_PARAMS['action_bound'],
+                               gru_hidden=TD3_PARAMS['gru_hidden'], gru_layers=TD3_PARAMS['gru_layers'], hidden_dim=TD3_PARAMS['hidden_dim'],
+                               seq_len=TD3_PARAMS['seq_len'], fc_seq_len=TD3_PARAMS['fc_seq_len'],
+                               actor_lr=TD3_PARAMS['actor_lr'], critic_lr=TD3_PARAMS['critic_lr'], tau=TD3_PARAMS['tau'], clip_grad=TD3_PARAMS['clip_grad'],
+                               gamma=TD3_PARAMS['gamma'], policy_noise=TD3_PARAMS['policy_noise'], noise_clip=TD3_PARAMS['noise_clip'], policy_freq=TD3_PARAMS['policy_delay'],
+    )
+    return controller

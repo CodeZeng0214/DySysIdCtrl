@@ -6,9 +6,49 @@ import torch
 from data import EpisodeRecorder
 from controller import BaseController
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+def build_env(ENV_PARAMS):
+    # 系统参数
+    m = 1.0    # 电磁吸振器质量
+    M = 15  # 待减振对象质量
+    k_m = 30_000  # 电磁吸振器刚度
+    k_M = 300_000  # 平台刚度
+    k_f = 100 # * TD3_PARAMS['action_bound']  # 电—力常数 N/A
+    # k_E = 0.0  # 作动器反电动势系数
+    # L = 0.0045  # 线圈的电感
+    # R_m = 5.0  # 线圈的电阻
+    c_m = 0.001 # 1.0  # 电磁吸振器阻尼
+    c_M = 0.01 # 5.0  # 平台阻尼
+
+    A = np.array(
+        [
+            [0.0, 1.0, 0.0, 0.0],
+            [-k_m / m, -c_m / m, k_m / m, c_m / m],
+            [0.0, 0.0, 0.0, 1.0],
+            [k_m / M, c_m / M, -(k_m + k_M) / M, -(c_m + c_M) / M],
+        ]
+    )
+    B = np.array([[0.0], [k_f / m], [0.0], [-k_f / M]])
+    C = np.array(
+        [
+            [-k_m / m, -c_m / m, k_m / m, c_m / m],
+            [k_m / M, c_m / M, -(k_m + k_M) / M, -(c_m + c_M) / M],
+        ]
+    )
+    D = np.array([[+k_f / m], [-k_f / M]])
+    E = np.array([[0.0, 0.0, 0.0, c_M / M], [0.0, 0.0, 0.0, k_M / M]]).T
+    F = np.array([[0.0], [0.0], [0.0], [1 / M]])
+
+    env = ElectromagneticDamperEnv(A=A, B=B, C=C, D=D, E=E, F=F,
+                                   Ts=ENV_PARAMS['Ts'], T=ENV_PARAMS['T'], 
+                                   state0=ENV_PARAMS['state0'], obs_indices=ENV_PARAMS['obs_indices'], x1_limit=ENV_PARAMS['x1_limit'], 
+                                   use_dt_noise=ENV_PARAMS['use_dt_noise'], dt_noise_std=ENV_PARAMS['dt_noise_std'], 
+                                   delay_enabled=ENV_PARAMS['delay_enabled'], delay_mean_steps=ENV_PARAMS['delay_mean_steps'], delay_std_steps=ENV_PARAMS['delay_std_steps'], 
+                                   include_dt_in_obs=ENV_PARAMS['include_dt_in_obs'], include_delay_in_obs=ENV_PARAMS['include_delay_in_obs'], 
+                                   z_func=ENV_PARAMS['z_func'], r_func=ENV_PARAMS['r_func'], f_func=ENV_PARAMS['f_func'],
+    )
+    return env
 
 class ElectromagneticDamperEnv:
     """Two-DOF electromagnetic damper simulation with optional delay and dt noise.
@@ -89,12 +129,9 @@ class ElectromagneticDamperEnv:
     def observe(self) -> np.ndarray:
         """获取当前观测值，包含指定的状态变量和可选的时间步长及延迟时间\n
         如果有时延，则返回历史中的延迟状态（前 delay_step 步）。"""
-        # 计算延迟对齐的状态索引，越界时回退到最早可用状态
-        if self.delay_step > 0 and self.state_history:
-            idx = max(0, len(self.state_history) - 1 - self.delay_step)
-            state_ref = self.state_history[idx]
-        else:
-            state_ref = self._state
+        # 计算延迟对齐的状态索引
+        idx = max(0, len(self.state_history) - self.delay_step - 1 )
+        state_ref = self.state_history[idx]
 
         base = np.array([state_ref[i] for i in self.obs_indices], dtype=float)
         extras = []
@@ -103,7 +140,7 @@ class ElectromagneticDamperEnv:
         if self.include_delay_in_obs:
             extras.append(self.delay_time)
         if extras:
-            base = np.concatenate([base, np.array(extras, dtype=float)])
+            base = np.concatenate([base, extras])
         return base
     
     def get_all_state(self) -> np.ndarray:
