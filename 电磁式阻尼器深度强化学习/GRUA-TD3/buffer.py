@@ -124,11 +124,12 @@ class ReplayBuffer:
                     pop_idxs.append(i)
                     continue
                 idx_seqs.append((start, idx + 1)) # 记录有效的起止索引
-
-        # 移除不符合条件的样本
-        for i in sorted(pop_idxs, reverse=True):
-            delays_save_list.pop(i) 
+            # 移除不符合条件的样本
+            for i in sorted(pop_idxs, reverse=True):
+                delays_save_list.pop(i) 
+                
         delays_save_np = np.array(delays_save_list, dtype=np.int32) # 转为 numpy 数组
+        assert delays_save_np.shape[0] == (len(idx_seqs) or len(idxs)), "延迟步数数组长度与索引数量不匹配"
 
         # 从有效索引中随机选择所需数量并返回
         if not use_sequence or self.seq_len == 1:# 非序列采样，直接随机采样单步数据

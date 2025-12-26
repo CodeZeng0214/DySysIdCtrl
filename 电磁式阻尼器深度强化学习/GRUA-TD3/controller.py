@@ -20,7 +20,7 @@ class BaseController:
         self.obs_state_history = []
         raise NotImplementedError
 
-    def select_action(self, obs: np.ndarray, noise_scale: float = 1.0) -> float:
+    def select_action(self, obs: np.ndarray, noise_scale: float = 0.0) -> float:
         """基于当前观测值选择动作，可噪声尺度"""
         raise NotImplementedError
     
@@ -129,7 +129,7 @@ class TD3Controller(BaseController):
             action = np.clip(action + noise, -self.action_bound, self.action_bound)
         return float(action[0])
 
-    def select_action(self, obs: np.ndarray, noise_scale: float = 1.0) -> float:
+    def select_action(self, obs: np.ndarray, noise_scale: float = 0.0) -> float:
         """基于当前观测值选择动作，自动处理延迟历史对齐和噪声添加"""
         self.obs_state_history.append(obs.copy()) # 记录观测状态历史
         if self.arch == "mlp":

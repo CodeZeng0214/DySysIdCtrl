@@ -94,7 +94,7 @@ class GruPredictor(nn.Module):
                                          num_layers=num_layers, batch_first=True, dropout=0.1)
 
         # 用于预测下一个状态的线性层
-        self.fc_predict = nn.Sequential(nn.Linear(hidden_dim, state_dim))
+        self.fc_predict = nn.Sequential(nn.Linear(hidden_dim, state_dim), nn.Dropout(p=0.2))
         
         # 添加注意力层（用于处理预测的状态序列）
         self.attention_norm = nn.LayerNorm(state_dim) if norm else nn.Identity()

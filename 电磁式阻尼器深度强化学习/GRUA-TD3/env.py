@@ -230,7 +230,7 @@ class ElectromagneticDamperEnv:
         # 位置限制，防止吸振器位移发散
         if self.x1_limit is not None and abs(X_next[0] - X_next[2]) > self.x1_limit:
             X_next[0] = self.x1_limit * np.sign(X_next[0] - X_next[2]) + X_next[2]
-            X_next[1] = 0.0
+            X_next[1] = (X_next[0] - X[0]) / dt # 修正速度为当前位置变化率
 
         # 计算输出变量
         Y = self.C @ X_next + self.D @ np.array([[action]])
@@ -255,7 +255,7 @@ class ElectromagneticDamperEnv:
 
     def _sample_delay_steps(self) -> int:
         """从正态分布中采样延迟步数"""
-        raw = np.random.normal(self.delay_mean_steps, self.delay_std_steps)
+        raw = np.clip(np.random.normal(self.delay_mean_steps, self.delay_std_steps), 0, self.delay_mean_steps * 2) # 防止延迟步数采样过大
         return max(0, int(round(raw)))
 
     def _precompute_discrete(self, dt: float) -> None:

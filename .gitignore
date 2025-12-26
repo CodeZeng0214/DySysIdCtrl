@@ -55,3 +55,4 @@ pyproject.toml
 .python-version
 /电磁式阻尼器深度强化学习/GRUA-TD3/save_data
 /电磁式阻尼器深度强化学习/GRUA-TD3/savedata
+/电磁式阻尼器深度强化学习/GRU-TD3训练（共享底层网络，考虑反应时间）/savedata

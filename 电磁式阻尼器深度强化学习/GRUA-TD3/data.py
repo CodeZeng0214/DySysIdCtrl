@@ -30,13 +30,14 @@ class EpisodeRecorder:
         """以 NumPy 数组形式返回记录数据。\n
         如果提供 keys 列表，则只返回指定字段。\n
         如果 keys 为 None，则返回所有字段。\n
-        如果 keys 是字符串，则只返回该字段的数组。"""
+        如果 keys 是字符串，则只返回该字段的数组。\n
+        """
         if keys is None:
             return {k: np.array(v) for k, v in self._data.items()}
         elif isinstance(keys, str):
-            return np.array(self._data[keys])
+            return np.array(self._data.get(keys, [0]*len(self._data)))
         else:
-            return {k: np.array(self._data[k]) for k in keys if k in self._data}
+            return {k: np.array(self._data.get(k, [0]*len(self._data))) for k in keys if k in self._data}
     
     def get_data(self) -> Dict[str, List[Any]]:
         """获取原始记录数据字典。"""
@@ -122,11 +123,11 @@ def latest_checkpoint(directory: str, suffix: str = ".pth") -> Optional[str]:
 
 
 ## 通用的绘图函数模块
-def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[List[Tuple]] = None,
+def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[List[Tuple[int]]] = None,
               figsize: Tuple[int, int] = (16, 9), sub_shape: Optional[Tuple[int, int]] = None, 
               plot_title: Optional[str] = None, subplot_titles: Optional[List[str]] = None,
-              colors: Optional[List[str]] = None, line_styles: Optional[List[str]] = None,
-              legends: Optional[List[str]] = None, show_legend: bool = True, legend_loc: str = "best",
+              colors: Optional[List[Tuple[str]]] = None, line_styles: Optional[List[Tuple[str]]] = None,
+              legends: Optional[List[Tuple[str]]] = None, show_legend: bool = True, legend_loc: str = "best",
               xlabel: Optional[str] = None, ylabel: Optional[str] = None,
               xlim: Optional[Tuple[float, float]] = None, ylim: Optional[Tuple[float, float]] = None,
               show_grid: bool = False, log_scale: bool = False,
@@ -140,7 +141,7 @@ def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[Li
     - sub_group: 分组信息，若提供则按组绘制子图，每组内多条曲线。
     - sub_shape: (rows, cols) 子图布局，若未提供则自动计算。
     - subplot_titles: 与子图数相同的标题列表（可选）。
-    - colors/line_styles/legends: 可选的样式列表；若传入嵌套列表则按子图分别使用；否则对所有曲线复用。
+    - colors/line_styles/legends: 可选的样式列表,格式为 List[Tuple[str]]，若传入嵌套的元组则按子图分别使用；否则对所有曲线复用。
     - log_scale: y 轴对数坐标。
     - save_path: 路径字符串；若提供则保存为 svg（文件名由 plot_title 或默认 plot.svg）。
     """
@@ -158,7 +159,7 @@ def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[Li
     elif isinstance(y_values, list):
         y_values = np.array(y_values).reshape(-1, y_values[0].__len__())
 
-    # 规范化 y 输入：接受 ndarray（1D/2D）或列表，统一转换为列表结构
+    # 规范化 x 输入：接受 ndarray（1D/2D）或列表，统一转换为列表结构
     if x_values is None: # 自动生成 x_value
         x_values = np.tile(np.arange(y_values.shape[0]), y_values.shape[1])
     if isinstance(x_values, np.ndarray):
@@ -170,6 +171,12 @@ def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[Li
             raise ValueError("x_values ndarray 仅支持 1D 或 2D")
     elif isinstance(x_values, list):
         x_values = np.array(x_values).reshape(-1, x_values[0].__len__())
+    
+    # 确保 x 和 y 的维度匹配
+    if x_values.shape[0] != y_values.shape[0]:
+        raise ValueError(f"x_values 和 y_values 的行数不匹配: {x_values.shape[0]} vs {y_values.shape[0]}")
+    if x_values.shape[1] != y_values.shape[1]:
+        x_values = np.tile(x_values, (1, y_values.shape[1] // x_values.shape[1])) # 尝试扩展 x_values 列数以匹配 y_values
 
     # 布局：单图或子图
     num_subplots = len(sub_group)
@@ -183,25 +190,19 @@ def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[Li
     if plot_title:
         fig.suptitle(plot_title, fontsize=16)
 
-    # 样式选择辅助
-    def pick_style(arr, curve_idx):
-        if arr is None:
-            return None
-        return arr[curve_idx] if curve_idx < len(arr) else None
-
     # 绘制：按分组在子图中绘制多条曲线
-    for g_idx, grp in enumerate(sub_group):
+    for g_idx, group in enumerate(sub_group):
         ax = axes_flat[g_idx] if g_idx < len(axes_flat) else axes_flat[-1]
-        for idx in grp:
+        for idx in group:
             if idx >= y_values.shape[1]:
                 raise IndexError(f"sub_group 索引 {idx} 超出 y_values 列数 {y_values.shape[1]}")
             xv = x_values[:, idx]
             yv = y_values[:, idx]
             if xv.shape[0] != yv.shape[0]:
                 raise ValueError(f"子图 {g_idx} 曲线 {idx} 的 x 与 y 长度不匹配: {len(xv)} vs {len(yv)}")
-            color = pick_style(colors, idx)
-            label = pick_style(legends, idx)
-            style = pick_style(line_styles, idx) or "-"
+            color = pick_style(colors, g_idx, idx)
+            label = pick_style(legends, g_idx, idx)
+            style = pick_style(line_styles, g_idx, idx) or "-"
             ax.plot(xv, yv, color=color, linestyle=style, label=label)
 
         if log_scale:
@@ -235,6 +236,15 @@ def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[Li
         plt.show()
     else:
         plt.close(fig)
+
+# 样式选择辅助
+def pick_style(arr: Optional[List[Tuple[str]]], g_idx, idx):
+    """根据分组和曲线索引选择样式。"""
+    if arr is None or len(arr) == 0:
+        return None
+    if g_idx < len(arr) and len(arr[g_idx]) > 0:
+        return arr[g_idx][idx % len(arr[g_idx])]
+    return None
 
 def format_special_type(obj):
     """
