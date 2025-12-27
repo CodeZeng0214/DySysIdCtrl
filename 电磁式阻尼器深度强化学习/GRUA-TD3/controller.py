@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.distributions import Normal
 
 from networks import build_actor_critic, device
 from fx import ACTION_BOUND
@@ -236,13 +237,181 @@ class TD3Controller(BaseController):
         self.total_it = int(payload.get("total_it", 0))
 
 
-def build_controller(TD3_PARAMS):
-    controller = TD3Controller(arch=TD3_PARAMS["arch"], 
-                               norm=TD3_PARAMS['norm'], simple_nn=TD3_PARAMS['simple_nn'],
-                               state_dim=TD3_PARAMS['state_dim'], action_dim=1, action_bound=TD3_PARAMS['action_bound'],
-                               gru_hidden=TD3_PARAMS['gru_hidden'], gru_layers=TD3_PARAMS['gru_layers'], hidden_dim=TD3_PARAMS['hidden_dim'],
-                               seq_len=TD3_PARAMS['seq_len'], fc_seq_len=TD3_PARAMS['fc_seq_len'],
-                               actor_lr=TD3_PARAMS['actor_lr'], critic_lr=TD3_PARAMS['critic_lr'], tau=TD3_PARAMS['tau'], clip_grad=TD3_PARAMS['clip_grad'],
-                               gamma=TD3_PARAMS['gamma'], policy_noise=TD3_PARAMS['policy_noise'], noise_clip=TD3_PARAMS['noise_clip'], policy_freq=TD3_PARAMS['policy_delay'],
-    )
+class PPOActor(nn.Module):
+    """Simple Gaussian policy with tanh squash."""
+
+    def __init__(self, state_dim: int, action_dim: int, hidden_dim: int, action_bound: float) -> None:
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, action_dim),
+        )
+        self.log_std = nn.Parameter(torch.zeros(action_dim))
+        self.action_bound = action_bound
+
+    def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        mean = self.net(state)
+        log_std = self.log_std.clamp(-20, 2)
+        std = log_std.exp()
+        return mean, std
+
+    def sample(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        mean, std = self(state)
+        dist = Normal(mean, std)
+        action = dist.rsample()
+        log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
+        squashed_action = torch.tanh(action) * self.action_bound
+        # tanh-corrected log prob
+        log_prob -= torch.log(1 - torch.tanh(action).pow(2) + 1e-6).sum(dim=-1, keepdim=True)
+        return squashed_action, log_prob
+
+
+class PPOCritic(nn.Module):
+    def __init__(self, state_dim: int, hidden_dim: int) -> None:
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.Tanh(),
+            nn.Linear(hidden_dim, 1),
+        )
+
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
+        return self.net(state)
+
+
+class PPOController(BaseController):
+    """On-policy PPO controller using replay buffer batches for updates."""
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int = 1,
+        action_bound: float = ACTION_BOUND,
+        hidden_dim: int = 128,
+        actor_lr: float = 3e-4,
+        critic_lr: float = 3e-4,
+        gamma: float = 0.99,
+        lam: float = 0.95,
+        clip_ratio: float = 0.2,
+        entropy_coef: float = 1e-3,
+        critic_coef: float = 0.5,
+        train_iters: int = 4,
+        max_grad_norm: float = 0.5,
+    ) -> None:
+        super().__init__()
+        self.arch = "ppo"
+        self.gamma = gamma
+        self.lam = lam
+        self.clip_ratio = clip_ratio
+        self.entropy_coef = entropy_coef
+        self.critic_coef = critic_coef
+        self.train_iters = train_iters
+        self.max_grad_norm = max_grad_norm
+        self.action_bound = action_bound
+
+        self.actor = PPOActor(state_dim, action_dim, hidden_dim, action_bound).to(device)
+        self.critic = PPOCritic(state_dim, hidden_dim).to(device)
+        self.actor_optim = optim.Adam(self.actor.parameters(), lr=actor_lr)
+        self.critic_optim = optim.Adam(self.critic.parameters(), lr=critic_lr)
+
+    def reset(self) -> None:
+        self.obs_state_history = []
+
+    def select_action(self, obs: np.ndarray, noise_scale: float = 0.0) -> float:
+        state = torch.tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
+        with torch.no_grad():
+            action, _ = self.actor.sample(state)
+        return float(action.cpu().numpy().flatten()[0])
+
+    def _compute_returns_adv(self, rewards: torch.Tensor, dones: torch.Tensor, values: torch.Tensor, next_values: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        deltas = rewards + self.gamma * (1 - dones) * next_values - values
+        adv = torch.zeros_like(rewards, device=device)
+        gae = 0
+        for t in reversed(range(len(rewards))):
+            gae = deltas[t] + self.gamma * self.lam * (1 - dones[t]) * gae
+            adv[t] = gae
+        returns = adv + values
+        return returns, adv
+
+    def update(self, replay_buffer: ReplayBuffer, batch_size: int):
+        states, actions, rewards, next_states, dones = replay_buffer.sample(batch_size=batch_size, use_sequence=False)
+        actions = actions.view(batch_size, -1)
+
+        # 将已压缩的动作反解到未压缩空间，避免 log_prob 计算出现 NaN
+        eps = 1e-6
+        clipped = torch.clamp(actions / self.action_bound, -1 + eps, 1 - eps)
+        unsquashed_actions = torch.atanh(clipped)
+
+        with torch.no_grad():
+            values = self.critic(states)
+            next_values = self.critic(next_states)
+            returns, advantages = self._compute_returns_adv(rewards, dones, values, next_values)
+            adv_std = advantages.std()
+            advantages = (advantages - advantages.mean()) / (adv_std + 1e-8)
+
+        mean, std = self.actor(states)
+        dist = Normal(mean, std)
+        old_log_probs = (dist.log_prob(unsquashed_actions).sum(dim=-1, keepdim=True) - torch.log(1 - clipped.pow(2) + eps).sum(dim=-1, keepdim=True)).detach()
+
+        actor_losses = []
+        critic_losses = []
+        entropies = []
+        for _ in range(self.train_iters):
+            mean, std = self.actor(states)
+            dist = Normal(mean, std)
+            log_probs = dist.log_prob(unsquashed_actions).sum(dim=-1, keepdim=True) - torch.log(1 - clipped.pow(2) + eps).sum(dim=-1, keepdim=True)
+            entropy = dist.entropy().sum(dim=-1, keepdim=True)
+
+            ratio = torch.exp(log_probs - old_log_probs)
+            surr1 = ratio * advantages
+            surr2 = torch.clamp(ratio, 1.0 - self.clip_ratio, 1.0 + self.clip_ratio) * advantages
+            actor_loss = -(torch.min(surr1, surr2)).mean() - self.entropy_coef * entropy.mean()
+
+            value_pred = self.critic(states)
+            critic_loss = F.mse_loss(value_pred, returns)
+
+            self.actor_optim.zero_grad()
+            actor_loss.backward()
+            nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
+            self.actor_optim.step()
+
+            self.critic_optim.zero_grad()
+            critic_loss.backward()
+            nn.utils.clip_grad_norm_(self.critic.parameters(), self.max_grad_norm)
+            self.critic_optim.step()
+
+            actor_losses.append(actor_loss.item())
+            critic_losses.append(critic_loss.item())
+            entropies.append(entropy.mean().item())
+
+        return float(np.mean(critic_losses)), float(np.mean(actor_losses))
+
+    def export_state(self) -> Dict[str, object]:
+        return {
+            "arch": self.arch,
+            "actor": self.actor.state_dict(),
+            "critic": self.critic.state_dict(),
+            "actor_optim": self.actor_optim.state_dict(),
+            "critic_optim": self.critic_optim.state_dict(),
+        }
+
+    def load_state(self, payload: Dict[str, object]) -> None:
+        self.actor.load_state_dict(payload["actor"])
+        self.critic.load_state_dict(payload["critic"])
+        self.actor_optim.load_state_dict(payload["actor_optim"])
+        self.critic_optim.load_state_dict(payload["critic_optim"])
+
+
+def build_controller(PARAMS, type:str):
+    if type == "TD3":
+        controller = TD3Controller(**PARAMS)
+    elif type == "PPO":
+        controller = PPOController(**PARAMS)
+    else:
+        raise ValueError
     return controller
