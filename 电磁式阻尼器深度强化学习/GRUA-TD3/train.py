@@ -5,7 +5,7 @@ from typing import Optional, Callable
 import numpy as np
 from controller import BaseController
 from buffer import ReplayBuffer
-from data import EpisodeRecorder, TrainingHistory, save_checkpoint, load_checkpoint, latest_checkpoint, make_dirs, plot_data
+from data import EpisodeRecorder, TrainingHistory, save_checkpoint, load_checkpoint, slect_checkpoint, make_dirs, plot_data
 from env import ElectromagneticDamperEnv
 from tqdm import tqdm
 import logging
@@ -64,20 +64,27 @@ def train(project_name: str,
               legends=[('吸振器位移',),('主结构位移',),('吸振器速度',),('主结构速度',),('吸振器加速度',),('主结构加速度',)], legend_loc='upper right', 
               sub_group=[(0,),(3,),(1,),(4,),(2,),(5,)],plot_title=f'{now_time}_初速度条件-环境无控制响应', save_path=plot_path, show=False)
 
-    # 
+    # 读取检查点以恢复训练
     if resume:
-        last = latest_checkpoint(ckpt_dir)
-        if last:
-            payload = load_checkpoint(last)
+        checkpoint = slect_checkpoint(ckpt_dir)
+        if checkpoint:
+            payload = load_checkpoint(checkpoint)
             controller.load_state(payload["agent"])
             history = TrainingHistory.from_dict(payload["history"])
-            print(f"✅ Resumed from {last}")
+            print(f"✅ 从 {checkpoint} 检查点恢复训练，当前回合 {history.current_episode}。")
+            logging.info(f"✅ 从 {checkpoint} 检查点恢复训练，当前回合 {history.current_episode}。")
 
     # 创建奖励日志文件
     rewards_log_file = os.path.join(project_path, f"td3_rewards_log_{time.strftime('%Y%m%d_%H%M%S')}.csv") if project_path else None
     if rewards_log_file:
         with open(rewards_log_file, "w") as f:
             f.write(f"{'episode':>8}, {'rewards':>12}, {'simu_reward':>12}, {'actor_loss':>12}, {'critic_loss':>12}, {'explore_noise':>8}\n")
+    # 继承之前的数据
+    if history.current_episode > 1:
+        with open(rewards_log_file, "a") as f:
+            for ep in range(len(history)):
+                f.write(f"{ep+1:>8}, {history.get_data('reward_history')[ep]:>12.4f}, {history.get_data('simu_reward_history')[ep]:>12.4f}, {history.get_data('actor_loss_history')[ep]:>12.4f}, {history.get_data('critic_loss_history')[ep]:>12.4f}, {history.get_data('explore_noise_history')[ep]:>8.4f}\n")
+
 
     # 训练主循环
     for ep in tqdm(range(history.current_episode, n_episodes)):
@@ -127,10 +134,6 @@ def train(project_name: str,
         ep_actor_loss_avg = ep_actor_loss_sum / max(1, updates)
         ep_critic_loss_avg = ep_critic_loss_sum / max(1, updates)
 
-        # 记录训练历史
-        history.log(reward_history=ep_reward_sum, actor_loss_history=ep_actor_loss_avg, critic_loss_history=ep_critic_loss_avg, explore_noise_history=explore_noise)
-
-
         ep_sim_reward_sum = ep_reward_sum # 模拟运行环境（无噪声）的奖励总和
         if ep % save_interval == 0:
             # 运行有控制器的环境，记录数据
@@ -150,20 +153,23 @@ def train(project_name: str,
                       legends=[('动作',), ('奖励',), ('延迟时间',), ('时间步长',)], legend_loc='upper right',
                       plot_title=f'{now_time}_初速度条件回合{ep}控制器动作等', save_path=plot_path, show=False)
             ep_sim_reward_sum = c_recorder.as_numpy(keys='reward_history').sum() # 仿真奖励总和
-            
             # 保存模型和训练当前的历史
             history.checkpoint_name = f"{time.strftime('%m%d_%H%M%S')}_ep{ep}ckpt"
             ckpt_path = os.path.join(ckpt_dir, f"{history.checkpoint_name}.pth")
             save_checkpoint(ckpt_path, controller.export_state(), ep_recorder, history)
             logging.info(f"💾 saved checkpoint {ckpt_path}")
 
+        # 记录训练历史
+        history.log(reward_history=ep_reward_sum, simu_reward_history=ep_sim_reward_sum, actor_loss_history=ep_actor_loss_avg, critic_loss_history=ep_critic_loss_avg, explore_noise_history=explore_noise)
+        
         # 写入训练信息到csv日志文件
         if rewards_log_file:
             with open(rewards_log_file, "a") as f:
-                
                 f.write(f"{ep:>8}, {ep_reward_sum:>12.4f}, {ep_sim_reward_sum:>12.4f}, {ep_actor_loss_avg:>12.4f}, {ep_critic_loss_avg:>12.4f}, {explore_noise:>8.4f}\n")
 
     print("Training finished.")
+
+    return history
 
 
 if __name__ == "__main__":

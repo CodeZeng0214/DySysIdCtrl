@@ -1,4 +1,3 @@
-import copy
 from typing import Dict, Tuple
 from buffer import ReplayBuffer
 import numpy as np
@@ -10,6 +9,8 @@ from torch.distributions import Normal
 
 from networks import build_actor_critic, device
 from fx import ACTION_BOUND
+
+
 
 class BaseController:
     """Interface for episode rollout controllers."""
@@ -288,10 +289,7 @@ class PPOController(BaseController):
     """On-policy PPO controller using replay buffer batches for updates."""
 
     def __init__(
-        self,
-        state_dim: int,
-        action_dim: int = 1,
-        action_bound: float = ACTION_BOUND,
+        self, state_dim: int, action_dim: int = 1, action_bound: float = ACTION_BOUND,
         hidden_dim: int = 128,
         actor_lr: float = 3e-4,
         critic_lr: float = 3e-4,
@@ -415,3 +413,4 @@ def build_controller(PARAMS, type:str):
     else:
         raise ValueError
     return controller
+    

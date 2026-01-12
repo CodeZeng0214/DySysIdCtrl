@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import Any, Dict, Tuple, List, Optional
 import matplotlib.pyplot as plt
 import inspect
+import logging
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -86,6 +87,16 @@ class TrainingHistory:
     def get_metrics(self) -> Dict[str, List[float]]:
         """获取原始的指标数据字典。"""
         return self._metrics
+    
+    def get_data(self,key: str) -> List[float]:
+        """获取指定指标的原始数据列表。"""
+        return self._metrics.get(key, [])
+    
+    def __len__(self) -> int:
+        """返回记录的回合数。"""
+        if not self._metrics:
+            return 0
+        return len(next(iter(self._metrics.values())))
 
 
 def save_checkpoint(path: str, agent_state: Dict[str, Any], episode: EpisodeRecorder, history: TrainingHistory, extra: Optional[Dict[str, Any]] = None) -> None:
@@ -112,15 +123,46 @@ def save_json(path: str, data: Dict[str, Any]) -> None:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def latest_checkpoint(directory: str, suffix: str = ".pth") -> Optional[str]:
-    """获取目录下最新的检查点文件路径，若无则返回 None。"""
+def find_checkpoints(directory: str, suffix: str = ".pth") -> Optional[List[str]]:
+    """获取目录下的检查点文件路径，若无则返回 None。"""
     if not os.path.isdir(directory):
         return None
     files = [os.path.join(directory, f) for f in os.listdir(directory) if f.endswith(suffix)]
     if not files:
         return None
-    return max(files, key=os.path.getmtime)
+    # 按文件修改时间排序
+    return files
 
+def slect_checkpoint(ckpt_dir: str) -> Optional[str]:
+    checkpoint = None
+    checkpoints = find_checkpoints(ckpt_dir)
+    if checkpoints:
+        logging.info(f"找到 {len(checkpoints)} 个检查点文件。")
+        print("\n找到以下检查点文件:")
+        for i, file in enumerate(checkpoints):
+            file_name = os.path.basename(file)
+            print(f"{i+1}. {file_name}")
+        load_choice: int = input("请选择要加载的检查点文件编号 (输入数字，直接回车取最新): ").strip()
+        if load_choice:
+            try:
+                selected_index = int(load_choice) - 1
+                if 0 <= selected_index < len(checkpoints):
+                    checkpoint = checkpoints[selected_index]
+                    print(f"选择加载检查点: {checkpoint}")
+                    logging.info(f"选择加载检查点: {checkpoint}")
+                else:
+                    print(f"无效的选择，使用最新检查点: {checkpoint}")
+                    checkpoint = checkpoints[-1]
+                    logging.info(f"无效的选择，使用最新检查点: {checkpoint}")
+            except ValueError:
+                print(f"无效输入，使用最新检查点: {checkpoint}")
+                checkpoint = checkpoints[-1]
+                logging.info(f"无效输入，使用最新检查点: {checkpoint}")
+        else:
+            print(f"使用最新检查点: {checkpoint}")
+            checkpoint = checkpoints[-1]
+            logging.info(f"使用最新检查点: {checkpoint}")
+    return checkpoint
 
 ## 通用的绘图函数模块
 def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[List[Tuple[int]]] = None,

@@ -37,6 +37,6 @@ def tolerance_reward(tolerance: float = 1e-3) -> Callable[[np.ndarray, float, np
             if abs(next_x2) > abs(x2):
                 reward -= 1.0
             reward += -np.log10(abs(next_x2) / tolerance)
-        reward -= abs(action) / ACTION_BOUND
+        reward -= abs(action) / ACTION_BOUND / 2
         return float(np.clip(reward / 4.0, -1.0, 1.0))
     return tolerance_rewardfx
