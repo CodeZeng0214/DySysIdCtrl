@@ -1,4 +1,4 @@
-import copy
+import numpy as np
 import torch
 import torch.nn as nn
 from typing import Tuple
@@ -344,6 +344,196 @@ class Gru_Critic(nn.Module):
         
         return q_value
 
+# ==================== PPO 网络 ====================
+
+class PPO_MLP_Actor(nn.Module):
+    """PPO Actor 网络（MLP架构），输出动作均值和对数标准差"""
+    def __init__(self, state_dim: int, action_dim: int, hidden_dim: int, action_bound: float, 
+                 log_std_min: float = -20.0, log_std_max: float = 2.0) -> None:
+        super().__init__()
+        self.action_bound = action_bound
+        self.log_std_min = log_std_min
+        self.log_std_max = log_std_max
+        
+        self.shared_net = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.LeakyReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LeakyReLU(),
+        )
+        self.mean_head = nn.Linear(hidden_dim, action_dim)
+        self.log_std_head = nn.Linear(hidden_dim, action_dim)
+        self._init_weights()
+
+    def _init_weights(self) -> None:
+        for m in self.shared_net.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+                nn.init.constant_(m.bias, 0.0)  # 偏置初始化为0
+        # 输出层使用较小的初始化，避免初始策略过于确定
+        nn.init.orthogonal_(self.mean_head.weight, gain=0.01)
+        nn.init.constant_(self.mean_head.bias, 0.0)
+        nn.init.orthogonal_(self.log_std_head.weight, gain=0.01)
+        nn.init.constant_(self.log_std_head.bias, -1.0)  # log_std初始化为负值，使初始std较小
+
+    def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """返回动作均值和对数标准差"""
+        features = self.shared_net(state)
+        mean = torch.tanh(self.mean_head(features)) * self.action_bound
+        log_std = self.log_std_head(features)
+        log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
+        return mean, log_std
+    
+    def get_action_and_log_prob(self, state: torch.Tensor, deterministic: bool = False) -> Tuple[torch.Tensor, torch.Tensor]:
+        """采样动作并计算对数概率"""
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
+        dist = torch.distributions.Normal(mean, std)
+        
+        action = dist.rsample()  # 重参数化采样
+        
+        # 裁剪动作到边界
+        action = torch.clamp(action, -self.action_bound, self.action_bound)
+        
+        # 计算对数概率
+        log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
+        
+        return action, log_prob
+    
+    def evaluate_actions(self, state: torch.Tensor, action: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """评估给定动作的对数概率和熵"""
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
+        dist = torch.distributions.Normal(mean, std)
+        
+        log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
+        entropy = dist.entropy().sum(dim=-1, keepdim=True)
+        
+        return log_prob, entropy
+
+
+class PPO_MLP_Critic(nn.Module):
+    """PPO Critic 网络（MLP架构），输出状态价值 V(s)"""
+    def __init__(self, state_dim: int, hidden_dim: int) -> None:
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.LeakyReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LeakyReLU(),
+            nn.Linear(hidden_dim, 1),
+        )
+        self._init_weights()
+
+    def _init_weights(self) -> None:
+        for m in self.net.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+                nn.init.constant_(m.bias, 0.0)
+        # 最后一层使用更小的初始化
+        nn.init.orthogonal_(self.net[-1].weight, gain=1.0)
+
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
+        return self.net(state)
+
+
+class PPO_GRU_Actor(nn.Module):
+    """PPO Actor 网络（GRU架构），使用 GRU 预测器处理序列状态"""
+    def __init__(self, gru_predictor: GruPredictor, norm: bool = False, simple_nn: bool = False,
+                 state_dim: int = 1, action_dim: int = 1, hidden_dim: int = 64, action_bound: float = 5.0,
+                 log_std_min: float = -20.0, log_std_max: float = 2.0) -> None:
+        super().__init__()
+        self.action_bound = action_bound
+        self.log_std_min = log_std_min
+        self.log_std_max = log_std_max
+        self.gru_predictor = gru_predictor
+        
+        self.shared_net = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim) if norm else nn.Identity(),
+            nn.ReLU(),
+        )
+        self.mean_head = nn.Linear(hidden_dim, action_dim)
+        self.log_std_head = nn.Linear(hidden_dim, action_dim)
+        self._init_weights()
+
+    def _init_weights(self) -> None:
+        for m in self.shared_net.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+                nn.init.constant_(m.bias, 0.0)
+        nn.init.orthogonal_(self.mean_head.weight, gain=0.01)
+        nn.init.constant_(self.mean_head.bias, 0.0)
+        nn.init.orthogonal_(self.log_std_head.weight, gain=0.01)
+        nn.init.constant_(self.log_std_head.bias, 0.0)
+
+    def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """返回动作均值和对数标准差"""
+        state_features = self.gru_predictor(state)  # [batch_size, state_dim]
+        features = self.shared_net(state_features)
+        mean = torch.tanh(self.mean_head(features)) * self.action_bound
+        log_std = self.log_std_head(features)
+        log_std = torch.clamp(log_std, self.log_std_min, self.log_std_max)
+        return mean, log_std
+    
+    def get_action_and_log_prob(self, state: torch.Tensor, deterministic: bool = False) -> Tuple[torch.Tensor, torch.Tensor]:
+        """采样动作并计算对数概率"""
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
+        dist = torch.distributions.Normal(mean, std)
+        
+        if deterministic:
+            action = mean
+        else:
+            action = dist.rsample()
+        
+        action = torch.clamp(action, -self.action_bound, self.action_bound)
+        log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
+        
+        return action, log_prob
+    
+    def evaluate_actions(self, state: torch.Tensor, action: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """评估给定动作的对数概率和熵"""
+        mean, log_std = self.forward(state)
+        std = log_std.exp()
+        dist = torch.distributions.Normal(mean, std)
+        
+        log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
+        entropy = dist.entropy().sum(dim=-1, keepdim=True)
+        
+        return log_prob, entropy
+
+
+class PPO_GRU_Critic(nn.Module):
+    """PPO Critic 网络（GRU架构），使用 GRU 预测器处理序列状态"""
+    def __init__(self, gru_predictor: GruPredictor, norm: bool = False, simple_nn: bool = False,
+                 state_dim: int = 1, hidden_dim: int = 64, gru_hidden_dim: int = 64) -> None:
+        super().__init__()
+        self.gru_predictor = gru_predictor
+        
+        self.state_norm = nn.LayerNorm(gru_hidden_dim) if norm else nn.Identity()
+        self.net = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.LayerNorm(hidden_dim) if norm else nn.Identity(),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1),
+        )
+        self._init_weights()
+
+    def _init_weights(self) -> None:
+        for m in self.net.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+                nn.init.constant_(m.bias, 0.0)
+        nn.init.orthogonal_(self.net[-1].weight, gain=1.0)
+
+    def forward(self, state: torch.Tensor) -> torch.Tensor:
+        state_features = self.gru_predictor(state, critic=True)
+        return self.net(self.state_norm(state_features))
+
+
 def build_actor_critic(
     arch: str,
     state_dim: int,
@@ -371,6 +561,40 @@ def build_actor_critic(
                             state_dim=state_dim, action_dim=action_dim, hidden_dim=hidden_dim)
         critic = Gru_Critic(gru_predictor2, norm=norm, simple_nn=simple_nn,
                             state_dim=state_dim, action_dim=action_dim, hidden_dim=hidden_dim)
+    else:
+        raise ValueError(f"Unsupported architecture: {arch}")
+    return actor.to(device), critic.to(device)
+
+
+def build_ppo_actor_critic(
+    arch: str,
+    state_dim: int,
+    action_dim: int,
+    hidden_dim: int,
+    action_bound: float,
+    gru_hidden: int = 64,
+    gru_layers: int = 1,
+    fc_seq_len: int = 5,
+    norm: bool = False,
+    simple_nn: bool = False,
+) -> Tuple[PPO_MLP_Actor|PPO_GRU_Actor, PPO_MLP_Critic|PPO_GRU_Critic]:
+    """构建 PPO 的 Actor 和 Critic 网络"""
+    arch = arch.lower()
+    if arch == "mlp":
+        actor = PPO_MLP_Actor(state_dim, action_dim, hidden_dim, action_bound)
+        critic = PPO_MLP_Critic(state_dim, hidden_dim)
+    elif arch == "seq":
+        gru_predictor1 = GruPredictor(norm=norm, simple_nn=simple_nn, 
+                                     state_dim=state_dim, hidden_dim=gru_hidden, 
+                                     num_layers=gru_layers, fc_seq_len=fc_seq_len)
+        gru_predictor2 = GruPredictor(norm=norm, simple_nn=simple_nn, 
+                                     state_dim=state_dim, hidden_dim=gru_hidden, 
+                                     num_layers=gru_layers, fc_seq_len=fc_seq_len)
+        actor = PPO_GRU_Actor(gru_predictor1, norm=norm, simple_nn=simple_nn,
+                              state_dim=state_dim, action_dim=action_dim, 
+                              hidden_dim=hidden_dim, action_bound=action_bound)
+        critic = PPO_GRU_Critic(gru_predictor2, norm=norm, simple_nn=simple_nn,
+                                state_dim=state_dim, hidden_dim=hidden_dim, gru_hidden_dim=gru_hidden)
     else:
         raise ValueError(f"Unsupported architecture: {arch}")
     return actor.to(device), critic.to(device)

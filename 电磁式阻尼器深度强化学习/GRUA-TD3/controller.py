@@ -5,9 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from torch.distributions import Normal
 
-from networks import build_actor_critic, device
+from networks import build_actor_critic, build_ppo_actor_critic, device
 from fx import ACTION_BOUND
 
 
@@ -238,171 +237,218 @@ class TD3Controller(BaseController):
         self.total_it = int(payload.get("total_it", 0))
 
 
-class PPOActor(nn.Module):
-    """Simple Gaussian policy with tanh squash."""
-
-    def __init__(self, state_dim: int, action_dim: int, hidden_dim: int, action_bound: float) -> None:
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(state_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, action_dim),
-        )
-        self.log_std = nn.Parameter(torch.zeros(action_dim))
-        self.action_bound = action_bound
-
-    def forward(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        mean = self.net(state)
-        log_std = self.log_std.clamp(-20, 2)
-        std = log_std.exp()
-        return mean, std
-
-    def sample(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        mean, std = self(state)
-        dist = Normal(mean, std)
-        action = dist.rsample()
-        log_prob = dist.log_prob(action).sum(dim=-1, keepdim=True)
-        squashed_action = torch.tanh(action) * self.action_bound
-        # tanh-corrected log prob
-        log_prob -= torch.log(1 - torch.tanh(action).pow(2) + 1e-6).sum(dim=-1, keepdim=True)
-        return squashed_action, log_prob
-
-
-class PPOCritic(nn.Module):
-    def __init__(self, state_dim: int, hidden_dim: int) -> None:
-        super().__init__()
-        self.net = nn.Sequential(
-            nn.Linear(state_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.Tanh(),
-            nn.Linear(hidden_dim, 1),
-        )
-
-    def forward(self, state: torch.Tensor) -> torch.Tensor:
-        return self.net(state)
-
-
 class PPOController(BaseController):
-    """On-policy PPO controller using replay buffer batches for updates."""
+    """PPO 控制器，支持 MLP/GRU/Attention 结构。
+    
+    与 TD3Controller 接口兼容，可直接用于现有的 train.py 训练循环。
+    采用与 TD3 相同的更新逻辑：每个时间步从 ReplayBuffer 采样并更新。
+    """
 
     def __init__(
-        self, state_dim: int, action_dim: int = 1, action_bound: float = ACTION_BOUND,
-        hidden_dim: int = 128,
-        actor_lr: float = 3e-4,
-        critic_lr: float = 3e-4,
-        gamma: float = 0.99,
-        lam: float = 0.95,
-        clip_ratio: float = 0.2,
-        entropy_coef: float = 1e-3,
-        critic_coef: float = 0.5,
-        train_iters: int = 4,
-        max_grad_norm: float = 0.5,
+        self, arch: str = "mlp",
+        norm: bool = False, simple_nn: bool = False,
+        state_dim: int = 6, action_dim: int = 1, action_bound: float = 5.0,
+        gru_hidden: int = 64, gru_layers: int = 1, hidden_dim: int = 128,
+        seq_len: int = 32, fc_seq_len: int = 4,
+        actor_lr: float = 3e-4, critic_lr: float = 1e-3, 
+        gamma: float = 0.99, gae_lambda: float = 0.95,
+        clip_epsilon: float = 0.2, entropy_coef: float = 0.01, value_loss_coef: float = 0.5,
+        max_grad_norm: float = 0.5, n_epochs: int = 4, mini_batch_size: int = 64,
     ) -> None:
         super().__init__()
-        self.arch = "ppo"
-        self.gamma = gamma
-        self.lam = lam
-        self.clip_ratio = clip_ratio
-        self.entropy_coef = entropy_coef
-        self.critic_coef = critic_coef
-        self.train_iters = train_iters
-        self.max_grad_norm = max_grad_norm
         self.action_bound = action_bound
+        self.arch = arch.lower()
+        self.seq_len = max(1, seq_len)
+        self.gamma = gamma  # 折扣因子
+        self.gae_lambda = gae_lambda  # GAE lambda 参数
+        self.clip_epsilon = clip_epsilon  # PPO 裁剪系数
+        self.entropy_coef = entropy_coef  # 熵正则化系数
+        self.value_loss_coef = value_loss_coef  # 价值损失系数
+        self.max_grad_norm = max_grad_norm  # 梯度裁剪阈值
+        self.n_epochs = n_epochs  # 每次更新的 epoch 数（K_epochs）
+        self.mini_batch_size = mini_batch_size  # mini-batch 大小
+        # 构建 Actor 和 Critic 网络
+        self.actor, self.critic = build_ppo_actor_critic(
+            self.arch, state_dim, action_dim, hidden_dim, action_bound,
+            gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn
+        )
 
-        self.actor = PPOActor(state_dim, action_dim, hidden_dim, action_bound).to(device)
-        self.critic = PPOCritic(state_dim, hidden_dim).to(device)
-        self.actor_optim = optim.Adam(self.actor.parameters(), lr=actor_lr)
-        self.critic_optim = optim.Adam(self.critic.parameters(), lr=critic_lr)
+        # 使用统一的优化器
+        self.optimizer = optim.Adam([
+            {'params': self.actor.parameters(), 'lr': actor_lr},
+            {'params': self.critic.parameters(), 'lr': critic_lr}
+        ])
+        
+        self.total_it = 0  # 总更新迭代计数
 
+    # ------------------------------------------------------------------
     def reset(self) -> None:
+        """重置控制器状态（每个 episode 开始时调用）"""
         self.obs_state_history = []
 
+    # ------------------------------------------------------------------
     def select_action(self, obs: np.ndarray, noise_scale: float = 0.0) -> float:
-        state = torch.tensor(obs, dtype=torch.float32, device=device).unsqueeze(0)
+        """基于当前观测值选择动作，接口与 TD3 兼容
+        
+        Args:
+            obs: 当前观测值
+            noise_scale: 探索噪声比例（0.0 表示确定性动作）
+            
+        Returns:
+            action: 选择的动作值（float）
+        """
+        self.obs_state_history.append(obs.copy())
+        
+        if self.arch == "mlp":
+            state_input = obs
+        elif self.arch == "seq":
+            state_input = self.obs_state_history[-self.seq_len:]
+        state_input = np.array(state_input, dtype=np.float32)
+        
+        self.actor.eval()
         with torch.no_grad():
-            action, _ = self.actor.sample(state)
-        return float(action.cpu().numpy().flatten()[0])
+            state_tensor = torch.tensor(state_input, dtype=torch.float32, device=device).unsqueeze(0)
+            
+            # 根据 noise_scale 决定是否使用确定性动作
+            deterministic = (noise_scale == 0.0)
+            action, _ = self.actor.get_action_and_log_prob(state_tensor, deterministic=deterministic)
+            
+        self.actor.train()
+        
+        action_np = float(action.cpu().numpy().flatten()[0])
+        return action_np
 
-    def _compute_returns_adv(self, rewards: torch.Tensor, dones: torch.Tensor, values: torch.Tensor, next_values: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        deltas = rewards + self.gamma * (1 - dones) * next_values - values
-        adv = torch.zeros_like(rewards, device=device)
-        gae = 0
-        for t in reversed(range(len(rewards))):
-            gae = deltas[t] + self.gamma * self.lam * (1 - dones[t]) * gae
-            adv[t] = gae
-        returns = adv + values
-        return returns, adv
+    # ------------------------------------------------------------------
+    def update(self, replay_buffer: ReplayBuffer, batch_size: int) -> Tuple[float, float]:
+        """更新 Actor 和 Critic 网络，接口与 TD3 兼容
+        
+        采用与 TD3 相同的更新逻辑：每个时间步从 ReplayBuffer 采样并更新。
+        
+        Args:
+            replay_buffer: 经验回放池
+            batch_size: 批次大小（每次更新采样的样本数）
+            
+        Returns:
+            (critic_loss, actor_loss): 损失值元组
+        """
+        self.total_it += 1
 
-    def update(self, replay_buffer: ReplayBuffer, batch_size: int):
-        states, actions, rewards, next_states, dones = replay_buffer.sample(batch_size=batch_size, use_sequence=False)
-        actions = actions.view(batch_size, -1)
+        # 从经验池采样，与 TD3 相同
+        use_seq = (False or self.arch == "seq")
+        states, actions, rewards, next_states, dones = replay_buffer.sample(
+            batch_size=batch_size, use_sequence=use_seq
+        )
 
-        # 将已压缩的动作反解到未压缩空间，避免 log_prob 计算出现 NaN
-        eps = 1e-6
-        clipped = torch.clamp(actions / self.action_bound, -1 + eps, 1 - eps)
-        unsquashed_actions = torch.atanh(clipped)
-
+        # 计算 GAE 优势估计和目标回报
         with torch.no_grad():
-            values = self.critic(states)
-            next_values = self.critic(next_states)
-            returns, advantages = self._compute_returns_adv(rewards, dones, values, next_values)
+            # 使用当前 critic 计算价值
+            values = self.critic(states).squeeze(-1)  # [batch_size]
+            next_values = self.critic(next_states).squeeze(-1)  # [batch_size]
+            
+            # 计算 TD 误差 (deltas)
+            rewards_flat = rewards.squeeze(-1) if rewards.dim() > 1 else rewards
+            dones_flat = dones.squeeze(-1) if dones.dim() > 1 else dones
+            deltas = rewards_flat + self.gamma * next_values * (1 - dones_flat) - values
+            
+            # 计算 GAE（简化版，假设 batch 内样本独立）
+            advantages = deltas  # 简化为单步 TD 误差
+            returns = rewards_flat + self.gamma * next_values * (1 - dones_flat)
+            
+            # 标准化优势（增强数值稳定性）
+            adv_mean = advantages.mean()
             adv_std = advantages.std()
-            advantages = (advantages - advantages.mean()) / (adv_std + 1e-8)
+            if adv_std < 1e-6:  # 如果标准差太小，不标准化
+                advantages = advantages - adv_mean
+            else:
+                advantages = (advantages - adv_mean) / (adv_std + 1e-8)
+        
+        # 准备数据张量
+        advantages_tensor = advantages.unsqueeze(1)  # [batch_size, 1]
+        returns_tensor = returns.unsqueeze(1)  # [batch_size, 1]
+        
+        # 多次 epoch 更新（K_epochs）
+        total_actor_loss = 0.0
+        total_critic_loss = 0.0
+        n_updates = 0
+        
+        for epoch in range(self.n_epochs):
+            # 每个epoch开始时重新计算old_log_probs，防止梯度爆炸
+            with torch.no_grad():
+                old_log_probs, _ = self.actor.evaluate_actions(states, actions)
+            
+            # 随机打乱索引
+            indices = torch.randperm(batch_size, device=device)
+            
+            # Mini-batch 更新
+            for start in range(0, batch_size, self.mini_batch_size):
+                end = min(start + self.mini_batch_size, batch_size)
+                idx = indices[start:end]
+                
+                # 获取当前批次的数据
+                batch_states = states[idx]
+                batch_actions = actions[idx]
+                batch_old_log_probs = old_log_probs[idx]
+                batch_advantages = advantages_tensor[idx]
+                batch_returns = returns_tensor[idx]
+                
+                # 计算新策略的 log_prob 和熵
+                new_log_probs, entropy = self.actor.evaluate_actions(batch_states, batch_actions)
+                
+                # 计算重要性采样比率（添加数值稳定性检查）
+                log_ratio = new_log_probs - batch_old_log_probs
+                log_ratio = torch.clamp(log_ratio, -20, 20)  # 防止exp溢出
+                ratios = torch.exp(log_ratio)
+                
+                # 计算剪切目标函数（PPO-Clip）
+                surr1 = ratios * batch_advantages  # 未剪切的目标
+                surr2 = torch.clamp(ratios, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * batch_advantages
+                policy_loss = -torch.min(surr1, surr2).mean()  # 策略损失
+                
+                # 计算价值函数损失
+                batch_values = self.critic(batch_states)
+                value_loss = F.mse_loss(batch_values, batch_returns)
+                
+                # 总损失 = 策略损失 + 价值损失系数 * 价值损失 - 熵系数 * 熵
+                loss = policy_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy.mean()
+                
+                # 执行梯度下降
+                self.optimizer.zero_grad()
+                loss.backward()
+                
+                # 梯度裁剪
+                if self.max_grad_norm:
+                    torch.nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
+                    torch.nn.utils.clip_grad_norm_(self.critic.parameters(), self.max_grad_norm)
+                
+                self.optimizer.step()
+                
+                total_actor_loss += policy_loss.item()
+                total_critic_loss += value_loss.item()
+                n_updates += 1
+        
+        avg_actor_loss = total_actor_loss / max(1, n_updates)
+        avg_critic_loss = total_critic_loss / max(1, n_updates)
+        
+        return avg_critic_loss, avg_actor_loss
 
-        mean, std = self.actor(states)
-        dist = Normal(mean, std)
-        old_log_probs = (dist.log_prob(unsquashed_actions).sum(dim=-1, keepdim=True) - torch.log(1 - clipped.pow(2) + eps).sum(dim=-1, keepdim=True)).detach()
-
-        actor_losses = []
-        critic_losses = []
-        entropies = []
-        for _ in range(self.train_iters):
-            mean, std = self.actor(states)
-            dist = Normal(mean, std)
-            log_probs = dist.log_prob(unsquashed_actions).sum(dim=-1, keepdim=True) - torch.log(1 - clipped.pow(2) + eps).sum(dim=-1, keepdim=True)
-            entropy = dist.entropy().sum(dim=-1, keepdim=True)
-
-            ratio = torch.exp(log_probs - old_log_probs)
-            surr1 = ratio * advantages
-            surr2 = torch.clamp(ratio, 1.0 - self.clip_ratio, 1.0 + self.clip_ratio) * advantages
-            actor_loss = -(torch.min(surr1, surr2)).mean() - self.entropy_coef * entropy.mean()
-
-            value_pred = self.critic(states)
-            critic_loss = F.mse_loss(value_pred, returns)
-
-            self.actor_optim.zero_grad()
-            actor_loss.backward()
-            nn.utils.clip_grad_norm_(self.actor.parameters(), self.max_grad_norm)
-            self.actor_optim.step()
-
-            self.critic_optim.zero_grad()
-            critic_loss.backward()
-            nn.utils.clip_grad_norm_(self.critic.parameters(), self.max_grad_norm)
-            self.critic_optim.step()
-
-            actor_losses.append(actor_loss.item())
-            critic_losses.append(critic_loss.item())
-            entropies.append(entropy.mean().item())
-
-        return float(np.mean(critic_losses)), float(np.mean(actor_losses))
-
+    # ------------------------------------------------------------------
     def export_state(self) -> Dict[str, object]:
+        """导出控制器状态字典，用于保存模型。"""
         return {
             "arch": self.arch,
             "actor": self.actor.state_dict(),
             "critic": self.critic.state_dict(),
-            "actor_optim": self.actor_optim.state_dict(),
-            "critic_optim": self.critic_optim.state_dict(),
+            "optimizer": self.optimizer.state_dict(),
+            "total_it": self.total_it,
         }
 
     def load_state(self, payload: Dict[str, object]) -> None:
+        """从状态字典加载控制器模型参数。"""
         self.actor.load_state_dict(payload["actor"])
         self.critic.load_state_dict(payload["critic"])
-        self.actor_optim.load_state_dict(payload["actor_optim"])
-        self.critic_optim.load_state_dict(payload["critic_optim"])
+        if "optimizer" in payload:
+            self.optimizer.load_state_dict(payload["optimizer"])
+        self.total_it = int(payload.get("total_it", 0))
 
 
 def build_controller(PARAMS, type:str):
