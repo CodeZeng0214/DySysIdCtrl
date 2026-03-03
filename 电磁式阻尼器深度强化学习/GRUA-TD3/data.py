@@ -81,8 +81,18 @@ class TrainingHistory:
             obj._metrics[key] = list(np.array(arr).tolist())
         return obj
 
-    def metric_arrays(self) -> Dict[str, np.ndarray]:
-        return {k: np.array(v) for k, v in self._metrics.items()}
+    def as_numpy(self, keys=None) -> Dict[str, np.ndarray] | np.ndarray:
+        """以 NumPy 数组形式返回记录数据。\n
+        如果提供 keys 列表，则只返回指定字段。\n
+        如果 keys 为 None，则返回所有字段。\n
+        如果 keys 是字符串，则只返回该字段的数组。\n
+        """
+        if keys is None:
+            return {k: np.array(v) for k, v in self._metrics.items()}
+        elif isinstance(keys, str):
+            return np.array(self._metrics.get(keys, [0]*len(self._metrics)))
+        else:
+            return {k: np.array(self._metrics.get(k, [0]*len(self._metrics))) for k in keys if k in self._metrics}
     
     def get_metrics(self) -> Dict[str, List[float]]:
         """获取原始的指标数据字典。"""
@@ -97,7 +107,6 @@ class TrainingHistory:
         if not self._metrics:
             return 0
         return len(next(iter(self._metrics.values())))
-
 
 def save_checkpoint(path: str, agent_state: Dict[str, Any], episode: EpisodeRecorder, history: TrainingHistory, extra: Optional[Dict[str, Any]] = None) -> None:
     """保存训练检查点，包括控制器状态、当前回合数据和训练历史记录。"""
@@ -165,7 +174,7 @@ def slect_checkpoint(ckpt_dir: str) -> Optional[str]:
     return checkpoint
 
 ## 通用的绘图函数模块
-def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[List[Tuple[int]]] = None,
+def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_group: Optional[List[Tuple[int]]] = None,
               figsize: Tuple[int, int] = (16, 9), sub_shape: Optional[Tuple[int, int]] = None, 
               plot_title: Optional[str] = None, subplot_titles: Optional[List[str]] = None,
               colors: Optional[List[Tuple[str]]] = None, line_styles: Optional[List[Tuple[str]]] = None,
@@ -191,6 +200,8 @@ def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[Li
     plt.rcParams['font.sans-serif'] = ['SimHei']
     plt.rcParams['axes.unicode_minus'] = False
     # 规范化 y 输入：接受 ndarray（1D/2D）或列表，统一转换为列表结构
+    if y_values is None:
+        raise ValueError("y_values 不能为空")
     if isinstance(y_values, np.ndarray):
         if y_values.ndim == 1:
             y_values = y_values.reshape(-1, 1)
@@ -221,11 +232,13 @@ def plot_data(x_values: np.ndarray, y_values: np.ndarray, sub_group: Optional[Li
         x_values = np.tile(x_values, (1, y_values.shape[1] // x_values.shape[1])) # 尝试扩展 x_values 列数以匹配 y_values
 
     # 布局：单图或子图
-    num_subplots = len(sub_group)
     if sub_shape:
         rows, cols = sub_shape
+    elif sub_group:
+        rows, cols = 1, len(sub_group)
     else:
-        rows, cols = 1, num_subplots
+        rows, cols = 1, 1
+        sub_group = [(i for i in range(y_values.shape[1]))]  # 所有曲线在一个图中
     fig, axes = plt.subplots(rows, cols, figsize=figsize, squeeze=False)
     axes_flat = axes.flatten()
 

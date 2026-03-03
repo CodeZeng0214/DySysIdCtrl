@@ -134,3 +134,29 @@ class ReplayBuffer:
             idxs = np.array([]) # 空数组
             raise ValueError("取样没有得到有效索引")
 
+    def save_buffer(self, filename: str) -> None:
+        """保存经验池到文件。"""
+        np.savez_compressed(
+            filename,
+            states=self.states,
+            actions=self.actions,
+            rewards=self.rewards,
+            next_states=self.next_states,
+            dones=self.dones,
+            delay_steps=self.delay_steps,
+            ptr=self.ptr,
+            size=self.size,
+        )
+
+    def load_buffer(self, filename: str) -> None:
+        """从文件加载经验池。"""
+        data = np.load(filename)
+        self.states = data['states']
+        self.actions = data['actions']
+        self.rewards = data['rewards']
+        self.next_states = data['next_states']
+        self.dones = data['dones']
+        self.delay_steps = data['delay_steps']
+        self.ptr = int(data['ptr'])
+        self.size = int(data['size'])
+
