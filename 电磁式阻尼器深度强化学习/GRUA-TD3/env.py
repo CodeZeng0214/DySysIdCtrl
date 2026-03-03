@@ -84,7 +84,7 @@ class ElectromagneticDamperEnv:
         self.dt_history = [] # 记录时间步长的历史
 
         self.delay_enabled = delay_enabled # 是否启用动作延迟
-        self.delay_mean_steps = int(max(1, delay_mean_steps)) # 延迟的平均步数
+        self.delay_mean_step = int(max(1, delay_mean_steps)) # 延迟的平均步数
         self.delay_std_steps = int(delay_std_steps) # 延迟的标准差步数
         self.delay_time = 0.0 # 当前的延迟时间
         self.delay_step: int = 0 # 当前的延迟步数
@@ -153,6 +153,7 @@ class ElectromagneticDamperEnv:
         if self.delay_enabled:
             self.delay_step = self._sample_delay_steps() # 采样延迟步数
             self.delay_time = self._cal_delay_time(self.delay_step) # 计算对应的延迟时间
+            assert self.delay_time < 3 * self.Ts * self.delay_mean_step, "延迟时间过大(超过3倍平均延迟时间)，可能是采样异常"
         
         # 如果启用时间步长噪声，则采样新的时间步长并重新离散系统矩阵
         dt = self.Ts
@@ -242,9 +243,12 @@ class ElectromagneticDamperEnv:
         next_state[[2, 5]] = Y.reshape(-1)
         return next_state
     
-    def _cal_delay_time(self, delay_steps: int) -> float:
+    def _cal_delay_time(self, delay_step: int) -> float:
         """计算给定延迟步数对应的延迟时间"""
-        return sum(self.dt_history[-delay_steps:])
+        assert delay_step < 3 * self.delay_mean_step, "延迟步数过大(超过3倍平均延迟步数)，可能是采样异常"
+        if delay_step == 0:
+            return 0.0
+        return sum(self.dt_history[-delay_step:])
 
     def _sample_dt(self) -> float:
         if not self.use_dt_noise:
@@ -255,7 +259,8 @@ class ElectromagneticDamperEnv:
 
     def _sample_delay_steps(self) -> int:
         """从正态分布中采样延迟步数"""
-        raw = np.clip(np.random.normal(self.delay_mean_steps, self.delay_std_steps), 0, self.delay_mean_steps * 2) # 防止延迟步数采样过大
+        raw = np.clip(np.random.normal(self.delay_mean_step, self.delay_std_steps), 0, self.delay_mean_step * 2) # 防止延迟步数采样过大
+        assert raw < 3 * self.delay_mean_step, "延迟步数过大(超过3倍平均延迟步数)，可能是采样异常"
         return max(0, int(round(raw)))
 
     def _precompute_discrete(self, dt: float) -> None:

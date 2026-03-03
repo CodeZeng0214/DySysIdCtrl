@@ -98,27 +98,33 @@ class ReplayBuffer:
         idxs = np.random.randint(0, self.size, size=batch_size*2) # 多采样以备筛选
         
         if apply_delay:
+            for i in idxs:
+                if i - delays_arr[i, 0] < 0: # 如果索引减去对应的延迟步数小于0，说明越界了
+                    idxs = idxs[idxs != i] # 从索引列表中剔除这个索引
             # 如果应用延迟，确保采样的索引不会导致越界
+            delays_save_list: List[int] = delays_arr[idxs, 0].tolist() # 采样索引对应的延迟步数
             idxs = np.array([i - delays_arr[i, 0] for i in idxs if i - delays_arr[i, 0] >= 0]) # 调整索引以考虑延迟
-        delays_save_list: List[int] = delays_arr[idxs, 0].tolist() # 采样索引对应的延迟步数
 
 
         # 序列采样，基于上面得到的延迟索引进行筛选
         idx_seqs = [] # 存储符合条件的索引
         if use_sequence and self.seq_len > 1:
-            delays_save_list = []
+            if delays_save_list is None:
+                delays_save_list = [0] * len(idxs) # 如果没有延迟信息，默认延迟为0
             for i, idx in enumerate(idxs):
                 # 剔除不满足序列长度的样本
                 need = self.seq_len # 需要的历史长度
                 if idx + 1 < need:
+                    delays_save_list[i] = "deleted"
                     continue
                 start = idx - need + 1
                 # 剔除跨回合边界的样本
                 window_dones = dones_arr[start : idx + 1] # 采样窗口内的 done 标志
                 if window_dones[:-1].sum() != 0: # 中间有 done 标志，说明跨回合
+                    delays_save_list[i] = "deleted"
                     continue
                 idx_seqs.append((start, idx + 1)) # 记录有效的起止索引
-                delays_save_list.append(delays_arr[idx, 0])
+            delays_save_list = [d for d in delays_save_list if d != "deleted"] # 删除无效的延迟信息
 
         delays_save_np = np.array(delays_save_list, dtype=np.int32) # 转为 numpy 数组
         assert delays_save_np.shape[0] == (len(idx_seqs) or len(idxs)), "延迟步数数组长度与索引数量不匹配"
