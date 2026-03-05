@@ -197,8 +197,8 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
     - save_path: 路径字符串；若提供则保存为 svg（文件名由 plot_title 或默认 plot.svg）。
     """
     # 设置中文字体和GPU
-    plt.rcParams['font.sans-serif'] = ['SimHei']
-    plt.rcParams['axes.unicode_minus'] = False
+    plt.rcParams["font.family"] = ["SimHei", "WenQuanYi Micro Hei", "DejaVu Sans", "Microsoft YaHei"]  # 优先使用黑体，备选字体
+    plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示为方块的问题
     # 规范化 y 输入：接受 ndarray（1D/2D）或列表，统一转换为列表结构
     if y_values is None:
         raise ValueError("y_values 不能为空")
