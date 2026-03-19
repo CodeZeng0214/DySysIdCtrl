@@ -35,7 +35,7 @@ def train(project_name: str,
           state0: Optional[np.ndarray] = None,
           z_func: Optional[Callable] = None, f_func: Optional[Callable] = None,
           batch_size: int = 64
-          ) -> None:
+          ) -> TrainingHistory:
     """训练函数。\n
     参数：\n
         project_name: 项目名称，用于创建保存路径。

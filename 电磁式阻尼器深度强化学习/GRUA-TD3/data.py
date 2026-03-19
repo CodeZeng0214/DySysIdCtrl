@@ -3,7 +3,7 @@ import json
 import numpy as np
 import torch
 from collections import defaultdict
-from typing import Any, Dict, Tuple, List, Optional
+from typing import Any, Callable, Dict, Tuple, List, Optional
 import matplotlib.pyplot as plt
 import inspect
 import logging
@@ -168,10 +168,13 @@ def slect_checkpoint(ckpt_dir: str) -> Optional[str]:
                 checkpoint = checkpoints[-1]
                 logging.info(f"无效输入，使用最新检查点: {checkpoint}")
         else:
-            print(f"使用最新检查点: {checkpoint}")
             checkpoint = checkpoints[-1]
+            print(f"使用最新检查点: {checkpoint}")
             logging.info(f"使用最新检查点: {checkpoint}")
     return checkpoint
+
+# def plot_reward_fx(r_func: Callable) -> None:
+#     x = np.linspace(-0.05, 0.05, 1000)
 
 ## 通用的绘图函数模块
 def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_group: Optional[List[Tuple[int]]] = None,
@@ -197,7 +200,7 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
     - save_path: 路径字符串；若提供则保存为 svg（文件名由 plot_title 或默认 plot.svg）。
     """
     # 设置中文字体和GPU
-    plt.rcParams["font.family"] = ["SimHei", "WenQuanYi Micro Hei", "DejaVu Sans", "Microsoft YaHei"]  # 优先使用黑体，备选字体
+    plt.rcParams["font.family"] = ["SimHei", "DejaVu Sans", "Microsoft YaHei"]  # 优先使用黑体，备选字体
     plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示为方块的问题
     # 规范化 y 输入：接受 ndarray（1D/2D）或列表，统一转换为列表结构
     if y_values is None:

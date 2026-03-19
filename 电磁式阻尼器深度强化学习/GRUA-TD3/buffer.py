@@ -96,7 +96,7 @@ class ReplayBuffer:
         """采样符合条件的索引，用于后续数据提取。"""
         apply_delay = (delays_arr[:].sum() > 0) # 检查是否有延迟信息需要处理
         idxs = np.random.randint(0, self.size, size=batch_size*2) # 多采样以备筛选
-        delays_save_list = None # 存储采样索引对应的延迟步数，初始为 None
+        delays_save_list = [0] * len(idxs) # 存储采样索引对应的延迟步数，如果没有延迟信息，默认延迟为0
         
         if apply_delay:
             for i in idxs:
@@ -110,8 +110,6 @@ class ReplayBuffer:
         # 序列采样，基于上面得到的延迟索引进行筛选
         idx_seqs = [] # 存储符合条件的索引
         if use_sequence and self.seq_len > 1:
-            if delays_save_list is None:
-                delays_save_list = [0] * len(idxs) # 如果没有延迟信息，默认延迟为0
             for i, idx in enumerate(idxs):
                 # 剔除不满足序列长度的样本
                 need = self.seq_len # 需要的历史长度
