@@ -134,7 +134,7 @@ class TD3Controller(BaseController):
         """基于当前观测值选择动作，自动处理延迟历史对齐和噪声添加"""
         self.obs_state_history.append(obs.copy()) # 记录观测状态历史
         if self.arch == "mlp":
-            state_input = obs
+            state_input = obs.copy()
         elif self.arch == "seq":
             state_input = self.obs_state_history[-self.seq_len:] # 取最近 seq_len 个观测状态
         state_input = np.array(state_input, dtype=np.float32)
