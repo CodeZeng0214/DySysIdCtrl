@@ -62,7 +62,7 @@ def train(project_name: str,
     nc_y_values=nc_recorder.as_numpy(keys='state_history')[:,[0,1,2,3,4,5]]
     plot_data(x_values=nc_x_values, y_values=nc_y_values, sub_shape=(3,2),
               legends=[('吸振器位移',),('主结构位移',),('吸振器速度',),('主结构速度',),('吸振器加速度',),('主结构加速度',)], legend_loc='upper right', 
-              sub_group=[(0,),(3,),(1,),(4,),(2,),(5,)],plot_title=f'{now_time}_初速度条件-环境无控制响应', save_path=plot_path, show=False)
+              sub_group=[(0,),(3,),(1,),(4,),(2,),(5,)],plot_title=f'{now_time}_初位移条件-环境无控制响应', save_path=plot_path, show=False)
 
     # 读取检查点以恢复训练
     if resume:
@@ -143,7 +143,7 @@ def train(project_name: str,
             plot_data(x_values=c_x_values, y_values=np.concatenate((c_y_values,nc_y_values[:,[3]]), axis=1), 
                       legends=[('吸振器位移',),('无控制-主结构位移','GRUATD3控制-主结构位移'),('吸振器速度',),('主结构速度',),('吸振器加速度',),('主结构加速度',)], legend_loc='upper right',
                       sub_shape=(3, 2), sub_group=[(0,), (6,3), (1,), (4,), (2,), (5,)],
-                      plot_title=f'{now_time}_初速度条件回合{ep}控制器响应', save_path=plot_path, show=False)
+                      plot_title=f'{now_time}_初位移条件回合{ep}控制器响应', save_path=plot_path, show=False)
             c_action_values = c_recorder.as_numpy(keys='action_history').reshape(-1, 1)
             c_reward_values = c_recorder.as_numpy(keys='reward_history').reshape(-1, 1)
             c_delay_time_values = c_recorder.as_numpy(keys='delay_time').reshape(-1, 1)
@@ -151,7 +151,7 @@ def train(project_name: str,
             plot_data(x_values=c_x_values, y_values=np.concatenate((c_action_values, c_reward_values, c_delay_time_values, c_dt_values), axis=1),
                       sub_shape=(2, 2), sub_group=[(0,), (1,), (2,), (3,)],
                       legends=[('动作',), ('奖励',), ('延迟时间',), ('时间步长',)], legend_loc='upper right',
-                      plot_title=f'{now_time}_初速度条件回合{ep}控制器动作等', save_path=plot_path, show=False)
+                      plot_title=f'{now_time}_初位移条件回合{ep}控制器动作等', save_path=plot_path, show=False)
             ep_sim_reward_sum = c_recorder.as_numpy(keys='reward_history').sum() # 仿真奖励总和
             # 保存模型和训练当前的历史
             history.checkpoint_name = f"{time.strftime('%m%d_%H%M%S')}_ep{ep}ckpt"

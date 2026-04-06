@@ -51,31 +51,39 @@ class PassiveController(BaseController):
 
 
 class PIDController(BaseController):
-    """Simple PID on a chosen state index (defaults to x2 displacement at index 3)."""
+    """Simple PID on a chosen state index."""
 
-    def __init__(self, kp: float, ki: float, kd: float, target: float = 0.0, state_index: int = 3, dt: float = 1e-3, u_max: float = ACTION_BOUND) -> None:
+    def __init__(self, kp: float = 1000.0, ki: float = 0.0, kd: float = 10.0, 
+                 target: float = 0.0, target_idx: int = 3, dt: float = 0.001) -> None:
+        super().__init__()
         self.kp = kp
         self.ki = ki
         self.kd = kd
-        self.target = target
-        self.state_index = state_index
+        self.target_idx = target_idx
+        self.target = 0.0  # 目标值（例如主结构位移为0）
         self.dt = dt
-        self.u_max = u_max
+        self.integral = 0.0 # 积分项
+        self.prev_error = 0.0 # 上一个误差值，用于计算微分项
+        self.arch = "pid"
+
+    def reset(self) -> None:
+        self.obs_state_history = [] # 重置观测状态历史
         self.integral = 0.0
-        self.prev_err = 0.0
+        self.prev_error = 0.0
 
-    def reset(self, first_obs: np.ndarray) -> None:
-        self.integral = 0.0
-        self.prev_err = float(self.target - first_obs[self.state_index])
-
-    def select_action(self, obs: np.ndarray, delay_steps: int = 0, noise_scale: float = 1.0) -> float:
-        err = float(self.target - obs[self.state_index])
-        self.integral += err * self.dt
-        deriv = (err - self.prev_err) / self.dt if self.dt > 0 else 0.0
-        self.prev_err = err
-        u = self.kp * err + self.ki * self.integral + self.kd * deriv
-        return float(np.clip(u, -self.u_max, self.u_max))
-
+    def select_action(self, obs: np.ndarray, noise_scale: float = 0.0) -> float:
+        self.obs_state_history.append(obs.copy())
+        
+        # We want the target state (e.g., main structure displacement) to be 0
+        current_val = obs[self.target_idx] if self.target_idx < len(obs) else 0.0
+        error = self.target - current_val
+        
+        self.integral += error * self.dt
+        derivative = (error - self.prev_error) / self.dt
+        self.prev_error = error
+        
+        action = self.kp * error + self.ki * self.integral + self.kd * derivative
+        return float(np.clip(action, -ACTION_BOUND, ACTION_BOUND))
 
 class TD3Controller(BaseController):
     """TD3 控制器，内置延迟历史对齐，可用于 MLP/GRU/Attention 结构。"""
