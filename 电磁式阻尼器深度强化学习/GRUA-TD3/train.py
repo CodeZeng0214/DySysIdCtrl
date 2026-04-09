@@ -87,7 +87,7 @@ def train(project_name: str,
 
 
     # 训练主循环
-    for ep in tqdm(range(history.current_episode, n_episodes)):
+    for ep in tqdm(range(history.current_episode+1, n_episodes+1)):
         ep_recorder = EpisodeRecorder() # 记录当前回合数据
 
         # 回合相关变量初始化

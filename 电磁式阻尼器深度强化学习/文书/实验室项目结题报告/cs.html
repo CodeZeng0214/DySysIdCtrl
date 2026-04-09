@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Time-Aware GRU-Attention-TD3算法训练流程图</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; margin-top: 50px; }
+        .mermaid { text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="mermaid">
+        graph TD
+            Start((开始训练)) --> Env
+
+            subgraph 交互与数据收集
+                Env[环境 Environment<br>包含随机时间间隔和时滞生成]
+                Actor[在线 Actor 网络]
+                Buffer[(经验回放池 D)]
+
+                Env -- "1. 观测时滞状态序列 s_seq" --> Actor
+                Actor -- "2. 输出动作 a" --> Env
+                Env -- "3. 状态转移: 奖励 r, 新状态序列 s'_seq" --> Buffer
+                Actor -- "动作 a 记录" --> Buffer
+            end
+
+            Buffer -- "4. 检查样本数" --> Condition1{达到更新阈值?}
+            Condition1 -- 否 --> Env
+
+            subgraph 网络学习与参数更新
+                Condition1 -- 是: 随机抽取批量经验 --> UpdateCenter[计算更新模块]
+                
+                TargetNets[目标网络<br>Target Actor & Critic]
+                Critic[在线 Critic 网络]
+
+                UpdateCenter -- "5. 提取 s'_seq" --> TargetNets
+                TargetNets -- "6. 目标动作 a', 目标 Q_min" --> UpdateCenter
+
+                UpdateCenter -- "7. 建立Critic损失 + 梯度裁剪" --> Critic
+                UpdateCenter -- "8. 建立Actor损失(沿 Q_梯度 上升)" --> Actor
+
+                Actor -. "9. 延迟软更新" .-> TargetNets
+                Critic -. "9. 延迟软更新" .-> TargetNets
+            end
+
+            Critic --> Condition2{达到最大训练回合?}
+            Condition2 -- 否 --> Env
+            Condition2 -- 是 --> End((获得训练好的控制器))
+    </div>
+</body>
+</html>

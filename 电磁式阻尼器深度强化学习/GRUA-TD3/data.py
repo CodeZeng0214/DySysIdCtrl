@@ -181,7 +181,7 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
               figsize: Tuple[int, int] = (16, 9), sub_shape: Optional[Tuple[int, int]] = None, 
               plot_title: Optional[str] = None, subplot_titles: Optional[List[str]] = None,
               colors: Optional[List[Tuple[str]]] = None, line_styles: Optional[List[Tuple[str]]] = None,
-              legends: Optional[List[Tuple[str]]] = None, show_legend: bool = True, legend_loc: str = "best",
+              total_label: Optional[List[str]] = None, legends: Optional[List[Tuple[str]]] = None, show_legend: bool = True, legend_loc: str = "best",
               xlabel: Optional[str] = None, ylabel: Optional[str] = None,
               xlim: Optional[Tuple[float, float]] = None, ylim: Optional[Tuple[float, float]] = None,
               show_grid: bool = False, log_scale: bool = False,
@@ -200,7 +200,11 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
     - save_path: 路径字符串；若提供则保存为 svg（文件名由 plot_title 或默认 plot.svg）。
     """
     # 设置中文字体和GPU
-    plt.rcParams["font.family"] = ["SimHei", "DejaVu Sans", "Microsoft YaHei"]  # 优先使用黑体，备选字体
+    plt.rcParams["font.family"] = ["SimSun","SimHei", "DejaVu Sans", "Microsoft YaHei"]  # 优先使用黑体，备选字体
+    plt.rcParams['font.serif'] = ["Times New Roman"]  # 英文衬线字体
+    plt.rcParams['font.size'] = 12  # 全局字体大小
+    plt.rcParams['axes.titlesize'] = 14  # 坐标轴标题大小
+    plt.rcParams['axes.labelsize'] = 12  # 坐标轴标签大小
     plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示为方块的问题
     # 规范化 y 输入：接受 ndarray（1D/2D）或列表，统一转换为列表结构
     if y_values is None:
@@ -275,6 +279,9 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
             ax.legend(loc=legend_loc, fontsize=12)
         if subplot_titles and g_idx < len(subplot_titles):
             ax.set_title(subplot_titles[g_idx])
+        # 添加坐标轴交叉的黑色细线
+        ax.axhline(0, color='black', linewidth=1)
+        ax.axvline(0, color='black', linewidth=1)    
 
     # 统一标签（仅对首个轴设置，子图可通过 subplot_titles 区分）
     if xlabel:
@@ -283,6 +290,10 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
     if ylabel:
         for ax in axes_flat[::cols]:
             ax.set_ylabel(ylabel, fontsize=12)
+
+    # total_label
+    if total_label:
+        fig.legend(total_label, loc=legend_loc, fontsize=12)
 
     fig.tight_layout(rect=(0, 0, 1, 0.96) if plot_title else None)
 
