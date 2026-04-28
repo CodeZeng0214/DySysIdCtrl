@@ -48,6 +48,26 @@ class EpisodeRecorder:
         """清空所有记录。"""
         self._data.clear()
 
+    def save_csv(self, path: str) -> None:
+        """将记录保存为 CSV 文件。"""
+        import pandas as pd
+        csv_data: Dict[str, Any] = {}
+        for key, values in self._data.items():
+            if key == "obs_history":
+                continue  # 跳过 obs_history 字段
+            if len(values) > 0 and hasattr(values[0], "__len__") and not isinstance(values[0], str):
+                # 将向量展开成多个列，避免单元格内存在列表
+                try:
+                    for i in range(len(values[0])):
+                        csv_data[f"{key}_{i}"] = [v[i] for v in values]
+                except Exception:
+                    csv_data[key] = values
+            else:
+                csv_data[key] = values
+        df = pd.DataFrame(csv_data)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        df.to_csv(path, index=False)
+
 
 class TrainingHistory:
     """Aggregates episode-level scalars; auto-expands when new metrics are added."""
@@ -181,11 +201,12 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
               figsize: Tuple[int, int] = (16, 9), sub_shape: Optional[Tuple[int, int]] = None, 
               plot_title: Optional[str] = None, subplot_titles: Optional[List[str]] = None,
               colors: Optional[List[Tuple[str]]] = None, line_styles: Optional[List[Tuple[str]]] = None,
-              total_label: Optional[List[str]] = None, legends: Optional[List[Tuple[str]]] = None, show_legend: bool = True, legend_loc: str = "best",
+              total_legend: Optional[List[str]] = None, legends: Optional[List[Tuple[str]]] = None, show_legend: bool = True, legend_loc: str = "best",
               xlabel: Optional[str] = None, ylabel: Optional[str] = None,
               xlim: Optional[Tuple[float, float]] = None, ylim: Optional[Tuple[float, float]] = None,
               show_grid: bool = False, log_scale: bool = False,
               save_path: Optional[str] = None, show: bool = True,
+              totalsize: int = 16, title_fontsize: int = 18, label_fontsize: int = 16, legend_fontsize: int = 14
 ) -> None:
     """
     通用绘图：支持单图或子图栅格、多条曲线、自定义样式和保存。
@@ -202,9 +223,10 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
     # 设置中文字体和GPU
     plt.rcParams["font.family"] = ["SimSun","SimHei", "DejaVu Sans", "Microsoft YaHei"]  # 优先使用黑体，备选字体
     plt.rcParams['font.serif'] = ["Times New Roman"]  # 英文衬线字体
-    plt.rcParams['font.size'] = 12  # 全局字体大小
-    plt.rcParams['axes.titlesize'] = 14  # 坐标轴标题大小
-    plt.rcParams['axes.labelsize'] = 12  # 坐标轴标签大小
+    plt.rcParams['font.size'] = totalsize  # 全局字体大小
+    plt.rcParams['axes.titlesize'] = title_fontsize  # 坐标轴标题大小
+    plt.rcParams['axes.labelsize'] = label_fontsize  # 坐标轴标签大小
+    plt.rcParams['legend.fontsize'] = legend_fontsize  # 图例字体大小
     plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示为方块的问题
     # 规范化 y 输入：接受 ndarray（1D/2D）或列表，统一转换为列表结构
     if y_values is None:
@@ -217,11 +239,12 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
         else:
             raise ValueError("y_values ndarray 仅支持 1D 或 2D")
     elif isinstance(y_values, list):
-        y_values = np.array(y_values).reshape(-1, y_values[0].__len__())
+        y_values = concat(y_values, axis=0, concat_axis=1)  # 将列表中的数组连接成一个二维数组
+
 
     # 规范化 x 输入：接受 ndarray（1D/2D）或列表，统一转换为列表结构
     if x_values is None: # 自动生成 x_value
-        x_values = np.tile(np.arange(y_values.shape[0]), y_values.shape[1])
+        x_values = np.tile(np.arange(y_values.shape[0]).reshape(-1, 1), (1, y_values.shape[1]))  # 每列为 0,1,...,N-1
     if isinstance(x_values, np.ndarray):
         if x_values.ndim == 1:
             x_values = x_values.reshape(-1, 1)
@@ -230,7 +253,7 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
         else:
             raise ValueError("x_values ndarray 仅支持 1D 或 2D")
     elif isinstance(x_values, list):
-        x_values = np.array(x_values).reshape(-1, x_values[0].__len__())
+        x_values = concat(x_values)
     
     # 确保 x 和 y 的维度匹配
     if x_values.shape[0] != y_values.shape[0]:
@@ -254,7 +277,7 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
 
     # 绘制：按分组在子图中绘制多条曲线
     for g_idx, group in enumerate(sub_group):
-        ax = axes_flat[g_idx] if g_idx < len(axes_flat) else axes_flat[-1]
+        ax: plt.Axes = axes_flat[g_idx] if g_idx < len(axes_flat) else axes_flat[-1]
         for idx in group:
             if idx >= y_values.shape[1]:
                 raise IndexError(f"sub_group 索引 {idx} 超出 y_values 列数 {y_values.shape[1]}")
@@ -263,10 +286,12 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
             if xv.shape[0] != yv.shape[0]:
                 raise ValueError(f"子图 {g_idx} 曲线 {idx} 的 x 与 y 长度不匹配: {len(xv)} vs {len(yv)}")
             color = pick_style(colors, g_idx, idx)
-            label = pick_style(legends, g_idx, idx)
             style = pick_style(line_styles, g_idx, idx) or "-"
-            ax.plot(xv, yv, color=color, linestyle=style, label=label)
-
+            ax.plot(xv, yv, color=color, linestyle=style)
+        if xlabel:
+            ax.set_xlabel(xlabel)
+        if ylabel:
+            ax.set_ylabel(ylabel)
         if log_scale:
             ax.set_yscale("log")
         if xlim:
@@ -276,7 +301,7 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
         if show_grid:
             ax.grid(True)
         if show_legend and legends:
-            ax.legend(loc=legend_loc, fontsize=12)
+            ax.legend(legends[g_idx],loc=legend_loc, frameon=False)
         if subplot_titles and g_idx < len(subplot_titles):
             ax.set_title(subplot_titles[g_idx])
         # 添加坐标轴交叉的黑色细线
@@ -286,14 +311,14 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
     # 统一标签（仅对首个轴设置，子图可通过 subplot_titles 区分）
     if xlabel:
         for ax in axes_flat[-cols:]:
-            ax.set_xlabel(xlabel, fontsize=12)
+            ax.set_xlabel(xlabel)
     if ylabel:
         for ax in axes_flat[::cols]:
-            ax.set_ylabel(ylabel, fontsize=12)
+            ax.set_ylabel(ylabel)
 
     # total_label
-    if total_label:
-        fig.legend(total_label, loc=legend_loc, fontsize=12)
+    if total_legend:
+        fig.legend(total_legend, loc=legend_loc, frameon=False)
 
     fig.tight_layout(rect=(0, 0, 1, 0.96) if plot_title else None)
 
@@ -372,3 +397,29 @@ def make_dirs(project_name: str) -> Tuple[str, str, str]:
     os.makedirs(save_plot_path, exist_ok=True)
 
     return project_path, save_checkpoint_path, save_plot_path
+
+def concat(*arrs, axis: int = 0, concat_axis: int = 1) -> np.ndarray:
+    """连接多个数组或者列表，保持维度一致。\n
+    自动向较短的数组添加Nan以匹配较长的数组，然后沿指定轴连接。\n"""
+    if not arrs:
+        raise ValueError("至少需要提供一个数组进行连接。")
+    if isinstance(arrs[0], list):
+        arrs = [np.array(arr) for arr in arrs[0]]
+        
+    max_dim = max(arr.shape[axis] for arr in arrs)
+    padded_arrs = []
+    
+    for arr in arrs:
+        if arr.shape[axis] < max_dim:
+            pad_len = max_dim - arr.shape[axis]
+            pad_width = [(0, 0)] * axis + [(0, pad_len)] + [(0, 0)] * (arr.ndim - axis - 1)
+            arr_padded = np.pad(arr, pad_width, mode='constant', constant_values=np.nan)
+            if arr_padded.ndim == 1:
+                arr_padded = arr_padded.reshape(-1, 1) # 确保是二维列向量
+            padded_arrs.append(arr_padded)
+        else:
+            if arr.ndim == 1:
+                arr = arr.reshape(-1, 1) # 确保是二维列向量
+            padded_arrs.append(arr)
+            
+    return np.concatenate(padded_arrs, axis=concat_axis)
