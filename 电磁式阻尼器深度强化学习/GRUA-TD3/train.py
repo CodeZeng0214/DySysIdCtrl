@@ -5,7 +5,7 @@ from typing import Optional, Callable
 import numpy as np
 from controller import BaseController
 from buffer import ReplayBuffer
-from data import EpisodeRecorder, TrainingHistory, save_checkpoint, load_checkpoint, slect_checkpoint, make_dirs, plot_data
+from data import EpisodeRecorder, TrainingHistory, save_checkpoint, load_checkpoint, slect_checkpoint, make_dirs, plot_data,concat
 from env import ElectromagneticDamperEnv
 from tqdm import tqdm
 import logging
@@ -85,9 +85,8 @@ def train(project_name: str,
             for ep in range(len(history)):
                 f.write(f"{ep+1:>8}, {history.get_data('reward_history')[ep]:>12.4f}, {history.get_data('simu_reward_history')[ep]:>12.4f}, {history.get_data('actor_loss_history')[ep]:>12.4f}, {history.get_data('critic_loss_history')[ep]:>12.4f}, {history.get_data('explore_noise_history')[ep]:>8.4f}\n")
 
-
     # 训练主循环
-    for ep in tqdm(range(history.current_episode, n_episodes)):
+    for ep in tqdm(range(history.current_episode, n_episodes+1)):
         ep_recorder = EpisodeRecorder() # 记录当前回合数据
 
         # 回合相关变量初始化
@@ -140,7 +139,9 @@ def train(project_name: str,
             c_recorder = env.run_episode(controller=controller, state0=state0, z_func=z_func, f_func=f_func)
             c_x_values = c_recorder.as_numpy(keys='time_history').reshape(-1, 1)
             c_y_values = c_recorder.as_numpy(keys='state_history')[:, [0, 1, 2, 3, 4, 5]]
-            plot_data(x_values=c_x_values, y_values=np.concatenate((c_y_values,nc_y_values[:,[3]]), axis=1), 
+            x_values = concat(c_x_values, nc_x_values, axis=0, concat_axis=1) # 将有控制器和无控制器的时间数据合并
+            y_values = concat(c_y_values, nc_y_values[:, [3]], axis=0, concat_axis=1) # 将有控制器和无控制器的主结构位移数据合并
+            plot_data(x_values=x_values, y_values=y_values, 
                       legends=[('吸振器位移',),('无控制-主结构位移','GRUATD3控制-主结构位移'),('吸振器速度',),('主结构速度',),('吸振器加速度',),('主结构加速度',)], legend_loc='upper right',
                       sub_shape=(3, 2), sub_group=[(0,), (6,3), (1,), (4,), (2,), (5,)],
                       plot_title=f'{now_time}_初位移条件回合{ep}控制器响应', save_path=plot_path, show=False)
@@ -148,7 +149,8 @@ def train(project_name: str,
             c_reward_values = c_recorder.as_numpy(keys='reward_history').reshape(-1, 1)
             c_delay_time_values = c_recorder.as_numpy(keys='delay_time').reshape(-1, 1)
             c_dt_values = c_recorder.as_numpy(keys='dt_history').reshape(-1, 1)
-            plot_data(x_values=c_x_values, y_values=np.concatenate((c_action_values, c_reward_values, c_delay_time_values, c_dt_values), axis=1),
+            y = concat(c_action_values, c_reward_values, c_delay_time_values, c_dt_values, axis=0, concat_axis=1)
+            plot_data(x_values=c_x_values, y_values=y,
                       sub_shape=(2, 2), sub_group=[(0,), (1,), (2,), (3,)],
                       legends=[('动作',), ('奖励',), ('延迟时间',), ('时间步长',)], legend_loc='upper right',
                       plot_title=f'{now_time}_初位移条件回合{ep}控制器动作等', save_path=plot_path, show=False)
@@ -170,7 +172,6 @@ def train(project_name: str,
     print("Training finished.")
 
     return history
-
 
 if __name__ == "__main__":
     train()

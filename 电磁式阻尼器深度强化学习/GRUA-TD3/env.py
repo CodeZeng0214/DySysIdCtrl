@@ -29,7 +29,7 @@ def build_env(ENV_PARAMS):
             [k_m / M, c_m / M, -(k_m + k_M) / M, -(c_m + c_M) / M],
         ]
     )
-    B = np.array([[0.0], [k_f / m], [0.0], [-k_f / M]])
+    B = np.array([[0.0], [k_f / m], [0.0], [-k_f / M]]) # 控制器输入矩阵
     C = np.array(
         [
             [-k_m / m, -c_m / m, k_m / m, c_m / m],
@@ -37,8 +37,8 @@ def build_env(ENV_PARAMS):
         ]
     )
     D = np.array([[+k_f / m], [-k_f / M]])
-    E = np.array([[0.0, 0.0, 0.0, c_M / M], [0.0, 0.0, 0.0, k_M / M]]).T
-    F = np.array([[0.0], [0.0], [0.0], [1 / M]])
+    E = np.array([[0.0, 0.0, 0.0, c_M / M], [0.0, 0.0, 0.0, k_M / M]]).T # 地基扰动输入矩阵
+    F = np.array([[0.0], [0.0], [0.0], [1 / M]]) # 外部激励输入矩阵
 
     env = ElectromagneticDamperEnv(A=A, B=B, C=C, D=D, E=E, F=F,
                                    Ts=ENV_PARAMS['Ts'], T=ENV_PARAMS['T'], 
