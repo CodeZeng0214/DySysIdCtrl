@@ -60,3 +60,23 @@ def tolerance_smooth_reward(tolerance: float = 1e-3) -> Callable[[np.ndarray, fl
         reward -= abs(action) / ACTION_BOUND / 4 # 控制输入的惩罚，最大-0.25分
         return float(np.clip(reward / 4.0, -1.0, 1.0))
     return tolerance_rewardfx
+
+def mls_force(amplitude: float = 0.01, frequency: float = 10.0, phase: float = 0.0) -> Callable[[float], float]:
+    """生成一个基于MLS(伪随机二激码)信号的激励函数。\n
+    参数：
+        amplitude: 振幅
+        frequency: 状态切换频率 (即MLS时钟频率，决定了信号的带宽，Hz)
+        phase: 时间相位偏移（秒）
+    """
+    from scipy.signal import max_len_seq
+    # 生成一个较长的MLS序列，14阶对应的长度为 2^14 - 1 = 16383，足够覆盖一般的仿真时长
+    mls_seq, _ = max_len_seq(14)
+    mls_seq = mls_seq * 2.0 - 1.0  # 变换为1和-1的序列
+    seq_len = len(mls_seq)
+    
+    def func(t: float) -> float:
+        # 将时间t依据frequency转换为索引，模拟时钟节拍
+        active_t = max(0.0, t + phase)
+        index = int(active_t * frequency) % seq_len
+        return amplitude * mls_seq[index]
+    return func

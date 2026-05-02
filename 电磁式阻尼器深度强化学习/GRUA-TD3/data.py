@@ -239,6 +239,9 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
         else:
             raise ValueError("y_values ndarray 仅支持 1D 或 2D")
     elif isinstance(y_values, list):
+        if all(isinstance(item, (int, float)) for item in y_values):
+            y_values = np.array(y_values).reshape(-1, 1)  # 转换为二维列向量
+    elif isinstance(y_values[0], list):
         y_values = concat(y_values, axis=0, concat_axis=1)  # 将列表中的数组连接成一个二维数组
 
 
@@ -253,6 +256,9 @@ def plot_data(x_values: np.ndarray = None, y_values: np.ndarray = None, sub_grou
         else:
             raise ValueError("x_values ndarray 仅支持 1D 或 2D")
     elif isinstance(x_values, list):
+        if all(isinstance(item, (int, float)) for item in x_values):
+            x_values = np.array(x_values).reshape(-1, 1)  # 转换为二维列向量
+    elif isinstance(x_values[0], list):
         x_values = concat(x_values)
     
     # 确保 x 和 y 的维度匹配
