@@ -1,0 +1,1093 @@
+% docx2tex 1.10 --- ``TeX without any tariffs (local regulations may vary)'' 
+% 
+% docx2tex is Open Source and  
+% you can download it on GitHub: 
+% https://github.com/transpect/docx2tex 
+%  
+\documentclass{scrbook} 
+\usepackage[T1]{fontenc} 
+\usepackage[utf8]{inputenc} 
+\usepackage{graphicx}
+\usepackage{hyperref} 
+\usepackage{multirow} 
+\usepackage{tabularx} 
+\usepackage{color} 
+\usepackage{textcomp} 
+\usepackage{tipa}
+\usepackage{amsmath} 
+\usepackage{amssymb} 
+\usepackage{amsfonts} 
+\usepackage{amsxtra} 
+\usepackage{wasysym} 
+\usepackage{isomath} 
+\usepackage{mathtools} 
+\usepackage{txfonts} 
+\usepackage{upgreek} 
+\usepackage{enumerate} 
+\usepackage{tensor} 
+\usepackage{pifont} 
+\usepackage{ulem} 
+\usepackage{xfrac} 
+\usepackage{arydshln} 
+\usepackage[,english]{babel}
+\usepackage{CJK}
+\definecolor{red}{rgb}{1,0,0}
+
+\begin{document}
+{\centering 西 南 交 通 大 学
+
+\par}{\centering 本科毕业设计(论文)
+
+\par}{\centering 基于强化学习的智能主动调谐质量阻尼器研究
+
+\par}{\centering RESEARCH ON INTELLIGENT ACTIVE TUNED MASS DAMPER BASED ON REINFORCEMENT LEARNING
+
+\par}
+\begin{table}
+\begin{tabularx}{\textwidth}{|p{\dimexpr 0.263\linewidth-2\tabcolsep-2\arrayrulewidth}|p{\dimexpr 0.737\linewidth-2\tabcolsep-\arrayrulewidth}|} \hline 
+\centering\arraybackslash{}年    级: & \uline{                       2022级                      }\\\hline 
+\centering\arraybackslash{}学    号: & \uline{                   2021110571                   }\\\hline 
+\centering\arraybackslash{}姓    名: & \uline{                      曾柯翔                        }\\\hline 
+\centering\arraybackslash{}专    业: & \uline{           飞行器设计与工程               }\\\hline 
+\centering\arraybackslash{}指导老师: & \uline{         唐介 副教授                  }\\\hline 
+\end{tabularx}
+\end{table}
+{\centering  2026 年  5 月 
+
+\par}{\centering \textbf{西南交通大学}
+
+\par}{\centering \textbf{本科毕业设计(论文)学术诚信声明}
+
+\par}本人郑重声明：所呈交的毕业设计(论文),是本人在导师的指导下,独立进行研究工作所取得的成果。除文中已经注明引用的内容外,本论文不包含任何其他个人或集体已经发表或撰写过的作品成果。对本文的研究做出重要贡献的个人和集体,均已在文中以明确方式标明。本人完全意识到本声明的法律结果由本人承担。
+
+作者签名：
+
+日期：        年        月         日
+
+{\centering \textbf{西南交通大学}
+
+\par}{\centering \textbf{本科毕业设计(论文)版权使用授权书}
+
+\par}本毕业论文作者同意学校保留并向国家有关部门或机构送交论文的复印件和电子版,允许论文被查阅和借阅。本人授权西南交通大学可以将本毕业设计(论文)的全部或部分内容编入有关数据库进行检索,可以采用影印、缩印或扫描等复制手段保存和汇编本毕业设计(论文)。
+
+             \textbf{              保密}${\square}$,在   年解密后适用本授权书。
+
+本论文属于
+
+\textbf{                           不保密}${\CheckedBox}$。
+
+(请在以上方框内打``\textbf{${\sqrt{}}$}'')
+
+作者签名：                               指导教师签名：
+
+日期：    年   月   日                   日期：    年   月   日
+
+{\centering \textbf{毕业设计(论文)任务书}
+
+\par}班    级\uline{  飞行2022-01班  }学生姓名\uline{  曾柯翔  }学    号\uline{  2021110571  }
+
+发题日期：  2025年 12月 12日          完成日期：  2026年 5月 14日
+
+题    目\uline{  基于强化学习的智能主动调谐质量阻尼器研究                        }
+
+1、本设计(论文)的目的、意义\uline{   目的：研究基于强化学习算法的智能主动调谐质量阻尼器控制系统,通过训练智能体学习最优控制策略,实现结构振动的高效抑制,提升阻尼器在复杂环境下的适应性和控制性能。                                }
+
+\uline{意义：传统调谐质量阻尼器存在参数固定、适应性差等问题。将强化学习引入振动控制领域,能够推动土木工程结构控制向智能化方向发展,为高层建筑、大跨结构等工程的振动控制提供新思路和方法。                                             }
+
+2、学生应完成的任务\uline{  (1). 查阅强化学习在结构振动控制领域的应用现状及相关理论基础；                                                                      }
+
+\uline{(2).建立结构-主动调谐质量阻尼系统的动力学模型；                                 }
+
+\uline{(3).设计基于强化学习的控制器,选择合适的算法(如DQN、DDPG等)；                 }
+
+\uline{(4).搭建仿真环境,训练智能体并验证控制效果；                                    }
+
+\uline{(5).与传统控制方法进行对比分析,评估控制性能；                                 }
+
+\uline{(6).撰写毕业论文,准备答辩。                                                    }
+
+3、本设计(论文)与本专业的培养目标达成度如何？(如在知识结构、能力结构、素质结构等方面有哪些有效的训练。)                                                                          
+
+\uline{(1).知识结构：综合运用结构动力学、振动控制、强化学习等跨学科知识,拓展智能建造领域的知识体系；                                                    }
+
+\uline{(2).能力结构：通过建模、算法实现、仿真分析等环节,培养学生跨学科解决问题、编程实现和系统仿真能力；                                                  }
+
+\uline{(3).素质结构：增强学生的创新意识和科研素养,为从事智能结构、人工智能在工程中的应用等前沿领域工作奠定基础。                                        }
+
+4、本设计(论文)各部分内容及时间分配：(共\uline{  17  }周)
+\begin{description}[评阅及答辩]
+\item[第一部分]\uline{   文献调研与理论基础研究                       }(1-3周) 
+\item[第二部分]\uline{  系统动力学建模与控制问题定义               }	 ( 3-4周) 
+\item[第三部分]\uline{  强化学习控制器设计与算法实现                 }(7-10周)
+\item[第四部分]\uline{~ 系统仿真与控制效果分析                     }(11-13周) 
+\item[第五部分]\uline{   对比研究与论文撰写                         }(14-16周)
+\item[评阅及答辩]\uline{   评阅及答辩 }			              	     (17周)
+\end{description}
+备    注\uline{   建议使用Python(TensorFlow/PyTorch)实现强化学习算法；可使用MATLAB/Simulink或Python进行系统动力学仿真；需提交完整的程序代码、仿真结果及分析报告。                                                  }
+
+指导教师：	\uline{  唐介  }  	2025年 12月 20日
+
+审 批 人：	\uline{阚前华}	 	2025年 12月 \includegraphics{%E6%AF%95%E4%B8%9A%E8%AE%BA%E6%96%87-svg-1.svg}20日
+
+
+
+{\centering 摘      要
+
+\par}在土木建筑、航空航天等工程领域,结构或者设备在地震、风载及机械扰动等外部激励作用下,容易产生持续振动,进而诱发结构的疲劳累积或者设备的精度下降等问题。主动调谐质量阻尼器能够借助作动器向结构输入控制能量,实现更主动、更可调的减振；但传统控制方法往往依赖精确的被控对象模型,面对工程中的复杂工况时建模难度高、适应性也容易受限。深度强化学习基于无模型的试错-反馈-优化机制,为复杂系统的智能振动控制提供了新的技术路径。
+
+本文基于深度强化学习和振动控制理论,提出了一种基于时间序列感知的GRUA-TD3智能振动控制算法,主要工作如下：
+
+(1) 系统梳理了研究相关的理论基础,介绍了振动控制和深度强化学习,分析了深度强化学习在振动控制中的应用方法与面临的挑战。推导了主结构-吸振器系统的动力学方程,并基于此利用Python和Pytorch构建了深度强化学习环境,定义了状态空间、动作空间和奖励函数。基于标准的TD3算法在理想恒定步长、无时滞条件下,验证了深度强化学习实现无模型减振控制的可行性。
+
+(2) 基于标准的TD3深度强化学习算法,提出了基于时间序列感知的GRUA-TD3控制算法：在Actor与Critic网络的序列输入端前置门控循环单元层用于提取状态序列的时序特征,并在其后集成自注意力层,对不同时间步特征进行动态加权与汇聚；同时把采样时间间隔与执行耗时等时间信息显式地并入观测状态向量,形成时间增强状态,作为网络的输入,从而增强了控制器对时间变化的感知能力与对系统状态变化的预测能力。
+
+(3) 搭建了包含随机时滞与可变步长的非理想仿真环境,把训练好的GRUA-TD3控制器在初始位移、定频激励、随机激励等多类典型工况下,与被动、传统PID及标准TD3控制器进行了仿真实验结果的对比分析。结果表明：GRUA-TD3控制器在理想环境下有着接近传统控制器的吸振效果,能使主结构位移降低87 \%以上,在非理想环境下仍能保持较快收敛与较优的控制性能,主结构振动幅值可抑制65 \%以上,有着更好的鲁棒性与环境适应能力。
+
+\textbf{关键词：}振动控制；深度强化学习；主动调谐质量阻尼器；门控循环单元；自注意力机制
+
+{\centering \textbf{Abstract}
+
+\par}In civil engineering, aerospace and other engineering fields, structures or equipment are prone to continuous vibration under external excitations such as earthquakes, wind loads and mechanical disturbances, which can induce fatigue accumulation of structures or decrease of equipment accuracy. Active tuned mass damper can input control energy to the structure by means of actuators to achieve more active and adjustable vibration reduction. However, traditional control methods often rely on accurate controlled object models. In the face of complex working conditions in engineering, modeling is difficult and adaptability is easily limited. Based on the model-free ' trial and error-feedback-optimization ' mechanism, deep reinforcement learning provides a new technical path for adaptive vibration control of complex systems. 
+
+Based on deep reinforcement learning and vibration control theory, this paper proposes a GRUA-TD3 intelligent vibration control algorithm based on time perception. The main work is as follows : 
+
+The theoretical basis of the research is systematically combed, the vibration control and deep reinforcement learning are introduced, and the application methods and challenges of deep reinforcement learning in vibration control are analyzed. The dynamic equation of the main structure-vibration absorber system is derived. Based on this, a deep reinforcement learning environment is constructed using Python and Pytorch, and the state space, action space and reward function are defined. Based on the standard TD3 algorithm, the feasibility of deep reinforcement learning to realize model-free vibration control is verified under the condition of ideal constant step size and no time delay.
+
+Based on the standard TD3 deep reinforcement learning algorithm, a GRUA-TD3 control algorithm based on time series perception is proposed : the pre-gated recurrent unit layer at the sequence input end of the Actor and Critic network is used to extract the time series features of the state sequence, and then the self-attention layer is integrated to dynamically weight and converge the features of different time steps ; at the same time, the time information such as sampling time interval and execution time is explicitly incorporated into the observation state vector to form a time-enhanced state as the input of the network, thereby enhancing the controller 's ability to perceive time changes and predict system state changes. 
+
+The non-ideal simulation environment including random time delay and variable step size is built, and the trained GRUA-TD3 controller is compared with the passive, traditional PID and standard TD3 controllers under various typical working conditions such as initial displacement, fixed frequency excitation and random excitation. The results show that the GRUA-TD3 controller has a vibration absorption effect close to the traditional controller in the ideal environment, which can reduce the displacement of the main structure by more than 87 \%. In the non-ideal environment, it can still maintain faster convergence and better control performance. The vibration amplitude of the main structure can be suppressed by more than 65 \%, which has better robustness and environmental adaptability.
+
+\textbf{Keywords: }Vibration control; Deep reinforcement learning; Active tuned mass damper; Gated recurrent unit; Self-attention mechanism
+
+{\centering 目 录
+
+\par}\tableofcontents
+
+\chapter{\label{ref-001}\label{ref-002}\label{ref-003}绪论\label{mark-第1章}}
+
+\section{\label{ref-004}研究背景及意义\label{mark-1.1}}
+
+在土木建筑、航空航天等工程领域,结构或者设备在地震、风载及机械扰动等外部激励作用下,容易产生持续振动,会导致结构疲劳累积或者设备精度下降等问题,严重时甚至引发系统结构破坏,造成巨大的经济损失与安全隐患。因此,研究针对接近与工程实际的动力学系统的有效控制手段极其必要。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image1.png}
+
+\par}{\centering 图 1-1 调谐质量阻尼器的分类\cite{bib1}：\label{ref-005}
+
+\par}{\centering (a) 被动式TMD；(b) 半主动TMD；(c)主动TMD；(d) 混合TMD
+
+\par}调谐质量阻尼器(Tuned Mass Damper, TMD)是工程领域中应用最广泛的振动控制装置之一。其基本原理是通过附加的次级质量块、弹簧及阻尼元件构成振动子系统,将其固有频率调谐至主结构危险共振频率附近,从而达到吸收、转移并耗散主系统振动能量的目的\cite{bib2}。如{\hyperref[ref-005]{图 1-1}},根据是否使用作动器向被控系统输入能量,TMD主要分为被动式和主动式两类。被动式TMD虽然具有机械结构简单、成本低的有点,但它的参数固定,对被控系统状态的改变和复杂的宽频扰动适应性差；而主动式TMD则是通过外部传感器与作动器,实时向被控系统的结构输入控制力或能量,以达到对被控系统在复杂环境下的振动进行抑制,由于使用主动控制算法,其抑制的频率范围通常更加广泛,有着更广阔的应用潜力。主动式TMD的核心在于其控制算法。传统的控制算法有经典PID(Proportional-Integral-Derivative)与线性二次型调节器(Linear Quadratic Regulator, LQR)等,它们的理论虽然已经成熟,但大多依赖对被控对象精确的数学物理模型建模与分析。在面对现实物理系统时,由于难以建立准确的数学物理模型,这些算法就很难展现出足够的鲁棒性。
+
+在整个机器学习领域中,深度学习和强化学习作为其中的两大核心分支,各自有着不同的能力和适用的场合。深度学习是一种典型的基于数据驱动的学习算法,它凭借深层的神经网络架构和非线性的激活函数,让网络本身具备了强大的特征拟合与非线性映射能力,能够从海量的、高维度的原始数据中提取或者拟合出数据背后深层的特征与内在规律,目前已经在机器视觉、自然语言交互等多个专业领域取得了突破性的进展,也深刻地影响着我们如今的日常生活；与深度学习的工作模式不同,强化学习主要模仿的是生物学习的认知机制,它基于马尔可夫决策过程,构建出了一种智能体与动态环境持续进行交互、并且利用环境反馈回来的奖励信号来不断试错、进而逐步优化自身行动策略的闭环学习框架,它的核心目标就是最大化智能体的长期累积收益。强化学习技术已经在多个领域取得了显著的进展,充分展现了其在处理复杂问题上的应用潜力。最近这些年来,随着计算机计算算力的不断提高与算法生态的逐步成熟完善,以机器学习为代表的人工智能技术已经不再仅仅局限于纯计算机科学的研究领域,而是开始快速地向土木、机械制造等多个传统工程领域渗透发展。在系统的振动控制领域中,当面对实际工程里那些复杂的耦合机电系统时,研究人员往往很难通过理论推导的方式得到复杂的系统动力学控制模型。正是在这样的背景下,基于系统控制数据和深度神经网络相融合的系统辨识技术,为我们绕开复杂的动力学微分方程的建立和求解过程提供了一个全新的研究方向；而不依赖被控系统物理先验知识的无模型智能控制方法,也很好地弥补了传统控制论在应对不确定系统模型时存在的短板,成为了该领域未来必然的发展趋势\cite{bib3}。
+
+深度强化学习(Deep Reinforcement Learning, DRL)把深度神经网络强大的特征提取能力与强化学习特有的试错-反馈-优化机制有机地结合了起来,为工程系统的振动控制问题提供了一条全新的技术路线。借助于和动态环境之间的闭环交互过程,智能体能够基于系统的状态反馈来学习到隐式的动力学规律,并且利用环境给出的奖励信号逐步逼近最优的控制策略,这也让它在智能吸振这个方向上呈现出了非常大的应用潜力。不过在真实的工程链路当中,机电软硬件之间的协同工作不可避免地会引入执行延迟与采样抖动的问题；与此同时,DRL的推理与训练过程对计算资源的较高需求也可能会进一步放大作动器的执行滞后效应。因此,围绕着上述这些非理想因素开展更有针对性的DRL控制算法研究与对应的振动控制实验,将会有助于开拓出一条深度强化学习在振动控制中的的工程化应用路径,提升强化学习控制器在复杂环境中的实际控制效果。
+
+\section{\label{ref-006}国内外研究现状\label{mark-1.2}}
+
+\subsection{\label{ref-007}振动系统辨识与控制技术研究进展\label{mark-1.2.1}}
+
+控制科学的历史源远流长。早在20世纪初期,经典的PID控制器便已出现,并且至今仍是是全世界范围内使用最为广泛的控制算法之一\cite{bib4}。20世纪40到60年代,随着航空航天领域需求的旺盛,现代工业对多输入多输出复杂系统控制要求的不断提高,在这一背景下,现代控制理论逐渐成熟。其标识性事件是Kalman于1960年提出的基于状态空间描述的线性二次型调节器LQR,该控制器推导了基于二次性能指标的最优控制律\cite{bib5},第一次将状态空间引入控制论中,奠定了现代控制理论的基础。然而,经典控制和现代控制理论都难以脱离被控对象的精确物理或数学模型,而在实际的工程实践当中,推导系统的精确数学或物理模型往往又极其困难,在这一背景下,学者们把诸如最小二乘法、极大似然参数估计法等广泛研究,系统辨识技术逐渐发展成为解决手段之一。随后Larimore等\cite{bib6}针对多变量误差状态空间提出了子空间辨识法方法,成为经典的系统辨识算法。韩志刚等\cite{bib7,bib7_2}也在此领域进行了早期研究,提出了一种动态系统预报的新方法及跟踪动态系统时变参数辨识的算法,能够对多输入多输出系统进行模型参数辨识。
+
+随着计算机算力的持续增长和各类数据规模的不断扩大,数据驱动技术也迎来了飞速的发展阶段。这一技术的源头可追溯到上世纪由自然界启发的群体智能优化算法,比较经典的有Holland\cite{bib9}在1973年提出的遗传算法(Genetic Algorithm, GA)及Kennedy等\cite{bib10}在1995年提出的粒子群优化(Particle Swarm Optimization, PSO)算法,这些算法通过对参数进行编码,模拟生物的群体行为来进行种群的迭代更新,最终得到适应性更好的种群。群体智能优化算法的出现,为复杂系统控制器的参数整定工作和动力学系统的参数识别问题都提供了全新的研究思路。
+
+深度学习是基于数据驱动的一种学习算法,它的发展从上世纪一直延续至今天,成为现今AI技术的基石,在系统辨识和控制方向都有非常大的应用潜力,但其发展历史却历经坎坷。早在1958年,Rosenblatt\cite{bib11}就提出了感知器模型,是最早的神经网络模型,但由于无法解决异或问题导致神经网络没有得到学界的重视。Werbos\cite{bib12}在1974年提出了反向传播算法,通过计算梯度来更新神经网络的参数,使得多层神经网络的训练成为可能,至今也是神经网络训练的核心算法。Kaiming在2016年提出残差神经网络\cite{bib13}通过引入``残差学习''来解决深度网络训练中的退化问题,自此神经网络的设计朝着更深更复杂的方向发展。深度神经网络也得以快速发展,并逐渐在系统辨识与控制中得到应用：王琳\cite{bib14}等梳理细化了各类辨识算法,引出了将神经网络应用于系统辨识上的未来发展方向。学者Wang\cite{bib15}采用循环神经网络架构来识别和控制动态系统,并基于传统的LSTM单元设计了新的循环单元,验证了其在动态系统识别和控制问题上的适用性。刘家利等\cite{bib16}提出一种基于门控循环单元(Gated Recurrent Unit, GRU)神经网络的结构智能振动控制方法,验证了先进神经网络架构在系统振动控制上的有效性。而Jiang等\cite{bib17}针对具有准零刚度特性的主动多层非线性振动隔离系统,提出了一种基于模型预测控制理论的数据驱动方法。这几种辨识控制算法的依赖深度神经网络对复杂动力学系统建模方法的创新,为后续的智能控制算法设计提供了坚实的理论基础。
+
+\subsection{\label{ref-008}深度强化学习在控制领域的应用进展\label{mark-1.2.2}}
+
+深度强化学习是强化学习与深度学习两者相结合的产物,它的核心思想是基于强化学习的数学原理,充分利用深度学习强大的函数拟合能力,来处理高维、复杂的状态输入,正是这两者的有机结合,才使得深度强化学习能够很好地处理高维的状态空间和复杂的非线性问题。强化学习的理论最早可以追溯到心理学和神经科学领域的相关研究,20世纪50年代,心理学家Marvin Minsky通过研究操作性条件反射,首次提出了``强化学习''这一重要概念,这也为后续深度强化学习理论的发展奠定了坚实的基础。在此之后,学术界涌现出了以值迭代更新为核心的各类离散时序差分算法：1989年Watkins\cite{bib18}提出Q-learning了并严格证明了其收敛性；随后Rummery\cite{bib19}在1994年提出了SARSA算法,这两种算法都很好地结合了蒙特卡洛方法和动态规划的优点,为强化学习领域提供了一种全新的学习机制。国内的学者比如黄炳强,也在早期深入地梳理了强化学习的整体框架,并且提出了多种基于Q-learning的改进强化学习方法\cite{bib20}。
+
+进入21世纪后,随着深度神经网络的发展,如{\hyperref[ref-009]{图 1-2}}所示,DeepMind团队\cite{bib21,bib21_2}将神经网络引入Q-learning机制,于2013年提出深度Q网络(Deep Q-Network, DQN),能够通过端到端强化学习直接从高维状态向量输入学习成功策略,奠定了深度强化学习的研究范式。为了克服DQN算法只能处理离散动作空间的问题,学者们注解面向连续动作空间控制提出改进的强化学习算法：Lillicrap\cite{bib23}等提出了深度确定性策略梯度算法(Deterministic Policy Gradient, DDPG),该算法基于Q-learning机制,结合了Actor-Critic架构与深度神经网络,成功实现了智能体在连续动作空间中的学习,成为连续控制领域的经典算法；然而DDPG易产生Q值过估计而导致策略训练不稳定,容易发生退化。于是,双延迟深度确定性策略梯度(Twin Delayed Deep Deterministic, TD3)算法被Fujimoto等\cite{bib24}提出,它引入了双Critic评估网络、延迟策略更新与目标策略平滑正则化这三大核心机制,显著提升了连续控制环境下算法的收敛稳定性与鲁棒性能,也成为了目前学术界公认的最为稳健的确定性策略算法之一；与Actor-Critic网络架构相对的,Schulman等\cite{bib25}提出了近端策略优化算法(Proximal Policy Optimization,PPO),该算法没有TD3算法的Actor-Critic网络架构,而是通过限制策略更新幅度,在保持策略更新稳定性的同时,提升了样本效率,以此为基础的众多衍生算法,在工程领域中得到广泛应用。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image2.png}
+
+\par}{\centering 图 1-2 DQN网络结构示意图\cite{bib26}\label{ref-009}
+
+\par}在系统进行振动控制时,产生的数据具有非常明显的时序属性。为了让智能体能够更充分地捕获到序列数据中的动态变化特征,循环神经网络的结构也逐步被引入到了深度强化学习的整体框架当中。早期循环神经网络(Recurrent Neural Network, RNN)在各类时间序列任务中都得到了非常广泛的应用,但它在处理长序列进行反向传播的时候,很容易出现梯度消失或者梯度爆炸的问题,从而引发训练过程的不稳定甚至导致模型完全难以收敛。针对这一棘手问题,如{\hyperref[ref-010]{图 1-3}}所示,Hochreiter S\cite{bib27}在RNN基础上提出长短期记忆网络(Long Short-Term Memory, LSTM),它利用独特的门控与记忆机制很好地缓解了长期依赖的难题；不过LSTM的内部结构相对比较复杂,在工程上的部署成本很高且效果不稳定。2014年Chung等\cite{bib28}又进一步提出GRU门控循环单元,它在基本保持LSTM表征能力的同时,大幅简化了网络的整体结构,这也让它变得更便于在各类工程场景中进行应用。与此同时,自注意力机制的快速发展也为序列建模问题提供了一条全新的思路：通过给不同时间步的特征分配动态的权重,模型能够更加聚焦于那些关键的信息,从而有效提升特征提取的效率并且改善长依赖的建模能力。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image3.png}
+
+\par}{\centering 图 1-3 LSTM循环单元结构示意图\cite{bib29}\label{ref-010}
+
+\par}在结构振动控制这个研究方向上,深度强化学习已经形成了较为丰富的研究实践成果。Wang等\cite{bib30}基于Actor-Critic框架实现PID参数的在线自适应调整,以此来应对不稳定的振动过程；Shuprajhaa等\cite{bib31}则从鲁棒性角度出发,深入讨论了在不稳定控制环境下数据驱动DRL方法的实际适应能力；高瑞娟等\cite{bib32}提出了利用改进的强化学习算法来实现PID控制器参数的在线自主整定；李超、袁兆麟等\cite{bib33,bib33_2}则面向复杂大型工业设备的机电耦合系统,通过实验验证了引入深度强化学习机制进行系统控制的可行性。围绕着更广泛的应用场景,张猛等\cite{bib35}在含有时滞因素的环境中采用DDPG算法来训练控制器,以此来逼近最优的主动控制策略；王梓睿\cite{bib36}围绕时滞系统最优控制问题改进了多种适应性较强的DQN控制算法；如{\hyperref[ref-011]{图 1-4}}所示,Xu等\cite{bib37}人提出多机械臂末端柔性板减振协同控制方法并设计协调控制器。近年随着网络架构持续演进,周娟\cite{bib38}、赵贺\cite{bib39}等通过引入多种变体神经网络,提高了强化学习在非平稳时间序列上的预测精度。如{\hyperref[ref-012]{图 1-5}}所示,Wang等\cite{bib40}在标准TD3算法的基础之上,针对算法训练过程中的效率问题,基于人体的免疫系统生物学原理,对其经验池进行优化改进,结果在磁流变弹性体振动吸收器中表现良好。以上研究体现了架构优化对DRL性能提升的潜力。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image4.png}
+
+\par}{\centering 图 1-4 基于强化学习的自适应振动控制\cite{bib41}\label{ref-011}
+
+\par}{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image5.png}
+
+\par}{\centering 图 1-5 免疫优化TD3算法\cite{bib42}\label{ref-012}
+
+\par}\section{\label{ref-013}现有研究的局限性\label{mark-1.3}}
+
+尽管深度强化学习算法在结构振动控制领域已经取得了非常显著的成果,但当把这些方法向现实的工程环境中进行迁移应用的时候,现有的方法依然暴露出了诸多无法忽视的实际问题：
+
+(1)	采样不确定性与抖动：大多数主流的DRL算法在进行环境交互仿真的时候,都假设采用的是固定的采样时间步长,然而在现实的工程环境中,控制器的采样步长由于受到物理硬件的限制,不可能是恒定不变的,通常都会伴随有不可忽略的随机时间抖动现象；
+
+(2)	多源时滞：实际的控制回路通常会同时存在传感数据的采样延迟、控制信号的通信传输延迟与作动器的执行延迟,此外,深度强化学习在推理决策阶段对算力的依赖也可能会引入额外的计算时延,使观测\textemdash{}决策\textemdash{}执行之间产生更明显的滞后,多源时滞会严重削弱控制闭环对扰动的抑制能力,情况严重时甚至可能诱发系统的失稳；
+
+(3)	马尔可夫决策过程假设与状态非平稳性的矛盾：经典强化学习高度依赖马尔可夫决策过程(Markov Decision Process, MDP)假设,也即是下一时刻状态转移仅由当前状态与动作决定；但多源时滞与采样步长不一致会破坏严格的马尔可夫性,使受控环境更接近部分可观测马尔可夫决策过程。在这类情形下,传统全连接神经网络即多层感知机(Multi-Layer Perceptron, MLP)难以充分表达时间依赖与历史信息,进而使强化学习控制器更难学到最优控制策略。
+
+\section{\label{ref-014}本文主要研究内容\label{mark-1.4}}
+
+本文将从深度强化学习理论基础出发,先验证深度强化学习理论在系统振动控制方面应用的可行性,再针对部分可观测马尔可夫决策过程问题,对复杂环境进行数学建模与分析,在此基础之上探究改进深度强化学习算法训练鲁棒性更好的控制器,搭建接近于实际工程问题的非理想控制仿真实验环境,并进行不同工况下的实验数据对比分析与验证。
+
+本文采用数值仿真的形式开展研究,在Python环境下依赖Pytorch库搭建包含随机变步长与多源时延的仿真实验环境,用以模拟工程中的时延与抖动；仿真环境包括单自由度振动环境、吸振器-主结构的多自由度振动环境、PID控制器、TD3控制器、改进的GRUA-TD3控制器、神经网络架构定义函数、深度强化学习训练函数、奖励函数、数据保存函数、数据处理函数、绘图函数及其他辅助函数库等。
+
+本文各章节的安排规划如下：
+
+{\hyperref[ref-003]{第1章}}：介绍进行系统振动控制的研究背景与现实意义,回顾深度学习和强化学习的发展历程,梳理深度强化学习的已有研究,分析现有研究的局限性。
+
+{\hyperref[ref-015]{第2章}}：梳理系统振动控制的基础理论,重点包括结构振动控制的数学模型、经典PID控制方法和现代的LQR算法,推导从微分方程到状态空间的控制理论基础；介绍深度强化学习的理论基础,包括前馈神经网络与循环神经网络的基本原理,引出连续动作空间下的深度强化学习算法的理论建模。
+
+{\hyperref[ref-041]{第3章}}：根据{\hyperref[ref-015]{第2章}}的理论基础,推导主结构-吸振器系统的动力学模型及其状态空间形式,设计奖励函数,在理想环境下基于TD3算法训练标准的TD3控制器,开展基于TD3算法的振动控制仿真研究,验证其控制性能。
+
+{\hyperref[ref-058]{第4章}}：面向含有时滞与采样变步长等因素的非理想环境,提出基于时间序列感知的GRUA-TD3改进控制器方案,讨论改进方向和期望的效果。
+
+{\hyperref[ref-070]{第5章}}：基于{\hyperref[ref-058]{第4章}}的内容,梳理改进后的控制器的训练和推理策略,在引入时滞与随机变步长的复杂环境中开展仿真实验,在多工况下将改进后的控制器与传统控制器、标准强化学习控制器进行控制效果的分析对比。
+
+{\hyperref[ref-094]{结论与展望}} 总结全文内容,反思研究不足,并对后续工作进行展望。
+
+\chapter{\label{ref-015}\newline
+\label{ref-016}振动控制与深度强化学习的理论基础\label{mark-第2章}}
+
+{\hyperref[ref-002]{第1章}}详细梳理了本文的研究背景和意义,介绍了深度强化学习的发展历程和在结构振动控制上的应用,指出了传统控制方法在工程中普遍存在的问题。结构振动控制理论是本文智能吸振算法研究的核心。对于被控对象和吸振器组成的系统,需要建立其准确的动力学数学物理模型,并将其转化为状态空间形式。人工神经网络是实现数据驱动系统辨识与时序特征提取的核心工具。而强化学习是实现无模型智能主动控制的核心框架。本章将围绕上述三点阐述其相关理论,为后文的研究奠定理论基础。
+
+\section{\label{ref-017}结构振动控制理论\label{mark-2.1}}
+
+\subsection{\label{ref-018}振动系统数学模型\label{mark-2.1.1}}
+
+在土木工程与机械工程中,结构在外部激励作用下会产生复杂的动力学响应；为了便于分析与控制,常把它抽象为多自由度系统。对受控的线性时不变结构而言,其运动方程一般可写为：
+\begin{equation}
+\tag{2-1}
+\mathbf{M}\overset{..}{\mathbf{X}}(t)+\mathbf{C}\overset{.}{\mathbf{X}}(t)+\mathbf{KX}(t)=\mathbf{DU}(t)+\mathbf{GW}(t)
+\end{equation}
+其中,$\mathbf{X}(t)$、$\overset{.}{\mathbf{X}}(t)$、$\overset{..}{\mathbf{X}}(t)$分别为系统位移、速度和加速度向量；$\mathbf{M}$、$\mathbf{C}$、$\mathbf{K}$分别为质量、阻尼和刚度矩阵；$\mathbf{U}(t)$为主动控制力向量,$\mathbf{D}$为控制力位置矩阵；$\mathbf{W}(t)$为外部干扰输入,$\mathbf{G}$为干扰输入矩阵。
+
+为了便于计算机求解与现代控制理论应用,上式通常会被改写为状态空间形式。若定义系统状态向量$\mathbf{Z}(t)=[\mathbf{X}(t)^{T},\overset{.}{\mathbf{X}}(t)^{T}]^{T}$,则状态空间方程可表示为：
+
+\begin{align}
+\tag{2-2}
+\overset{.}{\mathbf{Z}}(t)&=\mathbf{AZ}(t)+\mathbf{BU}(t)+\mathbf{GW}(t) \\
+\tag{2-3}
+\mathbf{Y}(t)&=\mathbf{CZ}(t)+\mathbf{DU}(t)+\mathbf{GW}(t) 
+\end{align}
+
+其中,$\mathbf{A}$为系统矩阵,$\mathbf{B}$为控制输入矩阵,$\mathbf{G}$为干扰输入矩阵；$\mathbf{Y}(t)$为观测输出向量。通过状态空间模型,可以清晰地表述系统的内部动态演化及输入输出关系。
+
+除状态空间表述外,经典控制理论中频域分析同样常用。将上述运动方程在零初始条件下作拉普拉斯变换,可得到复频域的传递函数模型；对于单输入单输出或多输入多输出系统,在忽略外部干扰时,可用传递函数矩阵$\mathbf{H}(s)$描述控制输入与输出响应之间的传递关系：
+\begin{equation}
+\tag{2-4}
+s^{2}\mathbf{MX}(s)+s\mathbf{CX}(s)+\mathbf{KX}(s)=\mathbf{DU}(s)+\mathbf{GW}(s)
+\end{equation}
+进而：
+\begin{equation}
+\tag{2-5}
+\mathbf{H}(s)=\frac{\mathbf{X}(s)}{\mathbf{U}(s)}=(\mathbf{M}s^{2}+\mathbf{C}s+\mathbf{K})^{-1}
+\end{equation}
+该传递函数形式在频域响应分析、极点配置与滤波器设计等传统方法中仍然十分常用,尤其适合用于对共振峰、阻尼变化与稳定裕度进行直观判断。
+
+\subsection{\label{ref-019}经典控制算法\label{mark-2.1.2}}
+
+结构主动控制中常见的经典算法包括PID控制与线性二次型调节器等。就工程应用而言,PID控制的结构清晰、参数含义直观,落地实现也相对方便,因此在实际系统中出现频率很高。
+
+设系统的设定目标为$x_{ref}(t)$,实际输出为$x(t)$,则误差定义为：
+\begin{equation}
+\tag{2-6}
+e(t)=x_{ref}(t)-x(t)
+\end{equation}
+连续时间下的PID控制器通过计算设定误差$e(t)$的比例(P)、积分(I)和微分(D)来进行控制输出,其时域连续方程为：
+\begin{equation}
+\tag{2-7}
+U(t)=K_{p}e(t)+K_{i}\int \limits_{0}^{t}e(\tau )d\tau +K_{d}\frac{de(t)}{dt}
+\end{equation}
+其中$K_{p}$、$K_{i}$、$K_{d}$分别为比例、积分与微分增益；
+
+从控制作用看,比例环节主要提升对当前误差的即时响应,积分环节用于消除稳态误差,微分环节通过刻画误差变化趋势引入等效阻尼,从而抑制超调与振荡。PID控制系统原理框图如{\hyperref[ref-020]{图 2-1}}所示：
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image35.png}
+
+\par}{\centering 图 2-1 经典PID控制系统原理框图\label{ref-020}
+
+\par}在计算机采样的数字控制系统中,上述连续形式一般需要离散化；工程实现里常见做法是位置式PID或增量式PID。以位置式离散PID为例,在采样周期$\Updelta t$下可近似写为：
+\begin{equation}
+\tag{2-8}
+U(k)=K_{p}e(k)+K_{i}\sum \limits_{j=0}^{k}e(j)\Updelta t+K_{d}\frac{e(k)-e(k-1)}{\Updelta t}
+\end{equation}
+增量式PID会以相邻采样周期控制量之差$\Updelta U(k)=U(k)-U(k-1)$为核心量来推导控制律,从实现角度看更贴近执行机构的``逐步调节''过程,其表达式为：
+\begin{equation}
+\tag{2-9}
+\Updelta U(k)=K_{p}(e(k)-e(k-1))+K_{i}e(k)\Updelta t+K_{d}\frac{e(k)-2e(k-1)+e(k-2)}{\Updelta t}
+\end{equation}
+增量式PID相较于位置式PID的优势在于：控制量以增量形式迭代更新,输出变化通常更平滑,也更不易因全量误差累积而导致执行器饱和或过度超调；对于存在物理边界约束的执行器,这类特性会利于稳定实现与在现实实际工程中的应用。
+
+除PID外,线性二次型调节器(LQR)同样是现控制中的经典方法。LQR的思路是在线性系统的假设下,寻找最优的状态反馈律$\mathbf{U}(t)=-\mathbf{K}_{L}\mathbf{X}(t)$,使二次型目标成本函数达到最小,从而在响应抑制和控制能耗之间得到一组可调权衡：
+\begin{equation}
+\tag{2-10}
+J=\int \limits_{0}^{\infty }\left(\mathbf{X}(t)^{T}\mathbf{QX}(t)+\mathbf{U}(t)^{T}\mathbf{RU}(t)\right)dt
+\end{equation}
+其中,$\mathbf{Q}$为半正定的状态响应权重矩阵,$\mathbf{R}$为正定的控制耗能输入权重矩阵。
+
+该泛函极值问题通常可转化为求解代数黎卡提方程：
+\begin{equation}
+\tag{2-11}
+\mathbf{A}^{T}\mathbf{P}+\mathbf{PA}-\mathbf{PB}\mathbf{R}^{-1}\mathbf{B}^{T}\mathbf{P}+\mathbf{Q}=0
+\end{equation}
+当唯一的正定对称矩阵$\mathbf{P}$被求解出来后,最优反馈增益可写为$K_{L}=\mathbf{R}^{-1}\mathbf{B}^{T}\mathbf{P}$。在多变量系统中,LQR往往能给出较为稳定的控制效果；但它对系统动力学数学建模的依赖很强,当结构存在强非线性、外部扰动难以测量且随时间变化时,模型偏差会显著影响控制质量,这也使传统的参数整定与工程部署面临更大挑战。
+
+\subsection{\label{ref-021}时滞与变步长采样建模\label{mark-2.1.3}}
+
+在真实的结构主动控制系统里,时滞现象几乎不可避免。时滞一部分来自传感器数据采集($\tau _{\textit{sensor}}$),一部分来自控制器数据处理与算法运算($\tau _{\textit{compute}}$),同时还包括执行机构的响应时间($\tau _{\textit{actuator}}$)；因此系统总时滞可近似写为：
+\begin{equation}
+\tag{2-12}
+\tau =\tau _{\textit{sensor}}+\tau _{\textit{compute}}+\tau _{\textit{actuator}}
+\end{equation}
+时滞出现后,控制器在当前时刻输出的控制力往往对应的是过去的状态信息；从等效角度看,这种``相位滞后''会削弱阻尼效果,甚至可能表现为负阻尼,从而让控制性能变差,严重时会触发系统失稳。除时滞外,嵌入式应用中采样间隔也常常不是严格固定的,随机扰动会带来变步长采($t_{k+1}=t_{k}+\Updelta t+\delta _{k}$),采样与通信的不确定性叠加后,会进一步增强控制对象的非平稳性,使得基于固定步长假设的控制器更难保持稳定表现。
+
+\section{\label{ref-022}深度学习理论\label{mark-2.2}}
+
+\subsection{\label{ref-023}基本原理\label{mark-2.2.1}}
+
+深度学习是机器学习的重要分支,核心思想是用多层人工神经网络去拟合复杂的数据映射关系。如{\hyperref[ref-024]{图 2-2}}所示,神经元是网络的基本单元,其常用数学形式为：
+\begin{equation}
+\tag{2-13}
+y=f(\sum \limits_{i=1}^{n}w_{i}x_{i}+b)
+\end{equation}
+其中$x_{i}$为输入,$w_{i}$为权重,$b$为偏置,$f(\cdot )$为非线性激活函数。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image57.png}
+
+\par}{\centering 图 2-2 神经元结构示意图\label{ref-024}
+
+\par}如{\hyperref[ref-025]{图 2-3}}所示,引入非线性激活函数后,神经网络不再受限于线性映射假设,从而具备逼近复杂非线性关系的能力。结合本文的控制网络设计与仿真实现,常用激活函数包括：
+
+(1)	线性整流函数(ReLU)：
+\begin{equation}
+\tag{2-14}
+f(x)=\max (0,x)
+\end{equation}
+ReLU在多数隐藏层中使用较多,主要因为实现简单、计算量小；同时在$x> 0$区间导数恒为1,有助于缓解反向传播时的梯度消失问题,从而提升训练早期的收敛速度。
+
+(2)	双曲正切函数(Tanh)：
+\begin{equation}
+\tag{2-15}
+f(x)=\frac{e^{x}-e^{-x}}{e^{x}+e^{-x}}
+\end{equation}
+Tanh曲线平滑并具有中心对称性,输出范围被限制在$[-1,1]$；在连续动作空间强化学习中,常将其用于Actor网络末层输出,再按设定最大值缩放,以保证动作幅值落在执行器的物理边界内。
+
+(3)	Softmax函数：
+\begin{equation}
+\tag{2-16}
+f(x_{i})=\frac{e^{{x_{i}}}}{\sum \limits_{j}e^{{x_{j}}}}
+\end{equation}
+Softmax通常出现在分类任务输出层,用于将原始输出归一化为概率分布；在强化学习中也可用于策略网络输出以形成动作选择的概率分布。另外,在自注意力机制中,Softmax常用于计算注意力权重,从而让模型对输入序列的不同部分分配不同关注度。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image63.tiff}
+
+\par}{\centering 图 2-3 各类激活函数的图像\label{ref-025}
+
+\par}\subsection{\label{ref-026}前馈神经网络和循环神经网络\label{mark-2.2.2}}
+
+前馈神经网络(FNN)也常被称为多层感知机(MLP),属于最基础、也最常见的一类神经网络结构。如{\hyperref[ref-027]{图 2-4}},它通常由输入层、若干隐藏层与输出层构成；信息在网络中按层级从前到后单向传播,同层内部以及跨层之间一般不包含反馈环路。
+
+前馈神经网络层间数据传递的数学表达式为：
+\begin{equation}
+\tag{2-17}
+h^{(l)}=f(\mathbf{W}^{(l)}h^{(l-1)}+b^{(l)})
+\end{equation}
+其中$h^{(l)}$为第$l$层的输出,$\mathbf{W}^{(l)}$和$b^{(l)}$分别为第$l$层的权重矩阵和偏置向量,$f(\cdot )$为激活函数。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image71.png}
+
+\par}{\centering 图 2-4 多层FNN全连接结构图\cite{bib43}\label{ref-027}
+
+\par}FNN对静态映射问题通常更合适,但由于缺少时间维度的记忆机制,在动态系统中遇到时间相关性与时滞效应时,其特征表达能力会受到限制。相较而言,如{\hyperref[ref-028]{图 2-5}}所示,RNN通过在隐藏层间加入反馈连接来处理时间序列任务,使得网络在处理当前输入的同时能够将历史隐藏状态作为额外信息带入计算,从而形成对时间序列上下文的记忆。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image72.png}
+
+\par}{\centering 图 2-5 标准RNN网络计算结构图\cite{bib44}\label{ref-028}
+
+\par}令$x_{t}$为时刻$t$的输入,$h_{t}$为时刻$t$的隐藏状态,$y_{t}$为时刻$t$的输出,则RNN的计算过程可以表示为：
+
+\begin{align}
+\tag{2-18}
+h_{t}&=f(\mathbf{W}_{xh}x_{t}+\mathbf{W}_{hh}h_{t-1}+b_{h}) \\
+\tag{2-19}
+y_{t}&=\mathbf{W}_{hy}h_{t}+b_{y} 
+\end{align}
+
+其中$h_{t}$为时刻$t$的隐藏状态,$x_{t}$为输入,$y_{t}$为输出；$\mathbf{W}_{xh}$、$\mathbf{W}_{hh}$和$\mathbf{W}_{hy}$分别为输入到隐藏层、隐藏层到隐藏层以及隐藏层到输出层的权重矩阵,$b_{h}$和$b_{y}$为偏置。
+
+RNN依靠循环结构能够在一定程度上捕捉时间序列的依赖关系,提取时间维度上得特征；在振动控制这类存在时滞与变步长特征的任务中,引入序列建模通常更有利于把历史信息利用起来。
+
+\subsection{\label{ref-029}\label{ref-030}神经网络的训练\label{mark-2.2.3}}
+
+神经网络训练通常依赖梯度下降类算法。如{\hyperref[ref-031]{图 2-6}}所示,基本做法是计算损失函数对网络参数的梯度,再沿负梯度方向更新参数,使损失逐步减小；对第l层而言,参数更新可写为：
+
+\begin{align}
+\tag{2-20}
+\mathbf{W}^{(l)}\leftarrow \mathbf{W}^{(l)}-\eta \frac{\partial L}{\partial \mathbf{W}^{(l)}} \\
+\tag{2-21}
+b^{(l)}\leftarrow b^{(l)}-\eta \frac{\partial L}{\partial b^{(l)}} 
+\end{align}
+
+其中,$\eta $为学习率,$L$为损失函数。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image94.tiff}
+
+\par}{\centering 图 2-6 反向传播算法示意图\label{ref-031}
+
+\par}对训练样本(x,y)而言,损失函数常用均方误差或交叉熵等形式,具体选择与任务类型相关。本文的系统辨识与控制网络训练均采用均方误差：
+\begin{equation}
+\tag{2-22}
+L(\theta )=\frac{1}{N}\sum \limits_{i=1}^{N}\| \hat{y}_{i}-y_{i}\| ^{2}
+\end{equation}
+其中,$\hat{y}_{i}$为神经网络的预测输出,$y_{i}$为真实值,$N$为样本数量,$\theta $为网络参数。
+
+\subsection{\label{ref-032}\label{ref-033}基于神经网络的系统辨识\label{mark-2.2.4}}
+
+前文提到过,在仿真环境中训练模型以及部署控制器到实际工程中往往需要对应的动力学模型,即进行系统辨识。系统辨识的核心目标,就是根据传感器采取到的系统输入与输出数据去反推等效的数学或者物理模型。在传统的系统动力学分析过程中,系统辨识依赖最小二乘法等参数化估计方法,而这类方法往往通常需要提前假设模型结构与阶数；但在现实的工程环境中,非线性与软硬件耦合效应都比较强,模型的结构很难用简单的差分方程准确去界定。当引入深度学习框架之后,系统辨识就可以把建模的过程转化为函数逼近的过程：用FNN或RNN去逼近系统模型,学习系统的动态行为,其理论支撑来自通用近似定理\cite{bib45,bib45_2}。该定理表述为：在隐藏神经元数量足够的情况下,带非线性激活函数的单隐藏层前馈神经网络可以以任意精度逼近闭区间上的任意连续函数。因此,FNN能够很好的学习当前状态与控制输出之间的静态非线性映射关系。
+
+相应地,循环神经网络的通用近似定理\cite{bib47}指出：在节点规模足够大的时候,包含反馈连接的循环神经网络能够近似任意的有限时间的离散动态系统及其输入输出序列映射。基于这些结论,可以利用深度神经网络构建下一时刻状态的非线性映射$\hat{Z}_{t+1}=\mathrm{\mathcal{N}}(Z_{t},U_{t},\theta )$便成为一种通用且有力的系统模型辨识手段,也为后续复杂环境下的无模型与数据驱动强化学习控制算法提供了稳固的数学基础。
+
+综上,上述两则定理基于神经网络辨识严密的数学基础。神经网络系统辨识无需预设模型结构,能直接挖掘复杂非线性动力学规律。前馈网络擅长静态映射,GRU 等循环网络可捕捉时序依赖,适配时滞、变步长的非平稳场景,为后文的无模型强化学习控制算法提供了核心支撑。
+
+\section{\label{ref-034}强化学习理论\label{mark-2.3}}
+
+\subsection{\label{ref-035}马尔可夫决策链\label{mark-2.3.1}}
+
+强化学习的常用数学描述是马尔可夫决策过程(MDP)。MDP可写为五元组$\langle \mathrm{\mathcal{S}},\mathrm{\mathcal{A}},\mathrm{\mathcal{P}},\mathrm{\mathcal{R}},\gamma \rangle $：$\mathrm{\mathcal{S}}$表示状态空间,$\mathrm{\mathcal{A}}$表示动作空间,$\mathrm{\mathcal{P}}(s'| s,a)$为状态转移概率,$\mathrm{\mathcal{R}}(s,a)$为奖励函数,$\gamma \in [0,1]$为折扣因子。按该框架描述决策过程时,如{\hyperref[ref-036]{图 2-7}}所示,智能体在每个时间步$t$观察到状态$s_{t}$,再选择动作$a_{t}$；环境依据$\mathrm{\mathcal{P}}$推进到$s_{t+1}$并给出奖励$r_{t}$。需要注意的是,MDP通常隐含``完全可观测''的前提,即当前状态应当包含做出最优决策所需的全部信息；但在振动控制系统中,时滞与变步长采样会导致当前观测仅呈现系统的部分信息,并且系统演化还可能与更早的历史决策相关,这会削弱严格的马尔可夫性,使问题更接近部分可观测马尔可夫决策过程,从而显著增加控制难度。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image113.png}
+
+\par}{\centering 图 2-7 强化学习智能体决策图\label{ref-036}
+
+\par}\subsection{\label{ref-037}Q-Learning和Deep Q Network算法\label{mark-2.3.2}}
+
+强化学习的目标通常可表述为学习策略$\pi (a| s)$,使期望累积回报最大：
+\begin{equation}
+\tag{2-23}
+J(\pi )=\mathrm{\mathbb{E}}_{\pi }\left[\sum \limits_{t=0}^{\infty }\gamma ^{t}r_{t}\right]
+\end{equation}
+动作价值函数$Q(s,a)$用来衡量在状态$s$下执行动作$a$后可获得的期望累积回报；Bellman方程\cite{bib48}刻画了其递归关系,也是强化学习推导与实现的关键：
+\begin{equation}
+\tag{2-24}
+Q(s,a)=\mathrm{\mathbb{E}}_{s'}\left[r+\gamma \max _{a'}Q(s',a')\right]
+\end{equation}
+式中,$s'$是执行动作$a$后的下一状态,$r$是即时奖励,$\gamma $是折扣因子。
+
+Q-Learning属于典型的值迭代方法,通过Bellman方程更新不断修正$Q(s,a)$,从而逼近最优动作价值函数$Q^{*}(s,a)$：
+\begin{equation}
+\tag{2-25}
+Q(s,a)\leftarrow Q(s,a)+\alpha \left(r+\gamma \max _{a'}Q(s',a')-Q(s,a)\right)
+\end{equation}
+Q-Learning更适合离散状态与离散动作空间；在连续控制问题,比如振动控制的连续力输出中,直接使用会受到限制。DQN算法将深度神经网络引入Q-Learning框架,用网络来逼近动作价值函数$Q(s,a| \theta )$($\theta $为网络参数),并通过经验回放与目标网络等机制提升训练稳定性；但由于DQN仍以离散动作选择为基础,因此难以直接用于连续动作控制任务。
+
+\subsection{\label{ref-038}连续动作空间的深度强化学习算法\label{mark-2.3.3}}
+
+DQN在动作价值学习方面效果突出,但其动作选择依赖离散化,因此迁移到连续动作空间时会受限。策略梯度方法能够天然处理连续动作,但梯度估计方差较大,训练稳定性与样本效率往往不理想。Actor-Critic将策略优化与价值评估结合：Actor负责输出动作策略,Critic对动作价值$Q(s,a)$进行评估,二者交替更新以获得更稳健的学习过程。
+
+DDPG是面向连续动作空间的典型Actor-Critic算法之一,属于模型无关的离线学习方法。为提高训练稳定性,DDPG引入经验回放与目标网络,并采用确定性策略梯度更新Actor网络参数。
+
+DDPG通过Bellman方程\cite{bib49}更新Critic网络的目标Q值：
+\begin{equation}
+\tag{2-26}
+y=r+\gamma Q'(s',\pi '(s'| \theta ^{\pi '})| \theta ^{Q'})
+\end{equation}
+其中,\textit{Q'}和$\pi '$分别是Critic和Actor的目标网络,$\gamma $是折扣因子。
+
+Critic优化的目标函数是最小化均方误差：
+\begin{equation}
+\tag{2-27}
+L(\theta ^{Q})=\mathrm{\mathbb{E}}_{s,a,r,s'}\left[(Q(s,a| \theta ^{Q})-y)^{2}\right]
+\end{equation}
+其中,$y$是Critic网络的目标Q值,$\theta ^{Q}$是Critic网络的参数。
+
+Actor网络的更新则通过最大化Critic网络评估的Q值来实现,其目标函数为：
+\begin{equation}
+\tag{2-28}
+J(\theta ^{\pi })=\mathrm{\mathbb{E}}_{s}\left[Q(s,\pi (s| \theta ^{\pi })| \theta ^{Q})\right]
+\end{equation}
+其中,$\theta ^{\pi }$是Actor网络的参数。通过梯度上升法更新Actor网络的参数：
+\begin{equation}
+\tag{2-29}
+\nabla _{{\theta ^{\pi }}}J(\theta ^{\pi })=\mathrm{\mathbb{E}}_{s}\left[\nabla _{a}Q(s,a| \theta ^{Q})| _{a=\pi (s)}\nabla _{{\theta ^{\pi }}}\pi (s| \theta ^{\pi })\right]
+\end{equation}
+在DDPG算法中,目标网络的参数通过软更新方式进行更新：
+\begin{equation}
+\tag{2-30}
+\theta '\leftarrow \tau \theta +(1-\tau )\theta '
+\end{equation}
+其中,$\tau $为较小的正数,用于调节目标网络参数更新的速度。
+
+TD3可视为对DDPG的一类改进,其整体框架与DDPG相近,但为提升训练稳定性与控制性能,引入了三项关键机制：
+
+(1). 裁剪双Q学习：TD3使用两个独立的Critic网络来估计Q值,并在更新时取两者的最小值作为目标Q值：
+\begin{equation}
+\tag{2-31}
+y=r+\gamma \min _{i=1,2}Q'_{i}(s',\pi '(s'| \theta ^{\pi '})| \theta ^{{Q'_{i}}})
+\end{equation}
+该策略能够有效抑制Q值过估计带来的偏差,从而增强训练稳定性。
+
+(2). 延迟策略更新：TD3在Actor更新中引入延迟机制,即每隔一定时间步才更新一次Actor网络,使Critic网络获得更充分的学习机会以提供更可靠的价值估计,从而提高Actor更新质量并降低计算开销。
+
+(3). 目标策略平滑：TD3在计算目标Q值时引入了目标动作噪声,以增加策略的探索性,其目标Q值计算方式为：
+\begin{equation}
+\tag{2-32}
+y=r+\gamma \min _{i=1,2}Q'_{i}(s',\pi '(s'| \theta ^{\pi '})+\upepsilon )
+\end{equation}
+其中,$\upepsilon $是添加到目标动作上的噪声,通常服从均值分布或正态分布,以增加策略的探索性。
+
+基于TD3算法训练神经网络控制器的算法流程如下{\hyperref[ref-039]{图 2 -8}}所示：
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image144.tiff}
+
+\par}{\centering 图 2-7 TD3算法流程图\cite{bib50}\label{ref-039}
+
+\par}\section{\label{ref-040}本章小结\label{mark-2.4}}
+
+本章围绕智能主动调谐质量阻尼器的研究需求,对相关理论基础进行了系统梳理。一是给出了结构振动控制的数学物理建模方法,回顾了经典的PID控制与LQR最优控制的基本原理,并且结合工程实际简要分析了时滞与变采样不确定性对控制性能的影响；二是介绍了深度学习的相关理论基础,介绍了FNN与RNN等基础的神经网络架构；三是从马尔可夫决策过程出发,介绍了强化学习的相关理论基础吗,重点梳理了连续动作空间下的主流DRL算法,特别是DDPG算法和TD3算法的核心机制。为后续章节的算法设计与训练提供了必要的理论支撑。
+
+\chapter{\label{ref-041}\newline
+\label{ref-042}基于TD3算法的振动控制仿真\label{mark-第3章}}
+
+在{\hyperref[ref-015]{第2章}}完成振动系统控制算法的分析与深度强化学习相关理论的梳理后,需要将深度强化学习理论应用到结构的振动控制中。由前文所述,TD3算法在深度强化学习中是一种解决连续动作空间问题的确定性策略梯度算法,它改进了DDPG算法过估计和训练不稳定的问题,是目前应用最广泛的强化学习算法之一。因此,本文以TD3算法作为基础算法,先搭建基于标准TD3算法的训练和仿真环境,基于仿真实验数据验证其有效性和可行性。
+
+\section{\label{ref-043}动力学吸振系统建模\label{mark-3.1}}
+
+在航空航天工程中,设备对精度与环境适应性要求严格,吸振系统的设计与优化往往直接影响平台运行稳定性。基于这一背景,本文以平台吸振为研究对象,建立如图 3-1所示的简化动力学模型：系统由待吸振的主结构与附加的主动吸振器组成,该类结构在航天平台减振与建筑结构抗震等场景中具有较强代表性。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image145.png}
+
+\par}{\centering 图 3-1 吸振器系统物理模型示意图
+
+\par}设吸振器质量为$m$,主结构质量为$M$；图中,$c_{m}$和$c_{M}$为分别为吸振器阻尼和主结构阻尼,$k_{m}$和$k_{M}$为分别为吸振器器刚度和主结构刚度,$x_{1}$为作动器位移,$x_{2}$为主结构位移,$z$为地基位移,$F$为外激励,$u$为吸振器给予的控制力。根据牛顿运动定律,该系统的运动微分方程可描述为：
+\begin{align}
+\tag{3-1}
+\begin{cases} m\ddot{x}_{1}=-k_{m}\left(x_{1}-x_{2}\right)-c_{m}\left(\dot{x}_{1}-\dot{x}_{2}\right)+u\\
+M\ddot{x}_{2}=k_{m}\left(x_{1}-x_{2}\right)-k_{M}\left(x_{2}-z\right)+c_{m}\left(\dot{x}_{1}-\dot{x}_{2}\right)-c_{M}\left(\dot{z}-\dot{x}_{2}\right)+F-u=0
+\end{cases} 
+\end{align}
+对系统的运动微分方程进一步构建状态空间表示,定义实时状态向量为$\mathbf{X}(t)=[x_{1}(t),\dot{x}_{1}(t),x_{2}(t),\dot{x}_{2}(t)]^{T}$,则上述运动微分方程转化为状态空间形式有
+\begin{align}
+\tag{3-2}
+\begin{cases} \dot{\mathbf{X}}\left(t\right)=\mathbf{AX}\left(t\right)+\mathbf{B}u\left(t\right)+\mathbf{E}z\left(t\right)+\mathbf{G}f\left(t\right)\\
+\mathbf{Y}(t)=\mathbf{CX}(t)+\mathbf{D}u(t)+\mathbf{G}f(t)
+\end{cases} 
+\end{align}
+其中,系统矩阵$\mathbf{A}$、输入矩阵$\mathbf{B}$、输出矩阵$\mathbf{C}$、直接传递矩阵$\mathbf{D}$、外部扰动矩阵$\mathbf{E}$和外激励输入矩阵$\mathbf{G}$的具体形式如下：
+
+\begin{align}
+\tag{3-3}
+\mathbf{A}&=\begin{bmatrix}
+0 & 1 & 0 & 0\\
+-\frac{k_{m}}{m} & -\frac{c_{m}}{m} & \frac{k_{m}}{m} & \frac{c_{m}}{m}\\
+0 & 0 & 0 & 1\\
+\frac{k_{m}}{M} & \frac{c_{m}}{M} & -\frac{k_{m}+k_{M}}{M} & -\frac{c_{m}+c_{M}}{M}
+\end{bmatrix} \\
+\tag{3-4}
+\mathbf{B}&=\left[\begin{array}{c}
+0\\
+\frac{k_{f}}{m}\\
+0\\
+-\frac{k_{f}}{M}
+\end{array}\right]\mathbf{C}&=\begin{bmatrix}
+-\frac{k_{m}}{m} & -\frac{c_{m}}{m} & \frac{k_{m}}{m} & \frac{c_{m}}{m}\\
+\frac{k_{m}}{M} & \frac{c_{m}}{M} & -\frac{k_{m}+k_{M}}{M} & -\frac{c_{m}+c_{M}}{M}
+\end{bmatrix} \\
+\tag{3-5}
+\mathbf{D}&=\left[\begin{array}{c}
+\frac{k_{f}}{m}\\
+-\frac{k_{f}}{M}
+\end{array}\right]\mathbf{E}&=\begin{bmatrix}
+0 & 0\\
+0 & 0\\
+0 & 0\\
+\frac{c_{M}}{M} & \frac{k_{M}}{M}
+\end{bmatrix}\mathbf{G}&=\left[\begin{array}{c}
+0\\
+0\\
+0\\
+\frac{1}{M}
+\end{array}\right] 
+\end{align}
+
+为便于后续开展数值仿真与后续基准控制器设计,采用如{\hyperref[ref-044]{表 3-1}}的参数：
+
+{\centering 表 3-1 二自由度系统参数表\label{ref-044}
+
+\par}
+\begin{table}
+\begin{tabularx}{\textwidth}{|p{\dimexpr 0.267\linewidth-2\tabcolsep-2\arrayrulewidth}|p{\dimexpr 0.367\linewidth-2\tabcolsep-\arrayrulewidth}|p{\dimexpr 0.367\linewidth-2\tabcolsep-\arrayrulewidth}|} \hline 
+\raggedright\arraybackslash{}符号 & \raggedright\arraybackslash{}值 & \raggedright\arraybackslash{}单位\\\hline 
+$m$ & \raggedright\arraybackslash{}1.0 & \raggedright\arraybackslash{}kg\\\hline 
+$M$ & \raggedright\arraybackslash{}15.0 & \raggedright\arraybackslash{}kg\\\hline 
+$k_{m}$ & \raggedright\arraybackslash{}30000 & \raggedright\arraybackslash{}N/m\\\hline 
+$k_{M}$ & \raggedright\arraybackslash{}300000 & \raggedright\arraybackslash{}N/m\\\hline 
+$c_{m}$ & \raggedright\arraybackslash{}0.0001 & \raggedright\arraybackslash{}N/(m/s)\\\hline 
+$c_{M}$ & \raggedright\arraybackslash{}0.001 & \raggedright\arraybackslash{}N/(m/s)\\\hline 
+\end{tabularx}
+\end{table}
+由参数可分析出,主结构的固有频率约为$f_{M}=27.57\mathrm{Hz}$,吸振器的固有频率约为 $f_{m}=22.51\text{Hz}$,两者固有频率较为接近；在吸振器未施加控制力的情况下,根据多自由度系统振动原理,主系统上受到的激振力会被来自吸振器的弹性恢复力在一定频段内部分平衡,从而形成反共振现象,这也是被动吸振器能起作用的核心机理。与此同时,工程实际里系统参数会漂移,外部激励也更复杂,环境不确定性还会叠加到响应中,单纯依赖被动吸振器往往难以把振动控制到更高精度；因此引入主动控制策略,让作动器按状态反馈输出合适的控制力,有助于把振动幅值压得更低,也能把恢复稳定所需时间拉短。
+
+\section{\label{ref-045}TD3算法设计\label{mark-3.2}}
+
+\subsection{\label{ref-046}网络架构设计\label{mark-3.2.1}}
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image180.tiff}
+
+\par}{\centering 图 3-2 TD3算法网络结构示意图：(a) Actor网络架构；(b) Critic网络架构\label{ref-047}
+
+\par}本章的重点是验证强化学习控制在理想环境(固定采样步长及无时滞)下能否稳定学习到有效策略,因此在网络架构上选用经典的MLP架构作为基础逼近器,让Actor与Critic的表达能力与训练稳定性保持在可控范围内,结构如{\hyperref[ref-047]{图 3-2}}所示。
+
+对于Actor策略网络,其任务是将系统状态空间$S$映射为连续控制动作$A$,从而得到可微的非线性策略函数。网络输入端直接接收环境输出的多维状态特征(包含位移、速度和加速度等信息)；隐藏层采用多层全连接结构,每层设置128个神经元,并统一使用ReLU激活函数以提升收敛效率并降低梯度消失风险。输出层采用Tanh激活函数将动作平滑限制在$[-1,1]$区间,再按比例缩放到实际控制力上限$A_{max}=5.0$,以保证作动器输出始终满足安全的物理边界。
+
+对于Critic价值网络,其职责是评估``在当前状态下采取某个动作''能带来多大的预期收益。网络输入端把状态变量$S$与动作变量$A$拼接成一个联合特征向量并送入隐藏层,隐藏层同样用ReLU激活函数完成特征传递,最后的全连接层输出一个标量作为状态-动作对的价值估计。根据{\hyperref[ref-033]{2.2.4}}节,为抑制价值过估计对策略的拖拽,TD3引入两个结构相同但参数独立的并行Critic网络；在构造目标价值时取两者预测值的较小者,用$\min $操作抑制过高估计,训练过程因此更稳也更不容易发散。
+
+\subsection{\label{ref-048}奖励函数设计\label{mark-3.2.2}}
+
+为让智能体在外部激励存在时也能学到更接近最优的控制策略,并把系统状态尽快拉回到稳定区间,本文构造了分段平滑的奖励函数；该奖励以主结构位移$x_{2}$为主线,同时把控制力能耗作为惩罚项一并计入,使策略既能抑制振动,也不会把动作长期推到饱和。
+
+设当前时刻主结构的位移为$x_{2}$,在策略控制下下一时刻的位移为$x_{{2^{\prime}}}$。结合航天工程对平台振动控制精度的要求,定义位移容差阈值为$\upepsilon =1\times 10^{-3}$,控制力输出的物理上限为$A_{max}$；单步奖励$r_{t}$由位移奖励$r_{disp}$与动作惩罚$r_{act}$加权得到。
+
+(1)位移奖励$r_{disp}$
+
+位移奖励采用分段评价机制：当控制后的位移进入容差范围,即$| x_{{2^{\prime}}}| \leq \upepsilon $时,系统给出正向奖励：
+\begin{equation}
+\tag{3-6}
+r_{disp}=\frac{\upepsilon -| x_{{2^{\prime}}}| }{\upepsilon }+\mathrm{\mathbb{I}}(| x_{{2^{\prime}}}| \leq | x_{2}| )\frac{| x_{2}| -| x_{{2^{\prime}}}| }{| x_{2}| +1\times 10^{-14}}
+\end{equation}
+该式体现两层含义：一方面位移越靠近零,奖励就越高；另一方面当$| x_{{2^{\prime}}}| $相比$| x_{2}| $下降时会触发额外奖励,用来鼓励更快的收敛速度。
+
+当外部干扰使位移超出容差范围,即$| x_{{2^{\prime}}}| > \upepsilon $时,系统给出惩罚：
+\begin{equation}
+\tag{3-7}
+r_{disp}=-2\log _{10}\left(\frac{| x_{{2^{\prime}}}| }{\upepsilon }\right)-\mathrm{\mathbb{I}}(| x_{{2^{\prime}}}| > | x_{2}| )\frac{| x_{{2^{\prime}}}| -| x_{2}| }{| x_{{2^{\prime}}}| +1\times 10^{-14}}
+\end{equation}
+其中对数项用于对越界位移施加惩罚,同时又能使极端大位移的惩罚增长更平滑,避免训练阶段出现过强梯度而导致不稳定；
+
+(2)动作惩罚$r_{act}$
+
+为避免控制力长期或频繁触顶而增加能耗,甚至引发执行器风险,引入与动作幅值负相关的惩罚项：
+\begin{equation}
+\tag{3-8}
+r_{act}=-\frac{| A_{t}| }{4A_{\max }}
+\end{equation}
+该惩罚与动作绝对值成正比,确保智能体在收敛过程中保持平滑,符合实际工程中对执行器寿命与能耗的要求。
+
+最终把位移奖励与动作惩罚组合,并对结果限幅,得到归一化单步总奖励：
+\begin{equation}
+\tag{3-9}
+r_{t}=\text{clip}\left(\frac{r_{disp}+r_{act}}{4},-1.0,1.0\right)
+\end{equation}
+\subsection{\label{ref-049}超参数设计\label{mark-3.2.3}}
+
+超参数配置会显著影响强化学习训练效率与收敛质量。基于多次仿真测试与调参经验,本文将关键参数设定为：控制系统固定采样与控制步长取$\Updelta t=0.001\mathrm{s}$,单次仿真回合总时长取$T=1.0\mathrm{s}$；经验回放池容量设置为500,000,并在回放池最小预充5,000条经验后启动网络更新。学习率方面,Actor网络学习率取$1\times 10^{-6}$,Critic网络学习率取$5\times 10^{-6}$,以使价值网络更新略快于策略网络更新；目标网络软更新系数$\tau $取0.001,用于在稳定性与响应速度之间折中,避免$\tau $过大引起震荡或$\tau $过小导致目标网络滞后。折扣因子取$\gamma =0.99$以平衡短期奖励与长期收益。为实现策略平滑,在目标动作上叠加高斯噪声,噪声标准差设为0.2,并将其裁剪到$[-0.5,0.5]$范围内以抑制过强随机扰动带来的不稳定；同时将延迟策略更新频率设为3,即Critic网络更新3次后Actor网络更新1次,使Critic更充分学习并为Actor提供更可靠的价值梯度。控制力映射方面,控制力最大设置为$A_{max}$,主动实体控制力$u$由电磁式作动器接收的指令电流$I(t)$转化得到,仿真中采用高斯线性比例关系$u(t)=k_{f}I(t)$,并设定标称电-力转换常数为$k_{f}=100\mathrm{N}/\mathrm{A}$,用于将电流指令映射为可执行的控制力幅值。整理上述超参数汇总见{\hyperref[ref-050]{表 3-2}}：
+
+{\centering 表 3-2TD3算法超参数表\label{ref-050}
+
+\par}
+\begin{table}
+\begin{tabularx}{\textwidth}{|p{\dimexpr 0.34\linewidth-2\tabcolsep-2\arrayrulewidth}|p{\dimexpr 0.314\linewidth-2\tabcolsep-\arrayrulewidth}|p{\dimexpr 0.345\linewidth-2\tabcolsep-\arrayrulewidth}|} \hline 
+\raggedright\arraybackslash{}符号 & \raggedright\arraybackslash{}意义 & \raggedright\arraybackslash{}值\\\hline 
+$\alpha _{\textit{actor}}$ & \raggedright\arraybackslash{}Actor学习率 & \raggedright\arraybackslash{}5e-06\\\hline 
+$\alpha _{\textit{critic}}$ & \raggedright\arraybackslash{}Critic学习率 & \raggedright\arraybackslash{}1e-05\\\hline 
+$\tau $ & \raggedright\arraybackslash{}软更新参数 & \raggedright\arraybackslash{}0.002\\\hline 
+$\gamma $ & \raggedright\arraybackslash{}折扣因子 & \raggedright\arraybackslash{}0.99\\\hline 
+$\sigma _{\textit{noise}}$ & \raggedright\arraybackslash{}策略噪声标准差 & \raggedright\arraybackslash{}0.2\\\hline 
+$c_{\textit{noise}}$ & \raggedright\arraybackslash{}噪声裁剪值 & \raggedright\arraybackslash{}0.5\\\hline 
+$d_{\textit{policy}}$ & \raggedright\arraybackslash{}策略延迟频率 & \raggedright\arraybackslash{}3\\\hline 
+$MLP_{\textit{hidden}}$ & \raggedright\arraybackslash{}隐藏层大小 & \raggedright\arraybackslash{}128\\\hline 
+$Actor_{\textit{layer}}$ & \raggedright\arraybackslash{}Actor网络层数 & \raggedright\arraybackslash{}2\\\hline 
+$\textit{Criti}c_{\textit{layer}}$ & \raggedright\arraybackslash{}Critic网络层数 & \raggedright\arraybackslash{}3\\\hline 
+$A_{max}$ & \raggedright\arraybackslash{}动作边界 & \raggedright\arraybackslash{}5\\\hline 
+$B_{size}$ & \raggedright\arraybackslash{}批量学习大小 & \raggedright\arraybackslash{}128\\\hline 
+$N$ & \raggedright\arraybackslash{}经验池大小 & \raggedright\arraybackslash{}5e5\\\hline 
+$N_{\min }$ & \raggedright\arraybackslash{}训练时经验池阈值 & \raggedright\arraybackslash{}5e3\\\hline 
+\end{tabularx}
+\end{table}
+\section{\label{ref-051}控制器训练环境设计\label{mark-3.3}}
+
+在确定TD3算法的网络架构、奖励函数和超参数设置后,根据{\hyperref[ref-030]{2.2.3}}节的TD3算法原理,训练目标控制器。为了更好地检验算法控制效果,设置两种工况：一是主结构初始位移不为零的自由振动工况,即令主结构位移$x_{M}=0.006m$；二是主结构持续受外部正弦交变强迫作用力波形为$F(t)=F_{0}\sin (\omega t)$激励的工况,其中$F_{0}=15000$,$\omega =30*2\pi $,接近主结构的固有频率。
+
+TD3控制器训练过程中,在每个时间步,Actor网络根据当前状态$s$输出动作$a$,并将该动作作用于环境中,环境返回新的状态$s'$和奖励值$r$。将$(s,a,r,s')$存储到回放池中,并从回放池中随机采样一批经验进行训练。在训练阶段,目标Actor网络根据回放经验的$s$计算下一时刻采取的动作$a$,目标Critic网络根据状态$s$和动作$a$计算两个目标Critic网络输出的最小值$\min Q_{\textit{target}}$。在主网络中,根据奖励值$r$、$\min Q_{\textit{target}}$和双Critic网络产生的当前价值$Q(s,a| \theta _{i})$计算Critic网络的均方误差损失函数(MSE损失),并通过最小化该损失函数更新Critic网络参数$\theta _{i}$。主网络中,Actor网络根据Critic网络计算的当前价值来计算Actor网络的损失函数即策略梯度,并通过确定性策略梯度上升法最大化价值更新Actor网络参数$\omega $。最后,使用软更新方法按比例$\tau $将主网络参数滑动更新至目标网络参数。重复上述训练采集和梯度更新循环过程,直至满足最大训练步数,最终得到训练好的TD3控制器。
+
+为了模拟实际环境中可能存在的测量噪声和系统不确定性,在训练过程中还引入了适当的随机扰动,以增强控制器的鲁棒性和泛化能力。
+
+\section{\label{ref-052}训练结果与对比分析\label{mark-3.4}}
+
+在主结构初始位移不为零的自由振动工况训练TD3控制器,其每轮训练中获得的回报(累积奖励)随训练轮次的变化如{\hyperref[ref-053]{图 3-3}}所示。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image249.tiff}
+
+\par}{\centering 图 3-3 训练过程中每回合的累计奖励曲线\label{ref-053}
+
+\par}由{\hyperref[ref-053]{图 3-3}}可见,训练初期累积奖励波动较大,个别回合甚至会低于初始水平,这主要源于智能体处于探索阶段、策略尚未成形；随着交互次数增加,经验不断写入回放池并被采样更新,网络参数逐步收敛,累积奖励整体呈上升趋势并在后期趋于稳定,表明TD3控制器已能在该环境下输出有效控制动作并稳定提升其奖励回报。另外,从图中结果还可以看出,收敛后的TD3奖励水平已接近PID控制器在相同工况下的奖励100.09,说明了在理想环境中,TD3算法可以将结构振动的强化学习控制器性能训练到与传统PID控制器接近的水平。
+
+{\hyperref[ref-054]{图 3-4}}是工况一,给予主结构一个初始位移的主结构位移变化曲线对比图,从{\hyperref[ref-054]{图 3-4}}可见,在仅依赖被动阻尼时,结构受外部冲击后的振荡衰减较慢,且更容易出现持续的抖动；当引入传统PID控制器或标准MLP的TD3控制器后,主结构的位移逐渐下降,落回安全阈值区间,对比被动控制峰值下降超过90 \%。这表明在固定时间步、无时滞的理想环境设定下,TD3训练得到的控制器能够给出接近PID控制器的效果,这验证了深度强化学习用于振动控制的可行性与有效性。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image250.tiff}
+
+\par}{\centering 图 3-4 工况一(初位移)下的系统状态变化对比：\label{ref-054}
+
+\par}{\centering (a) 吸振器位移；(b) 主结构位移；(c) 吸振器速度；(d) 主结构速度
+
+\par}{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image251.tiff}
+
+\par}{\centering 图 3-5 工况二(定频激励)主结构位移对比
+
+\par}图 3-5对应工况二：在持续正弦交变强迫激励下,被动控制情况下,系统的主结构位移峰值大且持续震荡无衰减迹象；而当PID控制器或TD3控制器介入后,主结构的位移峰值被逐渐压低,相对位移峰值下降约35 \%。该结果从另一侧面说明了TD3算法训练的智能振动控制器具备一定的泛化能力,在面对不同的激励类型下仍能够学习到有效的吸振策略。
+
+为评估采样时间抖动对控制效果的影响,本文在仿真环境中进一步引入时间步长噪声以模拟实际系统的采样不稳定性,加入采样噪声后的时间步长变化如{\hyperref[ref-055]{图 3-6}}所示,加入前后的控制器控制效果对比如{\hyperref[ref-056]{图 3-7}}。结果显示,加入时间步长噪声后TD3控制器的性能下降,出现不稳定现象,主结构位移峰值增大,说明采样抖动会对策略产生不利影响；这也验证在更复杂的仿真条件下或者实际工程问题时,需要将采样的不平稳性纳入控制器的算法设计之中。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image252.tiff}
+
+\par}{\centering 图 3-6 采样抖动情况下时间步长示意图\label{ref-055}
+
+\par}{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image253.tiff}
+
+\par}{\centering 图 3-7 采样抖动对控制器效果的影响\label{ref-056}
+
+\par}\section{\label{ref-057}本章小结\label{mark-3.5}}
+
+本章以航天领域典型的平台减振为背景,建立了二自由度主结构-主动吸振器耦合系统,并把其整理为可用于仿真的状态空间模型；在此基础上构建了以多层感知机为核心逼近器的TD3深度强化学习控制平台。为贴合工程应用的约束,把位移容差边界与执行能耗一并纳入考量,设计了分段平滑的奖励函数；在固定时间步且无通信时滞的理想系统中,通过对比实验可以看到,TD3控制器能够依靠数据驱动学习输出接近传统PID的控制决策。上述仿真结论验证了TD3算法用于振动控制的可行性,也为下一章在此基准方案上进一步研究具有时间序列感知能力的GRUA-TD3控制器打下基础。
+
+\chapter{\label{ref-058}\newline
+\label{ref-059}基于时间序列感知的GRUA-TD3控制器设计\label{mark-第4章}}
+
+{\hyperref[ref-041]{第3章}}的TD3振动控制仿真实验已证实,基于全连接结构的TD3的控制器在固定观测且无延迟的理想马尔可夫平稳假设下具备和传统控制算法近似的控制能力。然而面向接近于实际的工程环境时,由于非平稳采样和由软硬协同引起的时滞因素,原有的观测完整性假设被打破,系统退化为部分可观测马尔可夫决策过程。为解决上述问题,本章将以{\hyperref[ref-041]{第3章}}理论分析为基础,在标准TD3算法设计的基础上,引入时间感知机制,集成GRU和自注意力机制,构建适用于变步长和时滞环境的GRUA-TD3控制器架构。
+
+\section{\label{ref-060}总体框架设计\label{mark-4.1}}
+
+在实际的主动结构振动控制系统中,从传感器采集状态、控制器算法推演到执行器输出控制力,整个闭环物理链路中不可避免地存在时滞。同时,由于嵌入式系统网络通信和任务调度的影响,控制系统的采样步长常出现随机性抖动(Jitter)。此时,系统原本的马尔可夫决策过程退化为部分可观测马尔可夫决策过程,导致基于理想固定步长环境的传统TD3算法由于观测信息不完整,控制器难以获取有效的信息进行控制,影响系统的稳定性。
+
+针对上述问题,本章提出基于时间序列感知的门控循环单元-注意力机制-双延迟深度确定性策略梯度(Time-Aware GRUA-TD3)控制算法,简称为GRUA-TD3算法。该算法仍以TD3为主体框架,在Actor与Critic的输入端分别集成GRU与自注意力层,用来把历史时序特征提取出来并做强化；同时把采样间隔与时滞估计值并入状态空间,形成可显式感知时间变化的输入形式。通过这两类改动,控制算法在变步长和时滞环境中会更有自适应能力。
+
+\section{\label{ref-061}GRU网络集成\label{mark-4.2}}
+
+在长序列跨度的训练与推理中,传统RNN更容易触发梯度消失或梯度爆炸,这会导致传统RNN在长序列训练中的性能退化；LSTM与GRU通过门控机制根据当前输入和历史状态动态调整信息流动,既避免了简单覆盖式的状态更新,也把长期记忆与短期记忆做了更合理的平衡,因此更适合提取时间序列中的长期依赖关系,处理具有时滞和变步长特征的振动控制问题时也更加稳定。GRU循环单元的设计思路与LSTM接近,在保持LSTM能力的同时把结构做了简化；与LSTM相比,GRU只保留更新门与重置门两类门结构,更新门用于控制前一时刻的信息被带入当前时刻的程度,重置门用于控制忽略前一时刻信息的程度。双门控结构在性能接近的情况下减少了门控数量,网络更轻、参数更新更快,也更有利于在资源受限的嵌入式系统中部署与运行。
+
+GRU单元结构如{\hyperref[ref-062]{图 4-1}}所示,图中$x_{t}$是$t$时刻的输入向量,$h_{t-1}$是$t-1$时刻的隐藏状态向量,$z_{t}$是更新门向量,$r_{t}$是重置门向量,$\sim {h}_{t}$是候选隐藏状态向量,GRU通过以下公式进行计算：
+
+1. 更新门：$z_{t}=\sigma (W_{z}x_{t}+U_{z}h_{t-1}+b_{z})$
+
+2. 重置门：$r_{t}=\sigma (W_{r}x_{t}+U_{r}h_{t-1}+b_{r})$
+
+3. 候选隐藏状态：$\sim {h}_{t}=\tanh (W_{h}\cdot [x_{t},r_{t}*h_{t-1}]+b_{h})$
+
+4. 最终隐藏状态：$h_{t}=(1-z_{t})*h_{t-1}+z_{t}*\sim {h}_{t}$
+
+其中,$W_{z}$、$W_{r}$、$W_{h}$为权重矩阵,$b_{z}$、$b_{r}$、$b_{h}$为偏置向量,$\sigma $为Sigmoid激活函数,*表示按位乘法。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image272.jpeg}
+
+\par}{\centering 图 4-1 GRU门控循环单元示意图\cite{bib51}\label{ref-062}
+
+\par}为处理时滞与采样不确定性共同引发的部分可观测问题,本章基于GRU网络原理,在Actor与Critic的前端各集成一层GRU网络,用来提取振动响应中的时序特征。GRU层的输入是当前时刻及过去$n$个时刻的状态向量序列$\mathbf{S}_{1},\mathbf{S}_{2},\ldots ,\mathbf{S}_{n}$,输出为对应的隐藏状态向量序列$\mathbf{H}_{1},\mathbf{H}_{2},\ldots ,\mathbf{H}_{n}$；并通过全连接层把序列末端隐藏状态$\mathbf{H}_{n}$映射为未来$n$个时刻的预测状态向量序列$\hat{\mathbf{S}}_{t+1},\hat{\mathbf{S}}_{t+2},\ldots ,\hat{\mathbf{S}}_{t+n}$。由GRU层与全连接层共同组成的近似预测器,使网络能把历史信息``用起来''并补偿观测延迟能够利用历史信息补偿时滞带来的观测延迟,提高对系统状态变化的感知和预测能力。
+
+\section{\label{ref-063}时间增强状态构造\label{mark-4.3}}
+
+针对前文描述的POMDP现象,本章把时间感知机制并入状态构造中；做法是把采样时间间隔($\Updelta t$)以及计算耗时等时间信息当作状态向量的一部分,随观测一起送入网络,使智能体能显式感知时间维度的变化,并据此动态调整控制策略。时间感知状态向量定义为：
+\begin{equation}
+\tag{4-1}
+\mathbf{S}_{t}=[\sim {\mathbf{X}},\Updelta t_{last},\tau _{\textit{delay}}]
+\end{equation}
+其中,$\sim {\mathbf{X}}$表示当前时刻的环境观测状态矩阵,例如被控对象的位移、速度与加速度等物理量；$\Updelta t_{last}$为上一控制步的实际采样时间间隔,$\tau _{\textit{delay}}$为当前时刻的总时滞观测值。将时间信息显式并入状态后,智能体能够更直接地感知非固定步长条件下的状态变化趋势,从而更容易形成贴近实际的预测与控制决策,进而提升策略有效性。
+
+\section{\label{ref-064}自注意力机制集成\label{mark-4.4}}
+
+\subsection{\label{ref-065}自注意力机制的原理\label{mark-4.4.1}}
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image284.png}
+
+\par}{\centering 图 4-2 自注意力机制基本原理图\cite{bib52}\label{ref-066}
+
+\par}注意力机制最早在计算机视觉与自然语言处理等任务中取得突破,其直观动机与人类视觉注意力相似：当信息量很大时,系统会优先把计算资源分配给与任务更相关的关键部分,并抑制背景噪声。在深度学习中,这可以理解为一种动态权重分配过程,用以突破``所有输入同等重要''的限制。以自注意力机制为例,如{\hyperref[ref-066]{图 4-2}}所示,其基本思想是计算输入序列各元素之间的相似度,得到权重矩阵,再对序列进行加权求和形成新的表示；随着自注意力机制的发展,模型对长序列的全局依赖建模能力得到了显著增强。
+
+在时间序列预测与强化学习的部分可观测环境中,当前状态往往依赖于过去若干特定时刻的关键事件,而不是把所有历史时刻简单叠加就能解释清楚；因此把注意力机制引入到存在时滞与采样抖动的复杂环境里,有助于智能体自主识别并关注对当前决策更关键的历史时间步,从而进一步策略的稳定性与鲁棒性。
+
+\subsection{\label{ref-067}注意力加权汇聚策略\label{mark-4.4.2}}
+
+仅依靠GRU网络虽然能够提取时序信息,但在长周期信息传递过程中,各时间步的重要性并不会被显式区分,关键的早期信息可能在传播中被衰减甚至被忽略。为此,本文在GRU后端进一步集成注意力机制层,以增强对关键时间步的聚焦能力。注意力机制会基于GRU提取的特征向量计算权重分布,使网络能够动态调整对各时间步的关注度,从而提升对时滞与变步长扰动的自适应能力。
+
+本文采用基于时间步的注意力加权汇聚策略,其整体流程可概括为以下步骤：
+
+第一步,由GRU对输入序列进行编码,得到过去及现在$L_{h}$个时间步的隐状态序列$\mathbf{H}_{t-{L_{h}}+1},\mathbf{H}_{t-{L_{h}}+2},\ldots ,\mathbf{H}_{t}$,以及未来$L_{f}$个时间步的预测隐状态序列$\hat{\mathbf{H}}_{t+1},\hat{\mathbf{H}}_{t+2},\ldots ,\hat{\mathbf{H}}_{t+{L_{f}}}$；随后将未来$L_{f}$个时间步的隐状态序列通过全连接层映射,得到未来时刻的预测状态向量序列$\hat{\mathbf{S}}_{t+1},\hat{\mathbf{S}}_{t+2},\ldots ,\hat{\mathbf{S}}_{t+{L_{f}}}$。
+
+第二步,将过去、现在与未来的隐状态序列进行拼接,形成增强的时间序列特征矩阵：
+\begin{equation}
+\tag{4-2}
+\mathrm{\mathcal{H}}_{t}=\{\mathbf{H}_{t-{L_{h}}+1},\ldots ,\mathbf{H}_{t},\hat{\mathbf{H}}_{t+1},\ldots ,\hat{\mathbf{H}}_{t+{L_{f}}}\},{\quad}{\quad}T=L_{h}+L_{f}
+\end{equation}
+该矩阵可理解为将不同时间步的信息汇聚到一起,其中既包含历史/当前时刻的实际观测,也包含未来时刻的预测信息。
+
+第三步,注意力层采用可学习的打分函数,基于增强隐状态向量序列为每个时间步计算重要性分数；对序列中的每个时间步给出标量评价分数$e_{i}$：
+\begin{equation}
+\tag{4-3}
+e_{j}=\mathbf{w}_{a}^{\top }h_{j}+b_{a},{\quad}{\quad}j=1,\ldots ,T
+\end{equation}
+其中,$\mathbf{w}_{a}$与$b_{a}$分别为注意力层的权重向量与偏置项,$h_{j}$为第$j$个时间步的隐状态向量。
+
+第四步,通过Softmax对打分进行归一化,得到各时间步的注意力权重$\alpha _{i}$,权重分布因此具备概率意义：
+\begin{equation}
+\tag{4-4}
+\alpha _{i}=\frac{\exp \left(e_{i}\right)}{\sum \limits_{j=1}^{k}\exp \left(e_{j}\right)}
+\end{equation}
+第五步,把状态的``历史观测片段''与``未来预测片段''拼接成增强状态序列：
+\begin{equation}
+\tag{4-5}
+\mathrm{\mathcal{S}}_{t}=\{\mathbf{S}_{t-{L_{h}}+1},\ldots ,\mathbf{S}_{t},\hat{\mathbf{S}}_{t+1},\ldots ,\hat{\mathbf{S}}_{t+{L_{f}}}\},{\quad}{\quad}T=L_{h}+L_{f}
+\end{equation}
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image301.png}
+
+\par}{\centering 图 4-3 基于GRU与自注意力机制的TD3网络架构图：(a) Actor网络架构；(b) Critic网络架构\label{ref-068}
+
+\par}第六步,根据注意力权重对增强状态序列进行加权求和,得到注意力汇聚后的状态向量$\overline{\mathbf{S}}_{t}$,并将其作为Actor与Critic后续MLP层的输入特征：
+\begin{equation}
+\tag{4-6}
+\overline{\mathbf{S}}_{t}=\sum \limits_{i=1}^{T}\alpha _{i}\mathbf{S}_{i}
+\end{equation}
+该机制会对更关键的历史/预测时间步分配更高权重,因此在系统存在时滞与采样时序抖动时,策略对有效信息的利用会更集中,从而更有利于提升整体鲁棒性。
+
+综合上述设计,在TD3深度强化学习总体架构中,Actor网络输入为时间感知状态向量序列$Seq_{t}$,状态序列先经过GRU层与注意力层提取并汇聚为状态特征向量,再通过全连接网络输出动作指令$A$；Critic网络的输入为时间感知状态向量序列与动作$A$,其中状态序列同样先经GRU层与注意力层处理后再与动作向量拼接,最终通过全连接网络得到当前状态-动作对的价值评估$Q$。融合GRU与注意力机制的Actor与Critic网络总体结构如{\hyperref[ref-068]{图 4-3}}所示。
+
+\section{\label{ref-069}本章小结\label{mark-4.5}}
+
+本章针对实际工程的结构振动控制中普遍存在的时滞与采样不确定性问题,设计并提出了一种基于时间序列感知的GRUA-TD3控制器,其创新设计在于：一是构造了包含采样时间间隔$\Updelta t_{last}$与时滞补偿信息$\tau _{\textit{delay}}$的时间增强状态,把它作为Actor网络和Critic网络的输入；二是在传统的TD3算法采用的标准MLP网络的前端集成了GRU层以提取状态时间序列的历史特征；三是,在GRU层的后端进一步引入了自注意力层,对GRU层后的序列特征和输出序列赋予关键信息的自适应权重。上述三项改进可以在一定程度可以缓解POMDP问题,为后续在时滞与变步长的非理想环境中开展的振动控制的仿真实验提供了算法的理论基础。
+
+\chapter{\label{ref-070}\newline
+\label{ref-071}基于GRUA-TD3控制器的振动控制仿真实验\label{mark-第5章}}
+
+{\hyperref[ref-058]{第4章}}对标准TD3算法进行了改进,提出了GRUA-TD3算法,它与标准的TD3算法不同,其Actor网络和Critic网络的输入是状态的时间序列,且状态中包含系统的时间信息。并且,该改进算法在网络架构中集成了GRU层和自注意力层,以处理时间序列信息。为了检验经由{\hyperref[ref-058]{第4章}}提出的GRUA-TD3算法训练的控制器的有效性和其控制效果,本文在python环境中依赖Pytorch包搭建含有时滞和变步长的非理想振动控制环境进行仿真控制实验,通过与传统控制算法、标准TD3控制器的对照实验,分析结果并讨论GRUA-TD3控制器的控制效果。
+
+\section{\label{ref-072}控制器训练策略\label{mark-5.1}}
+
+\subsection{\label{ref-073}训练策略\label{mark-5.1.1}}
+
+为了让控制器能更充分地适应真实工程里的变步长与时滞影响,本文在算法交互训练过程中引入了时滞与随机步长机制,具体做法是：每个时间步更新之前,环境在推进状态演化的同时,会随机生成一个采样时间间隔$\Updelta t$与一个时滞观测值$\tau _{\textit{delay}}$,二者服从预设范围内的正态或均匀分布,用来近似通信时延与控制抖动。
+
+在经验采集阶段,当前时刻\textit{t},Actor网络会根据环境观测到的时间感知增强状态序列$S_{seq}$输出连续动作$a_{t}$；环境再依据上一时刻的状态$s_{t}$、动作指令$a_{t}$以及随机生成的采样间隔$\Updelta t$推进到下一时刻状态$s_{t+1}$,随后更新得到时间感知增强状态序列$S'_{seq}$作为下一时刻Actor网络的观测输入,同时依据第三章定义的分段奖励函数给出即时环境奖励$r_{t}$。新生成的经验元组$(S_{seq},a_{t},r_{t},S'_{seq})$会存入经验回放池$D$；当回放池样本数量达到设定的起始训练阈值后,算法从中随机抽取批量历史经验,对循环网络参数进行迭代更新。
+
+步入训练阶段,目标Actor网络根据回放经验的时间感知状态序列$S_{seq}$计算出带有适当裁剪噪声的目标动作$a_{t+1}$,进而目标Critic网络据此状态序列$S_{seq}$和目标动作$a_{t+1}$平行地计算两个分支的Q值,并取其最小值$y=r_{t}+\gamma \min _{i=1,2}Q'_{i}(S_{seq},a_{t+1}| \theta _{i}^{Q'})$作为目标价值以缓解价值过估计。在主网络端,依据该目标价值$y$与当前双Critic网络给出的预测价值$Q_{i}(S_{seq},a_{t}| \theta _{i}^{Q})$求得均方误差损失函数,并通过梯度下降最小化该损失来分别更新主Critic网络参数$\theta _{i}^{Q}$($i=1,2$)。在延迟策略更新步长处,主网络中的Actor根据Critic网络首个分支评估的当前动作价值分布,计算Actor网络的策略梯度损失函数,并通过确定性策略梯度上升法最大化该期望价值,以此更新Actor网络的参数$\theta ^{\pi }$。最后,依靠给定的更新率$\tau $通过软更新方法平滑地同步目标网络的对应参数。循环重复上述过程直至满足预设实验时间或回合数,最终得到泛化稳定且训练完成的GRUA-TD3控制器。
+
+需要注意的是,网络深层引入GRU循环神经网络后更依赖跨时间步的反向传播,大回放批长训练中更容易出现梯度消失或梯度爆炸；因此本文在反向传播过程中引入梯度裁剪,在优化器更新网络参数之前,把各网络层参数梯度的L2范数限制在最大阈值$c$的范围内。
+\begin{align}
+\tag{5-1}
+\nabla _{\theta }=\begin{cases} \nabla _{\theta }, & \mathrm{if}\| \nabla _{\theta }\| _{2}\leq c\\
+\frac{c}{\| \nabla _{\theta }\| _{2}}\nabla _{\theta }, & \mathrm{if}\| \nabla _{\theta }\| _{2}> c
+\end{cases} 
+\end{align}
+改进后的GRUA-TD3算法控制器训练流程逻辑如{\hyperref[ref-074]{图 5-1}}所示。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image334.png}
+
+\par}{\centering 图 5-1 GRUA-TD3算法训练流程框图\label{ref-074}
+
+\par}\subsection{\label{ref-075}奖励函数与网络架构设计\label{mark-5.1.2}}
+
+由于{\hyperref[ref-041]{第3章}}的仿真训练中TD3的收敛平稳,GRUA-TD3控制器在训练时的奖励函数,也沿用其分段式的容忍度函数：位移处于阈值范围内时给予连续奖励,超过阈值后施加连续惩罚,一旦越限则引入更强的硬性惩罚。从而促使强化学习控制器在训练过程中逐步寻优并生成合理的控制动作。
+
+网络架构方面即{\hyperref[ref-058]{第4章}}提出的GRUA-TD3网络的改进架构。针对POMDP问题,基于标准TD3算法,在其Actor策略网络与Critic价值网络的前端集成GRU层与自注意力机制层,利用GRU层处理时间序列数据,缓解时滞造成的信息缺失；自注意力使得网络能对GRU层输出的预测序列和环境反馈的当前序列进行动态加权汇聚,进而使得网络具有预测补偿器的作用。
+
+\subsection{\label{ref-076}控制器超参数设计\label{mark-5.1.3}}
+
+由于引入了GRU网络与注意力机制,超参数设计相较于传统TD3算法更为复杂；在保留TD3算法原有超参数设置的基础上,还需要补充GRU层与注意力层相关超参数,如{\hyperref[ref-077]{表 5-1}}所示：
+
+{\centering 表 5-1 GRUA-TD3算法超参数表\label{ref-077}
+
+\par}
+\begin{table}
+\begin{tabularx}{\textwidth}{|p{\dimexpr 0.34\linewidth-2\tabcolsep-2\arrayrulewidth}|p{\dimexpr 0.314\linewidth-2\tabcolsep-\arrayrulewidth}|p{\dimexpr 0.345\linewidth-2\tabcolsep-\arrayrulewidth}|} \hline 
+\raggedright\arraybackslash{}符号 & \raggedright\arraybackslash{}意义 & \raggedright\arraybackslash{}值\\\hline 
+$\alpha _{\textit{actor}}$ & \raggedright\arraybackslash{}Actor学习率 & \raggedright\arraybackslash{}5e-06\\\hline 
+$\alpha _{\textit{critic}}$ & \raggedright\arraybackslash{}Critic学习率 & \raggedright\arraybackslash{}1e-05\\\hline 
+$\tau $ & \raggedright\arraybackslash{}软更新参数 & \raggedright\arraybackslash{}0.002\\\hline 
+$\gamma $ & \raggedright\arraybackslash{}折扣因子 & \raggedright\arraybackslash{}0.99\\\hline 
+$\sigma _{\textit{noise}}$ & \raggedright\arraybackslash{}策略噪声标准差 & \raggedright\arraybackslash{}0.2\\\hline 
+$c_{\textit{noise}}$ & \raggedright\arraybackslash{}噪声裁剪值 & \raggedright\arraybackslash{}0.5\\\hline 
+$d_{\textit{policy}}$ & \raggedright\arraybackslash{}策略延迟频率 & \raggedright\arraybackslash{}3\\\hline 
+$GRU_{\textit{hidden}}$ & \raggedright\arraybackslash{}GRU网络隐藏层大小 & \raggedright\arraybackslash{}64\\\hline 
+$GRU_{\textit{layers}}$ & \raggedright\arraybackslash{}GRU网络层数 & \raggedright\arraybackslash{}1\\\hline 
+$Actor_{\textit{layer}}$ & \raggedright\arraybackslash{}Actor的全连接网络层数 & \raggedright\arraybackslash{}2\\\hline 
+$\textit{Criti}c_{\textit{layer}}$ & \raggedright\arraybackslash{}Critic的全连接网络层数 & \raggedright\arraybackslash{}3\\\hline 
+\end{tabularx}
+\begin{tabularx}{\textwidth}{|p{\dimexpr 0.34\linewidth-2\tabcolsep-2\arrayrulewidth}|p{\dimexpr 0.314\linewidth-2\tabcolsep-\arrayrulewidth}|p{\dimexpr 0.345\linewidth-2\tabcolsep-\arrayrulewidth}|} \hline 
+$A_{max}$ & \raggedright\arraybackslash{}动作边界 & \raggedright\arraybackslash{}5\\\hline 
+$len_{\textit{history}}$ & \raggedright\arraybackslash{}历史序列长度 & \raggedright\arraybackslash{}36\\\hline 
+$len_{fc}$ & \raggedright\arraybackslash{}预测序列长度 & \raggedright\arraybackslash{}4\\\hline 
+$c$ & \raggedright\arraybackslash{}梯度裁剪参数 & \raggedright\arraybackslash{}1.0\\\hline 
+$B_{size}$ & \raggedright\arraybackslash{}批量学习大小 & \raggedright\arraybackslash{}128\\\hline 
+$N$ & \raggedright\arraybackslash{}经验池大小 & \raggedright\arraybackslash{}5e5\\\hline 
+$N_{\min }$ & \raggedright\arraybackslash{}训练时经验池阈值 & \raggedright\arraybackslash{}5e3\\\hline 
+\end{tabularx}
+\end{table}
+由于引入了时间感知增强状态,并且使Actor网络和Critic网络均输入状态序列而不是单一状态,在标准TD3算法参数之外引入了与序列相关的超参数。GRU的网络架构方面,经过多轮训练调优和仿真控制实验,本文将GRU层隐藏单元数设为64、层数设为1,这能够尽可能缓解RNN架构带来的梯度爆炸问题；另外,在多次调试后,为了兼顾网络对环境动力学特征的提取能力与训练时的效率和算力消耗,设置GRU层输入的预测前历史序列长度为36,以保证网络能够利用足够长度的过去状态序列来预测未来序列；GRU层输出的预测序列长度设定为4,使其具备基础的时间感知与预测能力。
+
+训练超参数方面,为了抑制GRU网络结构可能带来的梯度不稳定问题,优化器还增加了阈值为1.0的梯度裁剪参数；同时选用较小的Actor网络学习率$5\times 10^{-6}$与Critic网络学习率$1\times 10^{-5}$,以提升TD3训练的稳定收敛性；软更新权重参数设为$\tau =0.001$,以确保目标网络平滑更新并降低震荡；批量大小设置为128,用于兼顾训练效率与稳定性。其余动作边界、折扣因子$\gamma =0.99$、策略平滑噪声及其范围裁剪、延迟策略频率等均沿用{\hyperref[ref-041]{第3章}}的标准TD3算法的设置,避免引入额外的震荡。
+
+\section{\label{ref-078}对比试验设计\label{mark-5.2}}
+
+为更全面评估改进算法的控制性能与鲁棒性,本章设计了多组对比实验,并选取四类控制策略作为基准对照对象：
+\begin{enumerate}[{(1)}]
+\item 被动控制(No Control)：作为基础对照,仅依赖主结构-吸振器系统的固有阻尼与刚度来吸收和衰减振动,吸振器没有电流输入,即不引入主动控制能量。
+\item PID控制器(PID Control)：作为经典方法,本文采用经验参数整定到相对合适的状态,以无时滞条件下的较优状态参与对比。
+\item TD3控制器(MLP-TD3)：作为不具备时间感知能力的深度强化学习训练出的控制器,网络采用MLP架构,不包含循环神经网络或者注意力机制,用于体现GRUA-TD3算法架构与标准算法架构的性能差异。
+\item GRUA-TD3控制器(GRUA-TD3)：本文优化后的TD3算法训练出的控制器,在标准TD3算法上加入GRU与自注意力机制,从时间维度更深入地提取序列的特征信息,目标在于使控制器在含有时滞与变步长的复杂环境有着更好的鲁棒性。
+\end{enumerate}
+训练环境方面,将TD3控制器与GRUA-TD3控制器分别在理想环境与非理想环境下训练,一共四组训练。得到理想环境的TD3控制器和GRUA-TD3控制器,以及非理想环境的TD3控制器和GRUA-TD3控制器；其中,非理想环境引入-(3,1)时滞与变步长采样机制,用于模拟实际工程问题中可能出现的控制时延与采样抖动,其中-(\textit{x},\textit{y})表示时滞步数服从均值为\textit{x}、标准差为\textit{y}的正态分布。
+
+\section{\label{ref-079}仿真实验结果与对比分析\label{mark-5.3}}
+
+\subsection{\label{ref-080}训练奖励曲线对比\label{mark-5.3.1}}
+
+{\hyperref[ref-081]{图 5-2}}对比了标准环境与时延环境下,标准TD3算法和GRUA-TD3算法的训练过程。由奖励曲线可见,强化学习控制器在训练初期奖励普遍较低,随着交互经验的积累与参数更新的推进,奖励逐步上升并趋于稳定；在理想环境中,标准TD3与GRUA-TD3均可达到较高奖励水平,其中GRUA-TD3收敛更快、最终平均奖励也更高,整体更接近PID控制器的奖励值100.09。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image345.tiff}
+
+\par}{\centering 图 5-2 TD3算法训练奖励趋势对比图：\label{ref-081}
+
+\par}{\centering (a) 理想环境下不同TD3算法训练奖励对比；(b) 时延环境下不同TD3算法训练奖励对比
+
+\par}引入时滞与变步长后,如{\hyperref[ref-081]{图 5-2}}(b),标准TD3的奖励明显下降且收敛变慢,而GRUA-TD3仍能保持相对更高的奖励与更快的稳定速度；同时两种算法在该工况下的最终奖励都高于PID控制器在相同条件下的奖励值-79.24。综合结果表明,GRUA-TD3在时滞与变步长环境中具备更强的适应能力与更优的综合控制表现。
+
+\subsection{\label{ref-082}自由振动条件下的控制效果对比\label{mark-5.3.2}}
+
+从{\hyperref[ref-083]{图 5-3}}给出的自由振动响应可见,在理想环境下,PID控制器、TD3控制器与改进后的GRUA-TD3控制器均能有效抑制主结构振动,三类控制器都能在较短时间内将主结构振幅衰减到90 \%以上；其中PID控制器在收敛速度与最终稳态误差方面更具优势。控制初期,PID控制器与TD3控制器的振动衰减更快,而GRUA-TD3控制器由于输入状态序列更长,起始阶段动作相对更保守,衰减速度略慢；但随着时间推进,GRUA-TD3逐渐体现出更强的控制能力,最终仍可达到与PID控制器相近的抑振效果。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image346.tiff}
+
+\par}{\centering 图 5-3 理想环境下的自由振动响应控制效果对比\label{ref-083}
+
+\par}{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image347.tiff}
+
+\par}{\centering 图 5-4 时滞-1与变步长环境下的自由振动条件控制效果对比\label{ref-084}
+
+\par}当环境中引入时滞与变步长采样后,{\hyperref[ref-084]{图 5-4}}\textasciitilde{}{\hyperref[ref-085]{图 5-7}}更直观展示了性能差异：固定时滞步数较小时,PID算法和标准TD3算法的控制效果会下降,但仍可实现一定程度减振；随着时滞步数增加,PID控制器性能快速退化并出现持续振荡,甚至在固定时滞步数3条件下,其控制效果会劣于被动控制。标准TD3仍能维持一定抑振能力,尽管控制精度与收敛速度明显衰减,但在固定时滞步数3条件下主结构振幅衰减仍能达到83 \%以上；相比之下,本文改进的GRUA-TD3控制器在固定时滞步数与随机时滞条件下均能保持较高控制性能,主结构振幅衰减率稳定在87 \%以上且收敛速度更快,这体现出经过GRUA-TD3算法训练出的智能吸振器在复杂时间条件下更好的鲁棒性与适应能力。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image348.tiff}
+
+\par}{\centering 图 5-5 时滞-2与变步长环境下的自由振动条件控制效果对比
+
+\par}{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image349.tiff}
+
+\par}{\centering 图 5-6 时滞-3与变步长环境下的自由振动条件控制效果对比
+
+\par}{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image350.tiff}
+
+\par}{\centering 图 5-7 时滞-(3, 1)与变步长环境下的自由振动条件控制效果对比\label{ref-085}
+
+\par}\subsection{\label{ref-086}定频激励条件下的控制效果对比\label{mark-5.3.3}}
+
+为进一步验证算法的泛化性能,本文补充了定频激励条件下的对照实验。如{\hyperref[ref-087]{图 5-8}}和{\hyperref[ref-088]{图 5-9}}所示,在理想无延迟环境中,三类主动控制器的减振效果整体接近,均能使系统主结构位移振幅下降约40 \%；当存在随机时滞与变步长时,PID控制器性能明显下降,振动衰减效果变差。标准TD3控制器与GRUA-TD3控制器仍能维持较高控制水平,主结构振幅衰减率在75 \%以上且收敛相对更快,同时GRUA-TD3对应的主结构振幅更小。结果表明,GRUA-TD3在复杂且不确定的动态环境中更有利于保持控制稳定性与鲁棒性。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image351.tiff}
+
+\par}{\centering 图 5-8 定频激励条件下的控制效果对比\label{ref-087}
+
+\par}{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image352.tiff}
+
+\par}{\centering 图 5-9 时滞-(3, 1)与变步长环境下的定频激励条件控制效果对比\label{ref-088}
+
+\par}\subsection{\label{ref-089}随机激励条件下的控制效果对比\label{mark-5.3.4}}
+
+在实际的工程问题中,结构平台所受的激振力往往是具有不规律与宽频带波动特征的；这类外部强迫力可通过周期性伪随机二进制序列(Maximum Length Sequence, MLS)在仿真环境中近似生成。基于此,本文引入随机激励条件MLS作用下的对比实验,用于评估各控制器在更贴近实际应用场景时的表现。由{\hyperref[ref-090]{图 5-10}}和{\hyperref[ref-091]{图 5-11}}可见,即使是在随机激励条件下,GRUA-TD3控制器仍能够有效抑制结构振动,使震动幅度下降65 \%以上；当进一步使环境变复杂后,对比传统PID控制器,GRUA-TD3在经过一定时间(大约0.6s)后,使系统的主结构振动大大减弱,说明了该控制器在复杂、非线性与不确定动态环境下具备更强的适应能力与鲁棒性。
+
+{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image353.tiff}
+
+\par}{\centering 图 5-10 MLS随机激励条件下的控制效果对比\label{ref-090}
+
+\par}{\centering \includegraphics[width=1\textwidth]{毕业论文.docx.tmp/word/media/image354.tiff}
+
+\par}{\centering 图 5-11 时滞-(3, 1)与变步长环境下的MLS随机激励条件控制效果对比\label{ref-091}
+
+\par}\section{\label{ref-092}本章小结\label{mark-5.4}}
+
+本章基于{\hyperref[ref-058]{第4章}}提出的GRUA-TD3控制器算法,搭建了含时滞和变步长的非理想振动控制环境。在多种典型工况下对GRUA-TD3控制器的控制性能进行了系统的对比分析与验证。结果表明,通过GRUA-TD3算法训练的控制器不仅在理想环境下有着接近传统PID控制器和标准TD3控制器的控制效果,在时滞与变步长的复杂环境中也能保持更稳定快速的收敛趋势和更好的的吸振效果,有着更好的鲁棒性与工程应用的潜力。
+
+\chapter{\label{ref-093}\label{ref-094}结论与展望}
+
+本文围绕工程环境下主动调谐质量阻尼器的主动控制需求,讨论了基于深度强化学习的智能吸振控制思路,并通过理论分析、算法改进与仿真验证,构建了适用于复杂环境条件下的的时间序列感知GRUA-TD3控制器,得到的主要结论可归纳为：
+\begin{enumerate}[{(1)}]
+\item 将标准的TD3算法用于无模型的振动控制具有可行性。本文建立了主动调谐质量阻尼器-主结构的二自由度动力学模型,并基于标准的TD3算法训练了智能控制器。在无时滞、无变步长干扰的理想环境下完成了仿真测试,结果显示基础TD3算法能够稳定收敛,主结构振动幅度可降低87 \%以上,验证了深度强化学习在结构振动控制任务中具备应用潜力。
+\item 为了有效应对传感和执行延迟所带来的时滞效应,以及随机采样引发的系统非平稳性问题,本文设计并提出了基于时间序列感知的GRUA-TD3智能控制算法：把采样时间间隔与算法执行耗时这两类时间信息并入到观测向量当中,构造出了时间增强状态；在标准TD3算法的Actor与Critic网络前端,引入了GRU来对输入的时间增强状态序列进行特征信息提取,并且在GRU层之后又加入了自注意力层,以此来对GRU层输出的预测时间序列中的关键信息进行自适应的加权处理
+\item 在理想的仿真环境中,GRUA-TD3控制器能够达到接近传统控制算法的性能水平,而在存在时滞与变步长的非理想环境中,GRUA-TD3控制器则表现出了更稳定的收敛趋势、更好的吸振幅度和更强的鲁棒性。本文通过初始位移、定频激励、随机激励等多类典型工况的仿真对比实验,分别对GRUA-TD3控制器、传统PID控制器与标准TD3控制器的实际控制性能进行了全面评估；得到的结果显示,无论是在理想环境还是非理想环境下,经过充分训练的GRUA-TD3控制器都拥有更快且更稳定的收敛速度。在具体的控制效果上,理想环境中GRUA-TD3的吸振表现可以和PID与标准TD3相近,三者都能把系统主结构的位移振幅降低90 \%以上；而当我们在仿真环境中引入变步长与随机时滞因素后,随着环境复杂程度的不断加深,PID控制器的控制性能出现了严重的下降,反观GRUA-TD3控制器却依然能够保持较为平稳的控制表现,在复杂随机时滞条件下,主结构的振动幅值平均可以降低65 \%以上,并且整体的控制性能要显著优于标准TD3控制器,这也充分说明本文改进优化后的GRUA-TD3算法,确实有着更好的对复杂工程环境的适应能力。
+\end{enumerate}
+尽管本文已经针对基于深度强化学习的智能吸振控制问题,开展了一系列的算法改进与仿真验证工作,但本次研究仍然存在不少可以进一步完善和拓展的地方：
+
+一是,受限于现有的硬件基础条件和有限的研究时间,目前本文得到的研究成果还主要建立在数值仿真的层面之上,在后续的研究工作中,可以考虑把本文所提出的GRUA-TD3控制器,实际部署到真实的振动控制实验平台当中,在更贴近工程实际的实验环境里,全面验证控制器的实际控制效果与鲁棒性能,并且针对实际应用过程中可能会遇到的传感器噪声、执行器非线性等具体问题,对算法进行更进一步的优化和改进。
+
+二是,当前本文提出的改进算法,是在标准TD3算法的基础上进行的网络架构优化与观测状态增强,后续可以进一步探索PPO算法、元强化学习等更适合非平稳环境的强化学习算法,并且面向具体的工程应用场景,对网络的整体结构与各项超参数进行更有针对性的优化调整,以此来进一步提升算法的收敛效率与实际控制性能。
+
+三是,本文中所采用的吸振器-主结构二自由度动力学模型相对来说还比较简单,未来可以考虑将本文提出的控制方法,扩展应用到更复杂的非线性系统或者多自由度系统当中,进一步检验算法在更广泛工程场景下的控制效果和实际适用性。
+
+\chapter{\label{ref-095}致谢}
+
+光阴似箭,转眼间,大学生活已至尾声。站在这终点回首往昔,有过奋斗也有过沉沦,有过欢欣也有过失落。道路不总是一帆风顺的,但我依然来到了这路途的终点。值此毕业论文完成之际,谨向所有给予我关怀、指引与帮助的师长、亲友与同窗,致以最诚挚的谢意与最美好的祝愿。
+
+在2024年秋的《振动力学》这门课程上,我有幸结识了唐介老师。课堂上的唐老师神采奕奕,深厚的理论功底、渊博的专业知识与对学术的热爱,激发了我对于科研的兴趣。在唐老师的指导和建议下,我选择了深度强化学习在动力学控制领域的应用这一方向进行学习和研究,后顺利完成了重点实验室工程实践项目。在唐老师的指导和帮助下,我了解了很多科研知识,锻炼了自己的科研能力,本篇毕业论文的研究与撰写离不开这段时光的学习与探索,也离不开您的悉心指导和帮助。在此向唐介老师致以最衷心的感谢。同时,感谢课题组邢政、黄彦文、蒋纪元三位学长,在论文研究与撰写过程中,你们给予我诸多专业指导与无私帮助,愿诸位师兄前程似锦、未来可期。
+
+感谢力航学院的全体老师和领导,是你们让我能够有幸加入力航学院这个大家庭。力航三年求学之路,江晓禹老师和胥奇老师领我迈入了航空航天和控制论的大门,跟随您们学习到的知识将会成为我后续走下去的根基,感谢二位老师的教导。感谢辅导员古定翱及全体学工组的老师们,是你们始终牵挂着我们的学业与身心健康,在困难时为我们提供帮助。在此也为自己过往的懵懂与不成熟深表歉意,感谢你们的包容。
+
+感谢我的昔日室友邢殿洋、冉航和王子恒,是你们的陪伴和鼓励,让我在面对重重困难时刻保持专注。也感谢我现在的室友杨文彬和陈孝卿,虽然只与你们相处这不到一年,但却让我的生活中充满了欢声笑语,感谢这段时间你们的陪伴,让我能够鼓起勇气去面对内心的恐惧。感谢王昊、但晓彬、童浩宇,在我转入力航学院之后,是你们的陪伴让我度过了这最孤独的时光,在我迷茫之时,也是你们给予我奋进的动力,让我坚定了自己的方向,不断提升着自我。
+
+特别感谢我的父母,二十余载养育之恩,重逾千斤。一路走来,正是有着你们的帮助和支持,让我能够以更加专注的姿态投入到学习生活之中,未来我必将加倍努力,不负你们的期盼。同时感谢我的姐姐、表弟和表姐,儿时的朝夕相伴,给予了我我丰富的童年生活,如今虽相隔千里,但这份亲情和感谢却始终绵长。感谢我的各位长辈们,感谢你们在方方面面给予的巨大帮助。
+
+最后,谨以此文献给陪伴我成长二十年的爷爷,没有您的谆谆教诲与默默守护,就没有今日的我,愿您在另一个世界安好。
+
+求学旅途暂告一段,但我相信崭新的季节即将来临,而我也将启程\textemdash{}\textemdash{}前往下一个终点。
+
+\chapter{\label{ref-096}参考文献}
+
+
+\begin{thebibliography}{0}
+\bibitem[bib-1]{}{[}1{]}	Koutsoloukas L, Nikitas N, Aristidou P. Passive, semi-active, active and hybrid mass dampers: A literature review with associated applications on building-like structures{[}J{]}. Developments in the Built Environment, 2022, 12: 100094.
+\bibitem[bib-2]{}{[}2{]}	丁千, 张舒, 黄锐, 等. 数据驱动动力学与控制研究若干进展{[}J{]}. 力学进展, 2025, 55: 1-72.
+\bibitem[bib-3]{}{[}3{]}	Borase R P, Maghade D K, Sondkar S Y, et al. A review of PID control, tuning methods and applications{[}J{]}. International Journal of Dynamics and Control, 2021, 9(2): 818-827.
+\bibitem[bib-4]{}{[}4{]}	Kalman R E. Contributions to the theory of optimal control{[}J{]}. Boletin Sociedad Matematica Mexicana, 1960, 5: 102-109.
+\bibitem[bib-5]{}{[}5{]}	Larimore W E. Canonical variate analysis in identification, filtering, and adaptive control{[}C{]}//Proceedings of the 29th IEEE Conference on Decision and Control: Vol. 2. Honolulu, USA: Publ by IEEE, 1990: 596-604.
+\bibitem[bib-6]{}{[}6{]}	韩志刚. 动态系统预报的一种新方法{[}J{]}. 自动化学报, 1983, 9(3): 161-168.
+\bibitem[bib-7]{}{[}7{]}	韩志刚. 动态系统时变参数的辨识{[}J{]}. 自动化学报, 1984, 10(4): 330-337.
+\bibitem[bib-8]{}{[}8{]}	Holland J H. Genetic algorithms and the optimal allocation of trials{[}J{]}. SIAM Journal on Computing, 1973, 2(2): 88-105.
+\bibitem[bib-9]{}{[}9{]}	Kennedy J, Eberhart R. Particle swarm optimization{[}C{]}//Proceedings of ICNN’95 - International Conference on Neural Networks: Vol. 4. 1995: 1942-1948.
+\bibitem[bib-10]{}{[}10{]}	Rosenblatt F. The perceptron: A probabilistic model for information storage and organization in the brain{[}J{]}. Psychological Review, 1958, 65(6): 386-408.
+\bibitem[bib-11]{}{[}11{]}	Werbos P J. Beyond regression, new tools for prediction and analysis in the behavioral sciences{[}D{]}. Harvard University, 1974.
+\bibitem[bib-12]{}{[}12{]}	He K, Zhang X, Ren S, et al. Deep residual learning for image recognition{[}C{]}//Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2016: 770-778.
+\bibitem[bib-13]{}{[}13{]}	王琳, 马平. 系统辨识方法综述{[}J{]}. 电力情报, 2001, (4): 63-66.
+\bibitem[bib-14]{}{[}14{]}	Wang Y. A new concept using LSTM neural networks for dynamic system identification{[}C{]}//2017 American Control Conference (ACC). 2017: 5324-5329.
+\bibitem[bib-15]{}{[}15{]}	刘家利, 涂建维, 朱耀阳, 等. 基于gru的结构智能振动控制算法研究{[}J{]}. 武汉理工大学学报, 2022, 44(1): 36-42, 57.
+\bibitem[bib-16]{}{[}16{]}	Jiang J Y, Tang J, Liu M, et al. A data-driven neural model predictive controller for multi-layer nonlinear vibration isolation system{[}J{]}. Aerospace Science and Technology, 2025, 166: 110583.
+\bibitem[bib-17]{}{[}17{]}	Watkins C J, Dayan P. Q-learning{[}J{]}. Machine Learning, 1992, 8(3): 279-292.
+\bibitem[bib-18]{}{[}18{]}	Rummery G A, Niranjan M. On-line Q-learning using connectionist systems{[}J{]}. Technical Report, 1994.
+\bibitem[bib-19]{}{[}19{]}	黄炳强. 强化学习方法及其应用研究{[}D{]}. 上海交通大学, 2007.
+\bibitem[bib-20]{}{[}20{]}	Mnih V, Kavukcuoglu K, Silver D, et al. Playing atari with deep reinforcement learning{[}J{]}. arXiv preprint arXiv: 1312.5602, 2013.
+\bibitem[bib-21]{}{[}21{]}	Mnih V, Kavukcuoglu K, Silver D, et al. Human-level control through deep reinforcement learning{[}J{]}. Nature, 2015, 518(7540): 529-533.
+\bibitem[bib-22]{}{[}22{]}	Lillicrap T P, Hunt J J, Pritzel A, et al. Continuous control with deep reinforcement learning{[}J{]}. arXiv preprint arXiv: 1509.02971, 2015.
+\bibitem[bib-23]{}{[}23{]}	Fujimoto S, Hoof H, Meger D. Addressing function approximation error in actor-critic methods{[}C{]}//Proceedings of the 35th International Conference on Machine Learning: VOL 80. Stockholm, SWEDEN, 2018: 1587-1596.
+\bibitem[bib-24]{}{[}24{]}	Schulman J, Wolski F, Dhariwal P, et al. Proximal policy optimization algorithms{[}J{]}. arXiv preprint arXiv: 170706347, 2017.
+\bibitem[bib-25]{}{[}25{]}	Hochreiter S, Schmidhuber J. Long short-term memory{[}J{]}. Neural Computation, 1997, 9(8): 1735-1780.
+\bibitem[bib-26]{}{[}26{]}	Chung J Y, Gulcehre C, Cho K, et al. Empirical evaluation of gated recurrent neural networks on sequence modeling{[}J{]}. arXiv preprint arXiv:1412.3555, 2014.
+\bibitem[bib-27]{}{[}27{]}	向星宇. 基于lstm的mr阻尼器建模以及在拉索半主动控制中的应用{[}D{]}. 中南大学, 2025.
+\bibitem[bib-28]{}{[}28{]}	Wang X S, Cheng Y H, Sun W. A proposal of adaptive PID controller based on reinforcement learning{[}J{]}. Journal of China University of Mining and Technology, 2007, 17(1): 40-44.
+\bibitem[bib-29]{}{[}29{]}	Shuprajhaa T, Sujit S K, Srinivasan K. Reinforcement learning based adaptive PID controller design for control of linear/nonlinear unstable processes{[}J{]}. Applied Soft Computing, 2022, 128: 109450.
+\bibitem[bib-30]{}{[}30{]}	高瑞娟, 吴梅. 基于改进强化学习的pid参数整定原理及应用{[}J{]}. 现代电子技术, 2014, 37(4): 1-4.
+\bibitem[bib-31]{}{[}31{]}	李超, 张智, 夏桂华, 等. 基于强化学习的学习变阻抗控制{[}J{]}. 哈尔滨工程大学学报, 2019, 40(2): 304-311.
+\bibitem[bib-32]{}{[}32{]}	袁兆麟, 何润姿, 姚超, 等. 基于强化学习的浓密机底流浓度在线控制算法{[}J{]}. 自动化学报, 2021, (7): 1558-1571.
+\bibitem[bib-33]{}{[}33{]}	张猛, 王晓宇, 文浩. 时滞影响下压电悬臂梁强化学习振动控制{[}J{]}. 振动与冲击, 2024, 43(16): 77-83.
+\bibitem[bib-34]{}{[}34{]}	王梓睿. 基于强化学习的时滞系统最优控制问题的研究{[}D{]}. 山东科技大学, 2024.
+\bibitem[bib-35]{}{[}35{]}	Xu P J, Cui Y Z, Shen Y C, et al. Reinforcement learning compensated coordination control of multiple mobile manipulators for tight cooperation{[}J{]}. Engineering Applications of Artificial Intelligence, 2023, 123: 106281.
+\bibitem[bib-36]{}{[}36{]}	周娟, 黄安平, 萧嘉荣, 等. 基于深度神经网络的电力负荷预测技术分析{[}J{]}. 电气技术与经济, 2024, (12): 145-148.
+\bibitem[bib-37]{}{[}37{]}	赵贺, 柳楠, 尹璐, 等. 基于图卷积网络的短期负荷预测方法研究{[}J{]}. 中国测试, 2024, 50(S2): 256-263.
+\bibitem[bib-38]{}{[}38{]}	Wang C, Cheng W H, Zhang H L, et al. An immune optimization deep reinforcement learning control method used for magnetorheological elastomer vibration absorber{[}J{]}. Engineering Applications of Artificial Intelligence, 2024, 137: 109108.
+\bibitem[bib-39]{}{[}39{]}	Cybenko G. Approximation by superpositions of a sigmoidal function{[}J{]}. Mathematics of Control, Signals, and Systems, 1989, 2(4): 303-314.
+\bibitem[bib-40]{}{[}40{]}	Hornik K, Stinchcombe M, White H. Multilayer feedforward networks are universal approximators{[}J{]}. Neural networks, 1989, 2(5): 359-366.
+\bibitem[bib-41]{}{[}41{]}	Haykin S. Neural networks and learning machines, 3/E{[}M{]}. Pearson education india, 2009.
+\bibitem[bib-42]{}{[}42{]}	Kaelbling L P, Littman M L, Moore A W. Reinforcement learning: A survey{[}J{]}. Journal of Artificial Intelligence Research, 1996, 4: 237-285.
+\bibitem[bib-43]{}{[}43{]}	蒋纪元, 唐介, 李映辉, 等. 非线性振动系统的深度强化学习控制策略研究{[}C{]}//第十五届全国振动理论及应用学术会议摘要集. 中国四川成都, 2023: 201.
+\bibitem[bib-44]{}{[}44{]}	Vaswani A, Shazeer N, Parmar N, et al. Attention is all you need{[}C{]}//Advances in Neural Information Processing Systems: Vol. 30. Curran Associates, Inc, 2017: 5998-6008.
+\end{thebibliography}
+
+
+
+\bibliography{%E6%AF%95%E4%B8%9A%E8%AE%BA%E6%96%87-bibtex}
+
+
+\end{document}
