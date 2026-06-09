@@ -1,22 +1,22 @@
-基于时间感知GRUA-TD3的主动调谐质量阻尼器智能振动控制
+基于时间序列感知的GRUA-TD3强化学习控制算法
 
 曾柯翔，唐介*
 
 （西南交通大学 力学与航空航天学院，成都 611756）
 
-摘要：主动调谐质量阻尼器（ATMD）在结构振动控制中具有广泛应用前景，但实际控制回路中普遍存在的传感延迟、计算时滞与采样抖动等非理想因素，会破坏马尔可夫决策过程的完全可观测假设，导致传统深度强化学习控制器的性能退化。针对上述问题，提出一种基于时间感知的门控循环单元-注意力-双延迟深度确定性策略梯度（GRUA-TD3）智能振动控制算法。该算法在标准TD3框架的Actor与Critic网络前端集成门控循环单元（GRU）以提取状态序列的时序依赖特征，并在其后引入自注意力（Self-Attention）机制对不同时间步特征进行动态加权汇聚；同时将采样时间间隔与执行耗时等时间信息显式并入观测状态向量，构造时间增强状态以提升非平稳条件下的状态利用效率。以二自由度主结构-电磁式ATMD系统为对象，搭建包含随机时滞与可变步长的非理想仿真环境，在初始位移、定频激励与随机激励等多类工况下开展对比实验。结果表明：GRUA-TD3控制器在理想环境下可获得接近PID与标准TD3的减振效果，主结构位移降低90%以上；在非理想环境下仍能保持较快收敛与稳定控制，主结构振幅衰减率维持在80%以上，相较PID与标准TD3控制器具有更好的鲁棒性与环境适应能力。
+摘要：主动调谐质量阻尼器（ATMD）在结构振动控制中具有广泛应用前景，但实际控制回路中普遍存在的传感延迟、计算时滞与采样抖动等非理想因素，会破坏马尔可夫决策过程的完全可观测假设，导致传统深度强化学习控制器的性能退化。针对上述问题，提出一种基于时间序列感知的门控循环单元-注意力-双延迟深度确定性策略梯度（GRUA-TD3）智能振动控制算法。该算法在标准TD3框架的Actor与Critic网络前端集成门控循环单元（GRU）以提取状态序列的时序依赖特征，并在其后引入自注意力（Self-Attention）机制对不同时间步特征进行动态加权汇聚；同时将采样时间间隔与执行耗时等时间信息显式并入观测状态向量，构造时间增强状态以提升非平稳条件下的状态利用效率。以二自由度主结构-电磁式ATMD系统为对象，搭建包含随机时滞与可变步长的非理想仿真环境，在初始位移、定频激励与随机激励等多类工况下开展对比实验。结果表明：GRUA-TD3控制器在理想环境下可获得接近PID与标准TD3的减振效果，主结构位移降低90%以上；在非理想环境下仍能保持较快收敛与稳定控制，主结构振幅衰减率维持在80%以上，相较PID与标准TD3控制器具有更好的鲁棒性与环境适应能力。
 
 关键词：振动控制；深度强化学习；主动调谐质量阻尼器；门控循环单元；自注意力机制；时滞
 
 中图分类号：O328  文献标志码：A
 
-Time-Aware GRUA-TD3 Intelligent Vibration Control for Active Tuned Mass Damper
+GRUA-TD3 Reinforcement Learning Control Algorithm Based on Time Series Awareness
 
 ZENG Kexiang, TANG Jie*
 
 (School of Mechanics and Aerospace Engineering, Southwest Jiaotong University, Chengdu 611756, China)
 
-Abstract: Active tuned mass dampers (ATMDs) have broad application prospects in structural vibration control. However, non-ideal factors such as sensing delays, computational lags and sampling jitter, which commonly exist in practical control loops, can undermine the fully observable assumption of Markov decision processes, leading to performance degradation of conventional deep reinforcement learning controllers. To address these issues, a time-aware gated recurrent unit-attention-twin delayed deep deterministic policy gradient (GRUA-TD3) intelligent vibration control algorithm is proposed. In this algorithm, gated recurrent unit (GRU) layers are integrated at the front end of both Actor and Critic networks within the standard TD3 framework to extract temporal dependencies from state sequences, followed by self-attention mechanisms that dynamically weight and aggregate features across different time steps. Meanwhile, time-related information such as sampling intervals and execution durations is explicitly incorporated into the observation state vector to construct a time-enhanced state, thereby improving state utilization efficiency under non-stationary conditions. Taking a two-degree-of-freedom main structure–electromagnetic ATMD system as the object, a non-ideal simulation environment incorporating random time delays and variable step sizes is constructed, and comparative experiments are conducted under multiple operating conditions including initial displacement, fixed-frequency excitation and random excitation. Results demonstrate that the GRUA-TD3 controller achieves vibration reduction performance comparable to PID and standard TD3 under ideal conditions, reducing main structure displacement by over 90%; under non-ideal conditions, it still maintains fast convergence and stable control, with main structure amplitude attenuation rates consistently above 80%, exhibiting better robustness and environmental adaptability than PID and standard TD3 controllers.
+Abstract: Active tuned mass dampers (ATMDs) have broad application prospects in structural vibration control. However, non-ideal factors such as sensing delays, computational lags and sampling jitter, which commonly exist in practical control loops, can undermine the fully observable assumption of Markov decision processes, leading to performance degradation of conventional deep reinforcement learning controllers. To address these issues, a time-series-aware gated recurrent unit-attention-twin delayed deep deterministic policy gradient (GRUA-TD3) intelligent vibration control algorithm is proposed. In this algorithm, gated recurrent unit (GRU) layers are integrated at the front end of both Actor and Critic networks within the standard TD3 framework to extract temporal dependencies from state sequences, followed by self-attention mechanisms that dynamically weight and aggregate features across different time steps. Meanwhile, time-related information such as sampling intervals and execution durations is explicitly incorporated into the observation state vector to construct a time-enhanced state, thereby improving state utilization efficiency under non-stationary conditions. Taking a two-degree-of-freedom main structure–electromagnetic ATMD system as the object, a non-ideal simulation environment incorporating random time delays and variable step sizes is constructed, and comparative experiments are conducted under multiple operating conditions including initial displacement, fixed-frequency excitation and random excitation. Results demonstrate that the GRUA-TD3 controller achieves vibration reduction performance comparable to PID and standard TD3 under ideal conditions, reducing main structure displacement by over 90%; under non-ideal conditions, it still maintains fast convergence and stable control, with main structure amplitude attenuation rates consistently above 80%, exhibiting better robustness and environmental adaptability than PID and standard TD3 controllers.
 
 Key words: vibration control; deep reinforcement learning; active tuned mass damper; gated recurrent unit; self-attention mechanism; time delay
 
@@ -28,51 +28,57 @@ Key words: vibration control; deep reinforcement learning; active tuned mass dam
 
 尽管深度强化学习在振动控制领域已取得丰富成果[14-18]，但现有研究大多基于固定采样步长和无时滞的理想假设。在实际控制回路中，传感数据的采集延迟、控制信号的通信传输延迟、作动器的执行响应时间以及DRL推理计算耗时等因素叠加，会引入不可忽略的多源时滞[19-20]；同时，嵌入式系统中采样间隔的随机抖动会进一步破坏严格的马尔可夫性，使受控环境更接近部分可观测马尔可夫决策过程（Partially Observable Markov Decision Process, POMDP）[21]。在此类情形下，传统基于全连接神经网络（Multi-Layer Perceptron, MLP）的DRL控制器难以充分表达时间依赖与历史信息，控制性能将显著退化甚至失稳。
 
-针对上述问题，本文提出一种基于时间感知的GRUA-TD3智能振动控制算法。该算法在标准TD3框架基础上，在Actor与Critic网络前端集成门控循环单元（Gated Recurrent Unit, GRU）[22]用于提取状态序列的时序特征，并在其后引入自注意力（Self-Attention）机制[23]对不同时间步的关键信息进行自适应加权；同时将采样时间间隔与执行耗时等时间信息显式并入观测状态向量，构造时间增强状态。通过在包含随机时滞与可变步长的非理想仿真环境中进行多工况对比实验，验证所提算法在复杂动态条件下的控制性能与鲁棒性。
+针对上述问题，本文提出一种基于时间序列感知的GRUA-TD3强化学习控制算法。该算法在标准TD3框架基础上，在Actor与Critic网络前端集成门控循环单元（Gated Recurrent Unit, GRU）[22]用于提取状态序列的时序特征，并在其后引入自注意力（Self-Attention）机制[23]对不同时间步的关键信息进行自适应加权；同时将采样时间间隔与执行耗时等时间信息显式并入观测状态向量，构造时间增强状态。通过在包含随机时滞与可变步长的非理想仿真环境中进行多工况对比实验，验证所提算法在复杂动态条件下的控制性能与鲁棒性。
 
-1 系统动力学建模与问题描述
+1 TD3算法基础与POMDP问题分析
 
-1.1 主结构-ATMD系统动力学模型
+1.1 TD3算法原理
 
-以航天工程中的平台减振为背景，建立如图1所示的二自由度简化动力学模型：系统由待吸振的主结构与附加的电磁式ATMD组成。设电磁吸振器质量为m，主结构质量为M；cm和cM分别为吸振器阻尼和主结构阻尼，km和kM分别为吸振器刚度和主结构刚度；x1为吸振器位移，x2为主结构位移，z为地基位移，F为外激励，u为电磁吸振器施加的主动控制力。
+强化学习通过在马尔可夫决策过程（MDP）框架下与环境交互学习最优策略。MDP由五元组$(\mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)$描述，其中$\mathcal{S}$为状态空间，$\mathcal{A}$为动作空间，$\mathcal{P}$为状态转移概率，$\mathcal{R}$为奖励函数，$\gamma \in [0,1)$为折扣因子。在连续动作空间中，深度确定性策略梯度（Deep Deterministic Policy Gradient, DDPG）算法[9]采用Actor-Critic架构：Actor网络$\mu(s|\theta^{\mu})$将状态直接映射为确定性动作，Critic网络$Q(s,a|\theta^{Q})$以状态-动作对为输入评估其价值。Actor网络通过确定性策略梯度定理沿价值提升方向更新：
 
-【图1 主结构-电磁吸振器系统物理模型示意图】
+$$\nabla_{\theta^{\mu}} J \approx \mathbb{E}_{s \sim \rho^{\mu}} \left[ \nabla_{a} Q(s, a|\theta^{Q})|_{a=\mu(s)} \nabla_{\theta^{\mu}} \mu(s|\theta^{\mu}) \right]$$
 
-根据牛顿运动定律，该系统的运动微分方程为：
+然而，DDPG在训练中面临严重的价值过估计问题——Critic网络对状态-动作价值的系统性高估会通过策略梯度传导至Actor网络，使策略偏离最优方向，最终导致训练发散。TD3算法[10]针对上述问题引入三项关键改进，构成当前最为稳健的确定性策略学习框架：
 
-    mẍ₁ = −k_m(x₁ − x₂) − c_m(ẋ₁ − ẋ₂) + u                                        (1)
+（1）双Critic网络取最小值。同时维护两套独立的Critic网络$Q_{\theta_1}$、$Q_{\theta_2}$及其目标网络$Q_{\theta'_1}$、$Q_{\theta'_2}$，以二者中的较小值构造时序差分（Temporal Difference, TD）目标，有效抑制单Critic过估计偏差的累积放大。
 
-    Mẍ₂ = k_m(x₁ − x₂) − k_M(x₂ − z) + c_m(ẋ₁ − ẋ₂) − c_M(ż − ẋ₂) + F − u          (2)
+（2）延迟策略更新。Actor网络与目标网络的更新频率低于Critic网络，通常每$d$次Critic更新后执行一次Actor更新（典型值$d=2$）。此举使价值函数先于策略趋于相对稳定，避免Actor在高误差价值指导下频繁误调。
 
-定义状态向量X(t) = [x₁(t), ẋ₁(t), x₂(t), ẋ₂(t)]ᵀ，将式(1)-(2)转化为连续时间状态空间方程：
+（3）目标策略平滑正则化。在目标动作上叠加截断高斯噪声$\varepsilon \sim \operatorname{clip}(\mathcal{N}(0, \tilde{\sigma}), -c, c)$，迫使相似动作获得相近的价值估计，平滑Q函数曲面的局部尖锐区域：
 
-    Ẋ(t) = AX(t) + Bu(t) + Ez(t) + GF(t)                                          (3)
+$$a' = \mu'(s'|\theta^{\mu'}) + \varepsilon, \quad \varepsilon \sim \operatorname{clip}(\mathcal{N}(0, \tilde{\sigma}), -c, c)$$
 
-    Y(t) = CX(t) + Du(t)                                                          (4)
+目标Critic网络的TD目标为：
 
-其中系统矩阵A、输入矩阵B、输出矩阵C、直接传递矩阵D及扰动矩阵E、G的具体形式可由式(1)-(2)直接推导。系统主要物理参数如表1所示。由参数计算可得，主结构固有频率约为4 Hz，吸振器固有频率约为3.8 Hz，两者接近，便于利用反共振原理实现被动吸振；在此基础上引入主动控制可进一步拓宽抑振频带并提升控制精度。
+$$y = r + \gamma \min_{i=1,2} Q_{\theta'_i}(s', a')$$
 
-【表1 二自由度系统参数】
+Critic网络通过最小化均方误差损失$\mathcal{L}(\theta_i) = \mathbb{E}[(Q_{\theta_i}(s,a) - y)^2]$更新，Actor网络按上述延迟频率沿确定性策略梯度方向更新。这三项机制使TD3在连续控制任务中表现出优异的收敛稳定性与样本效率，是本文选择TD3作为基础框架的核心原因。
 
-1.2 非理想控制环境问题描述
+1.2 时滞与采样不确定性下的POMDP退化
 
-在真实数字控制系统中，时滞现象几乎不可避免。系统总时滞τ可近似写为：
+标准TD3算法建立在MDP假设之上，即当前时刻观测状态$s_t$完全刻画了环境的未来演化所需全部信息。然而，在实际数字控制系统中，时滞与采样不确定性将系统性地破坏这一前提。
 
-    τ = τ_sensor + τ_compute + τ_actuator                                          (5)
+在真实控制回路中，多源时滞几乎不可避免。系统总时滞$\tau$可近似写为各环节延迟的叠加：
 
-其中τ_sensor为传感器采集延迟，τ_compute为控制器数据处理与算法计算耗时（包含DRL网络前向推理时间），τ_actuator为执行机构响应时间。时滞出现后，控制器在当前时刻输出的控制力对应的是过去时刻的状态信息，等效于在控制回路中引入相位滞后，严重时会削弱阻尼效果甚至引发系统失稳。
+$$\tau = \tau_{\mathrm{sensor}} + \tau_{\mathrm{compute}} + \tau_{\mathrm{actuator}}$$
 
-此外，嵌入式应用中采样间隔往往并非严格固定，随机扰动会带来变步长采样：
+其中$\tau_{\mathrm{sensor}}$为传感器采集与传输延迟，$\tau_{\mathrm{compute}}$为控制器数据处理与DRL网络前向推理耗时，$\tau_{\mathrm{actuator}}$为执行机构机电响应时间。时滞存在的直接后果是，控制器在时刻$t$依据观测状态$s_t$输出的控制力$u_t$，实际作用于系统的时间点已偏移至$t+\tau$附近，此时系统真实状态已演化为$s_{t+\tau}$——控制力与受控状态之间存在时间错配，等效于在控制回路中引入与频率成正比的相位滞后，严重时导致阻尼效果削弱甚至诱发失稳。
 
-    t_{k+1} = t_k + Δt + δ_k                                                       (6)
+此外，嵌入式应用中的采样过程往往并非严格等间隔。受时钟漂移、中断响应延迟与通信竞争等因素影响，实际采样时刻存在随机抖动：
 
-其中Δt为标称采样间隔，δ_k为随机抖动项。采样与通信的不确定性叠加后，会进一步增强控制对象的非平稳性。此时，系统从标准马尔可夫决策过程（MDP）退化为部分可观测马尔可夫决策过程（POMDP），基于固定步长假设的传统TD3控制器因观测信息不完整而难以获取有效信息进行决策。
+$$t_{k+1} = t_k + \Delta t + \delta_k$$
 
-2 基于时间感知的GRUA-TD3控制器设计
+其中$\Delta t$为标称采样间隔，$\delta_k$为第$k$步的随机抖动项。采样间隔的随机波动与通信时滞的不确定性相互叠加，使智能体接收到的观测序列在时间轴上呈现非均匀、非同步的特征，进一步增强了控制环境的非平稳性。
+
+在上述因素共同作用下，系统从标准MDP退化为部分可观测马尔可夫决策过程（POMDP）。在POMDP框架下，智能体无法直接观测真实状态$s_t$，仅能获得含时间偏差的观测$o_t = f(s_{t-\tau}, \delta)$。观测$o_t$与真实状态$s_t$之间存在由时滞和采样不确定性引入的系统性信息损失，使得条件$P(s_{t+1}|o_t) \neq P(s_{t+1}|s_t)$不再成立——当前观测不再构成预测未来的充分统计量。
+
+对于采用MLP全连接架构的标准TD3控制器，这一退化将直接转化为结构性能力瓶颈。MLP网络以逐时间步独立、静态的方式处理输入，其前向映射$f_{\mathrm{MLP}}: o_t \mapsto a_t$仅基于当前单一观测进行决策，缺乏对历史观测序列的时序建模能力。在POMDP条件下，$o_t$本身已不足以唯一确定系统状态，而MLP又无法通过回溯历史观测来推断真实状态或补偿缺失信息，智能体将陷入"状态混淆"——不同真实状态可能映射到相似的MLP输出，导致策略摇摆、价值估计发散及控制精度下降。因此，赋予DRL控制器捕捉时间依赖、整合历史上下文的能力，是破解POMDP退化困境的关键突破方向。
+
+2 基于时间序列感知的GRUA-TD3控制器设计
 
 2.1 总体框架
 
-针对上述非理想因素，本文提出基于时间感知的GRUA-TD3控制算法，其总体框架如图2所示。该算法仍以TD3为主体框架，核心改进包括三部分：（1）在Actor与Critic网络的输入端分别集成GRU层，用于提取振动响应序列中的长期时序依赖特征；（2）在GRU层后端引入自注意力机制层，对不同时间步特征进行动态加权汇聚；（3）将采样时间间隔Δt与当前总时滞观测值τ_delay显式并入观测状态向量，构造时间增强状态。
+针对上述非理想因素，本文提出基于时间序列感知的GRUA-TD3控制算法，其总体框架如图2所示。该算法仍以TD3为主体框架，核心改进包括三部分：（1）在Actor与Critic网络的输入端分别集成GRU层，用于提取振动响应序列中的长期时序依赖特征；（2）在GRU层后端引入自注意力机制层，对不同时间步特征进行动态加权汇聚；（3）将采样时间间隔Δt与当前总时滞观测值τ_delay显式并入观测状态向量，构造时间增强状态。
 
 【图2 GRUA-TD3控制器总体框架示意图】
 
@@ -80,13 +86,13 @@ Key words: vibration control; deep reinforcement learning; active tuned mass dam
 
 在长序列训练与推理中，传统RNN容易触发梯度消失或梯度爆炸问题。GRU作为LSTM的简化变体，只保留更新门（Update Gate）和重置门（Reset Gate）两类门结构，在保持相近表征能力的同时显著减少了参数量和计算开销[22]，更有利于工程部署。GRU的计算过程为：
 
-    z_t = σ(W_z x_t + U_z h_{t−1} + b_z)                                            (7)
+    z_t = σ(W_z x_t + U_z h_{t−1} + b_z)                                            (1)
 
-    r_t = σ(W_r x_t + U_r h_{t−1} + b_r)                                            (8)
+    r_t = σ(W_r x_t + U_r h_{t−1} + b_r)                                            (2)
 
-    h̃_t = tanh(W_h · [x_t, r_t ⊙ h_{t−1}] + b_h)                                   (9)
+    h̃_t = tanh(W_h · [x_t, r_t ⊙ h_{t−1}] + b_h)                                   (3)
 
-    h_t = (1 − z_t) ⊙ h_{t−1} + z_t ⊙ h̃_t                                           (10)
+    h_t = (1 − z_t) ⊙ h_{t−1} + z_t ⊙ h̃_t                                           (4)
 
 其中z_t为更新门输出，r_t为重置门输出，h̃_t为候选隐藏状态，h_t为最终隐藏状态，⊙表示按位乘法，σ为Sigmoid激活函数。
 
@@ -96,7 +102,7 @@ Key words: vibration control; deep reinforcement learning; active tuned mass dam
 
 为让智能体能显式感知时间维度的变化，本文将采样时间间隔Δt_last与当前时滞观测值τ_delay等时间信息并入状态向量，定义时间感知状态：
 
-    S_t = [X̃, Δt_last, τ_delay]                                                    (11)
+    S_t = [X̃, Δt_last, τ_delay]                                                    (5)
 
 其中X̃表示当前时刻的环境观测状态（位移、速度等物理量），Δt_last为上一控制步的实际采样间隔，τ_delay为当前时刻的总时滞观测值。将时间信息显式并入状态空间后，智能体能够更直接地感知非固定步长条件下的状态演化差异，从而据此动态调整控制策略。
 
@@ -108,101 +114,121 @@ Key words: vibration control; deep reinforcement learning; active tuned mass dam
 
 然后，注意力层采用可学习的打分函数，对序列中每个时间步计算标量评价分数：
 
-    e_j = w_aᵀ h_j + b_a,  j = 1, …, T                                             (12)
+    e_j = w_aᵀ h_j + b_a,  j = 1, …, T                                             (6)
 
 通过Softmax归一化得到各时间步的注意力权重：
 
-    α_i = exp(e_i) / Σ_{j=1}^{T} exp(e_j)                                          (13)
+    α_i = exp(e_i) / Σ_{j=1}^{T} exp(e_j)                                          (7)
 
 最后，将状态序列S_t = {S_{t−L_h+1}, …, S_t, Ŝ_{t+1}, …, Ŝ_{t+L_f}}按注意力权重加权求和，得到注意力汇聚后的状态特征向量S̄_t，作为Actor与Critic后续MLP层的输入：
 
-    S̄_t = Σ_{i=1}^{T} α_i S_i                                                       (14)
+    S̄_t = Σ_{i=1}^{T} α_i S_i                                                       (8)
 
 该机制使网络能够自适应地将计算资源聚焦于对当前决策更为关键的历史或预测时间步，在系统存在时滞与采样抖动时，有效增强策略对关键信息的捕获与利用效率。
 
-2.5 奖励函数设计
+2.5 奖励函数与训练策略
 
-为引导智能体在安全边界内学习最优控制策略，本文设计了分段平滑的奖励函数。设当前时刻主结构位移为x₂，控制后下一时刻位移为x₂'，定义位移容差阈值ε = 1 × 10⁻³，控制力上限为A_max。单步奖励r_t由位移奖励r_disp与动作惩罚r_act加权得到。
+为引导智能体在安全边界内学习最优控制策略，本文设计了分段平滑的奖励函数。设当前时刻主结构位移为$x_2$，控制后下一时刻位移为$x_2'$，定义位移容差阈值$\varepsilon = 1 \times 10^{-3}$，控制力上限为$A_{\max}$。单步奖励$r_t$由位移奖励$r_{\mathrm{disp}}$与动作惩罚$r_{\mathrm{act}}$加权得到。
 
-当| x₂'| ≤ ε时，给予正向位移奖励：
+当$|x_2'| \leq \varepsilon$时，给予正向位移奖励：
 
-    r_disp = (ε − |x₂'|)/ε + 𝕀(|x₂'| ≤ |x₂|) · (|x₂| − |x₂'|)/(|x₂| + 1×10⁻¹⁴)     (15)
+$$r_{\mathrm{disp}} = \frac{\varepsilon - |x_2'|}{\varepsilon} + \mathbb{I}(|x_2'| \leq |x_2|) \cdot \frac{|x_2| - |x_2'|}{|x_2| + 1 \times 10^{-14}}$$
 
-当| x₂'| > ε时，施加对数惩罚：
+当$|x_2'| > \varepsilon$时，施加对数惩罚：
 
-    r_disp = −2 log₁₀(|x₂'|/ε) − 𝕀(|x₂'| > |x₂|) · (|x₂'| − |x₂|)/(|x₂'| + 1×10⁻¹⁴)  (16)
+$$r_{\mathrm{disp}} = -2 \log_{10}\left(\frac{|x_2'|}{\varepsilon}\right) - \mathbb{I}(|x_2'| > |x_2|) \cdot \frac{|x_2'| - |x_2|}{|x_2'| + 1 \times 10^{-14}}$$
 
 动作惩罚项为：
 
-    r_act = −|A_t| / (4 A_max)                                                       (17)
+$$r_{\mathrm{act}} = -\frac{|A_t|}{4 A_{\max}}$$
 
-最终单步总奖励为：
+最终单步总奖励经缩放与裁剪得到：
 
-    r_t = clip((r_disp + r_act)/4, −1.0, 1.0)                                       (18)
+$$r_t = \operatorname{clip}\left(\frac{r_{\mathrm{disp}} + r_{\mathrm{act}}}{4},\; -1.0,\; 1.0\right)$$
 
-2.6 训练策略
+为使控制器充分适应非理想环境，训练过程中在每个时间步随机生成采样间隔$\Delta t$与时滞观测值$\tau_{\mathrm{delay}}$，二者服从预设范围内的正态或均匀分布以模拟通信时延与控制抖动。经验采集阶段，Actor网络根据时间感知增强状态序列$\mathbf{S}_{\mathrm{seq}}$输出动作$a_t$；环境依据当前状态、动作及随机生成的$\Delta t$推进到下一状态，同时基于分段奖励函数给出即时奖励$r_t$。新生成的经验元组$(\mathbf{S}_{\mathrm{seq}}, a_t, r_t, \mathbf{S}'_{\mathrm{seq}})$存入经验回放池，当回放池达到起始训练阈值后，从中随机抽取批量历史经验进行网络参数更新。
 
-为使控制器充分适应非理想环境，训练过程中在每个时间步随机生成采样间隔Δt与时滞观测值τ_delay，二者服从预设范围内的正态或均匀分布以模拟通信时延与控制抖动。经验采集阶段，Actor网络根据时间感知增强状态序列S_seq输出动作a_t；环境依据当前状态、动作及随机生成的Δt推进到下一状态，同时基于分段奖励函数给出即时奖励r_t。新生成的经验元组(S_seq, a_t, r_t, S'_seq)存入经验回放池，当回放池达到起始训练阈值后，从中随机抽取批量历史经验进行网络参数更新。
+训练阶段，目标Actor网络计算带有裁剪噪声的目标动作，目标Critic网络基于双Q网络取最小值以缓解价值过估计，主网络通过最小化均方误差损失更新Critic参数，并按延迟策略更新频率以确定性策略梯度方法更新Actor参数。目标网络通过软更新方式平滑同步。为抑制GRU循环结构可能带来的梯度不稳定，在反向传播中引入梯度裁剪，将各网络层参数梯度的$L_2$范数限制在预设阈值$\|\nabla_{\theta}\|_2 \leq c$以内。
 
-训练阶段，目标Actor网络计算带有裁剪噪声的目标动作，目标Critic网络基于双Q网络取最小值以缓解价值过估计，主网络通过最小化均方误差损失更新Critic参数，并按延迟策略更新频率以确定性策略梯度方法更新Actor参数。目标网络通过软更新方式平滑同步。为抑制GRU循环结构可能带来的梯度不稳定，在反向传播中引入梯度裁剪，将各网络层参数梯度的L2范数限制在预设阈值以内。
+3 系统建模与仿真实验
 
-3 仿真实验与结果分析
+3.1 主结构-ATMD系统动力学建模
 
-3.1 实验设置
+以航天工程中的平台减振为背景，建立如图1所示的二自由度简化动力学模型：系统由待吸振的主结构与附加的电磁式ATMD组成。设电磁吸振器质量为$m$，主结构质量为$M$；$c_m$和$c_M$分别为吸振器阻尼和主结构阻尼，$k_m$和$k_M$分别为吸振器刚度和主结构刚度；$x_1$为吸振器位移，$x_2$为主结构位移，$z$为地基位移，$F$为外激励，$u$为电磁吸振器施加的主动控制力。
+
+【图1 主结构-电磁吸振器系统物理模型示意图】
+
+根据牛顿运动定律，该系统的运动微分方程为：
+
+$$m \ddot{x}_1 = -k_m(x_1 - x_2) - c_m(\dot{x}_1 - \dot{x}_2) + u$$
+
+$$M \ddot{x}_2 = k_m(x_1 - x_2) - k_M(x_2 - z) + c_m(\dot{x}_1 - \dot{x}_2) - c_M(\dot{z} - \dot{x}_2) + F - u$$
+
+定义状态向量$\mathbf{X}(t) = [x_1(t), \dot{x}_1(t), x_2(t), \dot{x}_2(t)]^{\mathrm{T}}$，转化为连续时间状态空间方程：
+
+$$\dot{\mathbf{X}}(t) = \mathbf{A} \mathbf{X}(t) + \mathbf{B} u(t) + \mathbf{E} z(t) + \mathbf{G} F(t)$$
+
+$$\mathbf{Y}(t) = \mathbf{C} \mathbf{X}(t) + \mathbf{D} u(t)$$
+
+其中系统矩阵$\mathbf{A}$、输入矩阵$\mathbf{B}$、输出矩阵$\mathbf{C}$、直接传递矩阵$\mathbf{D}$及扰动矩阵$\mathbf{E}$、$\mathbf{G}$的具体形式可由运动微分方程直接推导。系统主要物理参数如表1所示。由参数计算可得，主结构固有频率约为$4\,\mathrm{Hz}$，吸振器固有频率约为$3.8\,\mathrm{Hz}$，两者接近，便于利用反共振原理实现被动吸振；在此基础上引入主动控制可进一步拓宽抑振频带并提升控制精度。
+
+【表1 二自由度系统参数】
+
+3.2 非理想仿真环境构建与实验设置
 
 为全面评估GRUA-TD3控制器的性能，本文选取四类控制策略进行对比：（1）被动控制（无控制），仅依赖系统固有阻尼与刚度衰减振动；（2）PID控制器，采用经验参数整定，代表传统主动控制基准；（3）标准TD3控制器（MLP-TD3），采用MLP全连接架构，不含GRU与注意力机制；（4）本文提出的GRUA-TD3控制器。
 
-训练与测试环境分为理想环境（固定步长Δt = 0.001 s，无时滞）与非理想环境（引入随机时滞与变步长，时滞步数服从均值μ、标准差σ的正态分布）。
+训练与测试环境分为两类：理想环境采用固定步长$\Delta t = 0.001\,\mathrm{s}$，无时滞；非理想环境引入随机时滞与变步长采样，时滞步数服从均值$\mu$、标准差$\sigma$的正态分布$\mathcal{N}(\mu, \sigma)$，实际采样间隔在标称值附近随机波动，以模拟真实数字控制系统中的通信延迟与时钟抖动。
 
-本实验关键超参数设置如下：Actor网络学习率5×10⁻⁶，Critic网络学习率1×10⁻⁵，目标网络软更新系数τ = 0.001，折扣因子γ = 0.99，经验回放池容量500 000，批量大小128，延迟策略更新频率3。GRUA-TD3的GRU层隐藏单元数64、层数1；历史序列长度L_h = 36，预测序列长度L_f = 4；梯度裁剪阈值1.0。控制力上限A_max = 5.0 N。
+本实验关键超参数设置如下：Actor网络学习率$5 \times 10^{-6}$，Critic网络学习率$1 \times 10^{-5}$，目标网络软更新系数$\tau = 0.001$，折扣因子$\gamma = 0.99$，经验回放池容量$500\,000$，批量大小$128$，延迟策略更新频率$3$。GRUA-TD3的GRU层隐藏单元数$64$、层数$1$；历史序列长度$L_h = 36$，预测序列长度$L_f = 4$；梯度裁剪阈值$1.0$。控制力上限$A_{\max} = 5.0\,\mathrm{N}$。
 
-3.2 训练奖励曲线对比
+3.3 训练奖励曲线对比
 
-图3展示了理想环境与非理想环境下标准TD3与GRUA-TD3的训练奖励曲线。在理想环境中，两种算法均可达到较高奖励水平，其中GRUA-TD3收敛更快、最终奖励更高，整体接近PID控制器的奖励值100.09。引入时滞与变步长后，标准TD3的奖励明显下降且收敛变慢，而GRUA-TD3仍能保持相对更高的奖励与更快的稳定速度。结果表明，GRUA-TD3在时滞与变步长环境中具备更强的适应能力与更优的综合控制表现。
+图3展示了理想环境与非理想环境下标准TD3与GRUA-TD3的训练奖励曲线。在理想环境中，两种算法均可达到较高奖励水平，其中GRUA-TD3收敛更快、最终奖励更高，整体接近PID控制器的奖励值$100.09$。引入时滞与变步长后，标准TD3的奖励明显下降且收敛变慢，而GRUA-TD3仍能保持相对更高的奖励与更快的稳定速度。结果表明，GRUA-TD3在时滞与变步长环境中具备更强的适应能力与更优的综合控制表现。
 
 【图3 训练奖励曲线对比】
 
-3.3 初始位移工况控制效果
+3.4 自由振动工况
 
-在初始位移工况（主结构初始位移x₂ = 0.006 m）下，图4和图5分别给出了理想环境和非理想环境（时滞μ=3, σ=1）中四种控制策略的响应对比。
+在自由振动工况（主结构初始位移$x_2 = 0.006\,\mathrm{m}$）下，图4和图5分别给出了理想环境和非理想环境（时滞$\mu=3$, $\sigma=1$）中四种控制策略的响应对比。
 
-在理想环境下，PID、标准TD3与GRUA-TD3均能在短时间内将主结构振幅衰减90%以上。PID控制器在收敛速度上略占优势；GRUA-TD3由于输入状态序列更长，起始阶段动作相对保守，衰减速度略慢，但最终仍可达到与PID相近的抑振效果。
+在理想环境下，PID、标准TD3与GRUA-TD3均能在短时间内将主结构振幅衰减$90\%$以上。PID控制器在收敛速度上略占优势；GRUA-TD3由于输入状态序列更长，起始阶段动作相对保守，衰减速度略慢，但最终仍可达到与PID相近的抑振效果。
 
-在非理想环境中，PID控制器性能快速退化，主结构位移出现持续振荡，控制效果甚至劣于被动控制。标准TD3仍能维持一定抑振能力，但控制精度与收敛速度明显衰减。相比之下，GRUA-TD3控制器在固定时滞与随机时滞条件下均能保持较高的控制性能，主结构振幅衰减率稳定在80%以上且收敛速度更快，体现出在复杂时间条件下更好的鲁棒性与适应能力。
+在非理想环境中，PID控制器性能快速退化，主结构位移出现持续振荡，控制效果甚至劣于被动控制。标准TD3仍能维持一定抑振能力，但控制精度与收敛速度明显衰减。相比之下，GRUA-TD3控制器在固定时滞与随机时滞条件下均能保持较高的控制性能，主结构振幅衰减率稳定在$87\%$以上且收敛速度更快，体现出在复杂时间条件下更好的鲁棒性与适应能力。
 
-【图4 理想环境下初始位移工况控制效果对比】
-【图5 非理想环境下初始位移工况控制效果对比】
+【图4 理想环境下自由振动工况控制效果对比】
+【图5 非理想环境下自由振动工况控制效果对比】
 
-3.4 定频激励工况控制效果
+3.5 定频激励工况
 
-为进一步验证算法的泛化性能，在定频正弦激励（F(t) = F₀ sin(ωt)，F₀ = 15000 N，ω = 30×2π rad/s，接近主结构固有频率）下进行对照实验。图6和图7分别展示了理想与非理想环境中的控制效果。
+为进一步验证算法的泛化性能，在定频正弦激励（$F(t) = F_0 \sin(\omega t)$，$F_0 = 15000\,\mathrm{N}$，$\omega = 30 \times 2\pi\,\mathrm{rad/s}$，接近主结构固有频率）下进行对照实验。图6和图7分别展示了理想与非理想环境中的控制效果。
 
-在理想无延迟环境中，三类主动控制器的减振效果整体接近，均能使主结构位移振幅较被动状态下降约40%。当存在随机时滞与变步长时，PID控制器性能明显下降；标准TD3与GRUA-TD3仍能维持较高控制水平，主结构振幅衰减率在80%以上，且GRUA-TD3对应的主结构振幅更小。结果表明，GRUA-TD3在复杂且不确定的动态环境中更有利于保持控制稳定性与鲁棒性。
+在理想无延迟环境中，三类主动控制器的减振效果整体接近，均能使主结构位移振幅较被动状态下降约$40\%$。当存在随机时滞与变步长时，PID控制器性能明显下降；标准TD3与GRUA-TD3仍能维持较高控制水平，主结构振幅衰减率在$80\%$以上，且GRUA-TD3对应的主结构振幅更小。结果表明，GRUA-TD3在复杂且不确定的动态环境中更有利于保持控制稳定性与鲁棒性。
 
 【图6 定频激励工况控制效果对比（理想环境）】
 【图7 定频激励工况控制效果对比（非理想环境）】
 
-3.5 随机激励工况控制效果
+3.6 随机激励工况
 
-在实际工程中，结构所受激振力往往具有不规律与宽频带波动特征。本文通过周期性伪随机二进制序列（MLS）生成随机激励信号，评估各控制器在更贴近实际应用场景时的表现。如图8所示，在随机激励叠加时滞与变步长的非理想条件下，GRUA-TD3控制器仍能有效抑制结构振动，主结构振幅明显小于PID与标准TD3控制器，体现出在复杂、非线性与不确定动态环境下更强的适应能力与鲁棒性。
+在实际工程中，结构所受激振力往往具有不规律与宽频带波动特征。本文通过最大长度序列（Maximum Length Sequence, MLS）伪随机信号生成宽频随机激励，评估各控制器在更贴近实际应用场景时的表现。如图8所示，在随机激励叠加时滞与变步长的非理想条件下，GRUA-TD3控制器仍能有效抑制结构振动，主结构振幅明显小于PID与标准TD3控制器，体现出在复杂、非线性与不确定动态环境下更强的适应能力与鲁棒性。
 
 【图8 随机激励工况控制效果对比（非理想环境）】
 
-表2汇总了各控制器在不同工况下的主结构位移均方根（RMS）值与振幅衰减率。在理想环境下，GRUA-TD3的RMS值与PID和标准TD3接近；在非理想环境下，GRUA-TD3的RMS值明显低于其他控制器，振幅衰减率始终维持在80%以上。
+表2汇总了各控制器在不同工况下的主结构位移均方根（RMS）值与振幅衰减率。在理想环境下，GRUA-TD3的RMS值与PID和标准TD3接近；在非理想环境下，GRUA-TD3的RMS值明显低于其他控制器，振幅衰减率始终维持在$80\%$以上。
 
 【表2 各控制器在不同工况下的控制性能对比】
 
 4 结论
 
-本文针对实际振动控制系统中普遍存在的多源时滞与采样抖动问题，提出了一种基于时间感知的GRUA-TD3智能振动控制算法。主要结论如下：
+本文针对实际振动控制系统中普遍存在的多源时滞与采样抖动问题，提出了一种基于时间序列感知的GRUA-TD3强化学习控制算法。主要结论如下：
 
-（1）通过在标准TD3框架的Actor与Critic网络前端集成GRU层以提取时序依赖特征，并引入自注意力机制对不同时间步特征进行自适应加权，有效缓解了POMDP带来的信息缺失问题，增强了控制器对时滞与变步长扰动的适应能力。
+（1）标准TD3算法用于无模型结构振动控制具有可行性，在理想条件下可获得与PID控制器接近的减振效果，主结构位移降低$90\%$以上；但在非理想环境中，标准TD3因MLP网络缺乏时序建模能力而面临POMDP退化问题，控制性能明显下降。
 
-（2）将采样时间间隔与执行耗时等时间信息显式并入观测状态向量，构造时间增强状态，使智能体能够更直接地感知非固定步长条件下的状态演化差异，从而动态调整控制策略。
+（2）本文提出的GRUA-TD3控制器通过三项改进——GRU层提取时序依赖特征、时间增强状态显式感知时间维度、自注意力机制动态加权关键时间步——有效缓解了时滞与采样抖动带来的POMDP信息缺失问题，使智能体能够利用历史上下文推断系统真实状态。
 
-（3）在二自由度主结构-电磁式ATMD系统上开展的仿真实验表明，GRUA-TD3在理想环境下可获得接近PID与标准TD3的减振效果，主结构位移降低90%以上；在非理想环境（随机时滞与变步长）下，主结构振幅衰减率仍维持在80%以上，显著优于PID与标准TD3控制器，展现出良好的鲁棒性与工程应用前景。
+（3）在二自由度主结构-电磁式ATMD系统的非理想仿真环境中，GRUA-TD3在自由振动、定频激励与随机激励等多类工况下均保持$80\%$以上的振幅衰减率，显著优于性能严重退化的PID控制器与控制精度下降的标准TD3控制器，展现出良好的鲁棒性与工程应用前景。
 
-本文目前的研究主要基于数值仿真，后续工作将把所提GRUA-TD3控制器部署到实际振动控制实验平台，在真实物理链路上验证其控制效果，并针对传感器噪声、执行器非线性等实际问题进行算法改进与适应性增强。此外，可进一步探索PPO、元强化学习等更适合非平稳环境的算法框架，将本文方法向更复杂的非线性多自由度系统扩展。
+后续工作将把所提GRUA-TD3控制器部署到实际振动控制实验平台，在真实物理链路上验证其控制效果，并针对传感器噪声、执行器非线性等实际问题进行算法改进与适应性增强。此外，可进一步探索PPO、元强化学习等适合非平稳环境的算法框架，将本文方法向更复杂的非线性多自由度系统扩展。
 
 参考文献
 
