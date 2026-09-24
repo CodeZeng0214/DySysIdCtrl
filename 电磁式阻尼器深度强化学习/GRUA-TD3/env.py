@@ -207,6 +207,56 @@ class ElectromagneticDamperEnv:
                 recorder.append(obs_history=obs.copy(), state_history=info["state"], action_history=action, reward_history=reward, 
                                 time_history=info["time"], dt_history=info["dt"],  delay_time=info["delay_time"])
         return recorder
+    
+    def run_episode_with_controller(self, state0: Optional[np.ndarray] = None,
+                    z_func: Optional[Callable] = None, f_func: Optional[Callable] = None,
+                    controller: BaseController=None, record: bool = True) -> EpisodeRecorder:
+        """运行完整的仿真过程，最开始无控制起作用，在时间到达30%T后的波峰处，使用控制器进行控制。\n"""
+        # 创建记录器
+        if record:
+            recorder = EpisodeRecorder()
+
+        # 重置控制器状态
+        if controller is not None and hasattr(controller, "reset"):
+            controller.reset()
+
+        # 仿真主循环
+        self.reset(state0=state0, z_func=z_func, f_func=f_func)
+        done = False
+        controller_active = False
+
+        while not done:
+            obs = self.observe()
+
+            # 检测波峰条件：到达30%T且x2_dot从正变负（x2局部最大值处）
+            # 增加位移条件：确保当前x2比前10步的x2都大，避免噪声引起误判
+            if not controller_active and self.time >= 0.3 * self.T:
+                if len(self.state_history) >= 11:
+                    curr_x2 = self._state[3]                   # 当前的x2
+                    prev_x2_dot = self.state_history[-2][4]    # 上一步的x2_dot
+                    curr_x2_dot = self._state[4]               # 当前的x2_dot
+                    # 速度过零点 + 当前x2超过前10步所有x2
+                    if prev_x2_dot >= 0 and curr_x2_dot < 0:
+                        prev_x2_values = [s[3] for s in self.state_history[-11:-1]]
+                        if curr_x2 > max(prev_x2_values):
+                            controller_active = True
+            # 额外的安全条件：如果时间过了60%T仍未激活控制器，则强制激活，避免后续数据无效
+            if self.time >= 0.6 * self.T:
+                controller_active = True
+
+            # 选择动作：控制器激活后用控制器，否则零动作
+            action = controller.select_action(obs=obs) if (controller_active and controller is not None) else 0.0
+
+            next_obs, reward, done, info = self.step(action)
+
+            # 记录步进前观测、步进前状态、采取动作、获得奖励、步进前时间、步进时间步长、延迟时间
+            if record:
+                recorder.append(obs_history=obs.copy(), state_history=info["state"],
+                                action_history=action, reward_history=reward,
+                                time_history=info["time"], dt_history=info["dt"],
+                                delay_time=info["delay_time"])
+
+        return recorder
 
     # ------------------------------------------------------------------
     # Internal helpers
