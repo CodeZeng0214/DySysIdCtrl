@@ -165,3 +165,18 @@ class ReplayBuffer:
         self.ptr = int(data['ptr'])
         self.size = int(data['size'])
 
+    def delete_buffer(self, start,end) -> None:
+        """删除经验池中指定范围的样本。"""
+        if start < 0 or end > self.size or start >= end:
+            raise ValueError("Invalid start or end index for deletion.")
+        # 删除指定范围的样本
+        self.states = np.delete(self.states, np.s_[start:end], axis=0)
+        self.actions = np.delete(self.actions, np.s_[start:end], axis=0)
+        self.rewards = np.delete(self.rewards, np.s_[start:end], axis=0)
+        self.next_states = np.delete(self.next_states, np.s_[start:end], axis=0)
+        self.dones = np.delete(self.dones, np.s_[start:end], axis=0)
+        self.delay_steps = np.delete(self.delay_steps, np.s_[start:end], axis=0)
+        # 更新指针和大小
+        self.size -= (end - start)
+        self.ptr = self.size % self.capacity
+

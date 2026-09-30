@@ -104,6 +104,8 @@ def train(project_name: str,
         elif explore_noise_trend == 'exp':
         # 计算当前探索噪声的大小，使用指数衰减
             explore_noise = 0.1 + (1.0 - 0.1) * np.exp(-0.01 * ep)
+        elif explore_noise_trend == 'zero':
+            explore_noise = 0.0 # 不使用探索噪声
         else:
             explore_noise = 0.1 # 默认噪声值
         if ep >= n_episodes * 0.8: 

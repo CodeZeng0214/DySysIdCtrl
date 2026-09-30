@@ -239,9 +239,9 @@ class TD3Controller(BaseController):
         self.target_actor.load_state_dict(payload["target_actor"])
         self.target_critic1.load_state_dict(payload["target_critic1"])
         self.target_critic2.load_state_dict(payload["target_critic2"])
-        self.actor_optim.load_state_dict(payload["actor_optim"])
-        self.critic1_optim.load_state_dict(payload["critic1_optim"])
-        self.critic2_optim.load_state_dict(payload["critic2_optim"])
+        # self.actor_optim.load_state_dict(payload["actor_optim"])
+        # self.critic1_optim.load_state_dict(payload["critic1_optim"])
+        # self.critic2_optim.load_state_dict(payload["critic2_optim"])
         self.total_it = int(payload.get("total_it", 0))
 
 
