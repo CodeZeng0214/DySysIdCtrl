@@ -80,15 +80,19 @@ class GruPredictor(nn.Module):
     - hidden_dim: GRU隐藏层维度，默认值为 64
     - num_layers: GRU层数，默认值为 1
     - pre_seq_len: 预测的未来时间步数，默认值为 5
+    - simple_nn: 是否使用简单的全连接网络，默认值为 False
+    - freeze_attention: 是否冻结注意力层，默认值为 False
     """
     def __init__(self, norm=False, simple_nn=False,freeze_gru=False,
-                 state_dim=6, hidden_dim=64, num_layers=1, fc_seq_len=5):
+                 state_dim=6, hidden_dim=64, num_layers=1, fc_seq_len=5,
+                 freeze_attention=False):
         super(GruPredictor, self).__init__()
         self.state_dim = state_dim
         self.hidden_dim = hidden_dim
         self.num_layers = num_layers
         self.fc_seq_len = fc_seq_len
         self.simple_nn = simple_nn
+        self.freeze_attention = freeze_attention  # 是否冻结注意力层
 
         # GRU层
         self.gru_norm = nn.LayerNorm(state_dim) if norm else nn.Identity()
@@ -113,6 +117,8 @@ class GruPredictor(nn.Module):
         """前向传播
         Args:
             state_seq: 输入状态序列，shape [batch_size, seq_len, state_dim]
+            critic: 是否为Critic网络，若为True则返回GRU的隐藏状态，否则返回注意力加权后的状态向量
+            freeze_attention: 是否冻结注意力层，若为True则不计算注意力权重
         Returns:
             state_vector: 注意力加权后的状态向量，shape [batch_size, state_dim]
         """
@@ -149,6 +155,10 @@ class GruPredictor(nn.Module):
             # attention_scores = self.attention(torch.cat((h_combined_seq, self.attention_norm(state_combined_seq)), dim=2)).squeeze(-1)  # [batch_size, 1.5*fc_seq_len]
             attention_scores = self.attention(h_combined_seq).squeeze(-1)  # [batch_size, 1.5*fc_seq_len]
             attention_weights = F.softmax(attention_scores, dim=-1)  # [batch_size, 1.5*fc_seq_len]
+
+            if self.freeze_attention:
+                # 冻结注意力层，直接使用平均权重
+                attention_weights = torch.ones_like(attention_weights) / attention_weights.size(1)  # [batch_size, 1.5*fc_seq_len]
 
             # 加权求和得到上下文状态向量
             # [batch_size, 1.5*fc_seq_len, state_dim] * [batch_size, 1.5*fc_seq_len, 1] -> [batch_size, 1.5*fc_seq_len, state_dim]
@@ -545,6 +555,7 @@ def build_actor_critic(
     fc_seq_len: int = 5,
     norm: bool = False, # 是否使用归一化
     simple_nn: bool = False, # 是否使用简单神经网络
+    freeze_attention: bool = False, # 是否冻结注意力层
 ) -> Tuple[Mlp_Actor|Gru_Actor, Mlp_Critic|Gru_Critic]:
     arch = arch.lower()
     if arch == "mlp":
@@ -553,10 +564,12 @@ def build_actor_critic(
     elif arch == "seq":
         gru_predictor1 = GruPredictor(norm=norm, simple_nn=simple_nn, 
                                      state_dim=state_dim, hidden_dim=gru_hidden, 
-                                     num_layers=gru_layers, fc_seq_len=fc_seq_len)
+                                     num_layers=gru_layers, fc_seq_len=fc_seq_len,
+                                     freeze_attention=freeze_attention)
         gru_predictor2 = GruPredictor(norm=norm, simple_nn=simple_nn, 
                                      state_dim=state_dim, hidden_dim=gru_hidden, 
-                                     num_layers=gru_layers, fc_seq_len=fc_seq_len)
+                                     num_layers=gru_layers, fc_seq_len=fc_seq_len,
+                                     freeze_attention=freeze_attention)
         actor = Gru_Actor(gru_predictor1, norm=norm, simple_nn=simple_nn,
                             state_dim=state_dim, action_dim=action_dim, hidden_dim=hidden_dim)
         critic = Gru_Critic(gru_predictor2, norm=norm, simple_nn=simple_nn,

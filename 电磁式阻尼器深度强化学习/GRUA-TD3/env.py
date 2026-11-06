@@ -8,7 +8,7 @@ from controller import BaseController
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def build_env(ENV_PARAMS):
+def build_env(ENV_PARAMS, sys_params=None):
     # 系统参数
     m = 1.0    # 电磁吸振器质量
     M = 15  # 待减振对象质量
@@ -20,6 +20,15 @@ def build_env(ENV_PARAMS):
     # R_m = 5.0  # 线圈的电阻
     c_m = 0.0001 # 1.0  # 电磁吸振器阻尼
     c_M = 0.001 # 5.0  # 平台阻尼
+
+    if sys_params is not None:
+        m = sys_params.get('m', m)
+        M = sys_params.get('M', M)
+        k_m = sys_params.get('k_m', k_m)
+        k_M = sys_params.get('k_M', k_M)
+        k_f = sys_params.get('k_f', k_f)
+        c_m = sys_params.get('c_m', c_m)
+        c_M = sys_params.get('c_M', c_M)
 
     A = np.array(
         [

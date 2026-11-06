@@ -96,6 +96,7 @@ class TD3Controller(BaseController):
         seq_len: int = 1, fc_seq_len: int = 5,
         actor_lr: float = 2e-06, critic_lr: float = 1e-05, clip_grad: float = 1.0, tau: float = 0.002,
         gamma: float = 0.99, policy_noise: float = 0.2, noise_clip: float = 0.5, policy_freq: int = 2, 
+        freeze_attention: bool = False
         ) -> None:
         super().__init__()
         self.action_bound = action_bound # 动作边界
@@ -107,13 +108,14 @@ class TD3Controller(BaseController):
         self.noise_clip = noise_clip # 策略噪声裁剪范围
         self.policy_freq = policy_freq # 策略更新频率
         self.clip_grad = clip_grad if clip_grad and clip_grad > 0 else None # 梯度裁剪阈值
+        self.freeze_attention = freeze_attention # 是否冻结注意力机制
 
-        self.actor, self.critic1 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn)
-        _, self.critic2 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn)
+        self.actor, self.critic1 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn,freeze_attention=freeze_attention)
+        _, self.critic2 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn,freeze_attention=freeze_attention)
 
         # 使用深拷贝创建目标网络，隔离网络的权重
-        self.target_actor,self.target_critic1 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn)
-        _, self.target_critic2 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn)
+        self.target_actor,self.target_critic1 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn,freeze_attention=freeze_attention)
+        _, self.target_critic2 = build_actor_critic(self.arch, state_dim, action_dim, hidden_dim, action_bound, gru_hidden, gru_layers, fc_seq_len=fc_seq_len, norm=norm, simple_nn=simple_nn,freeze_attention=freeze_attention)
 
         self.actor_optim = optim.Adam(self.actor.parameters(), lr=actor_lr)
         self.critic1_optim = optim.Adam(self.critic1.parameters(), lr=critic_lr)
