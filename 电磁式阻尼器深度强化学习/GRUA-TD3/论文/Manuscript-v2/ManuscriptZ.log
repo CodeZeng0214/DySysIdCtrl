@@ -1,0 +1,813 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 23.5) (preloaded format=pdflatex 2023.8.5)  5 OCT 2026 17:11
+entering extended mode
+ restricted \write18 enabled.
+ file:line:error style messages enabled.
+ %&-line parsing enabled.
+**./ManuscriptZ.tex
+(ManuscriptZ.tex
+LaTeX2e <2023-06-01> patch level 1
+L3 programming layer <2023-06-30>
+(elsarticle.cls
+Document Class: elsarticle 2020/11/20, 3.3: Elsevier Ltd
+(D:\Research\Miktex\tex/latex/l3kernel\expl3.sty
+Package: expl3 2023-06-30 L3 programming layer (loader) 
+ (D:\Research\Miktex\tex/latex/l3backend\l3backend-pdftex.def
+File: l3backend-pdftex.def 2023-04-19 L3 backend support: PDF output (pdfTeX)
+\l__color_backend_stack_int=\count185
+\l__pdf_internal_box=\box51
+)) (D:\Research\Miktex\tex/latex/l3packages/xparse\xparse.sty
+Package: xparse 2023-02-02 L3 Experimental document command parser
+) (D:\Research\Miktex\tex/latex/etoolbox\etoolbox.sty
+Package: etoolbox 2020/10/05 v2.5k e-TeX tools for LaTeX (JAW)
+\etb@tempcnta=\count186
+)
+\@bls=\dimen140
+ (D:\Research\Miktex\tex/latex/base\article.cls
+Document Class: article 2023/05/17 v1.4n Standard LaTeX document class
+(D:\Research\Miktex\tex/latex/base\size10.clo
+File: size10.clo 2023/05/17 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count187
+\c@section=\count188
+\c@subsection=\count189
+\c@subsubsection=\count190
+\c@paragraph=\count191
+\c@subparagraph=\count192
+\c@figure=\count193
+\c@table=\count194
+\abovecaptionskip=\skip48
+\belowcaptionskip=\skip49
+\bibindent=\dimen141
+) (D:\Research\Miktex\tex/latex/graphics\graphicx.sty
+Package: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)
+ (D:\Research\Miktex\tex/latex/graphics\keyval.sty
+Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
+\KV@toks@=\toks17
+) (D:\Research\Miktex\tex/latex/graphics\graphics.sty
+Package: graphics 2022/03/10 v1.4e Standard LaTeX Graphics (DPC,SPQR)
+ (D:\Research\Miktex\tex/latex/graphics\trig.sty
+Package: trig 2021/08/11 v1.11 sin cos tan (DPC)
+) (D:\Research\Miktex\tex/latex/graphics-cfg\graphics.cfg
+File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+)
+Package graphics Info: Driver file: pdftex.def on input line 107.
+ (D:\Research\Miktex\tex/latex/graphics-def\pdftex.def
+File: pdftex.def 2022/09/22 v1.2b Graphics/color driver for pdftex
+))
+\Gin@req@height=\dimen142
+\Gin@req@width=\dimen143
+)
+\c@tnote=\count195
+\c@fnote=\count196
+\c@cnote=\count197
+\c@ead=\count198
+\c@author=\count199
+\@eadauthor=\toks18
+\c@affn=\count266
+\absbox=\box52
+\elsarticlehighlightsbox=\box53
+\elsarticlegrabsbox=\box54
+\keybox=\box55
+\Columnwidth=\dimen144
+\space@left=\dimen145
+\els@boxa=\box56
+\els@boxb=\box57
+\leftMargin=\dimen146
+\@enLab=\toks19
+\@sep=\skip50
+\@@sep=\skip51
+ (ManuscriptZ.spl) (C:\Users\T-Ji\AppData\Roaming\MiKTeX\tex/latex/natbib\natbib.sty
+Package: natbib 2010/09/13 8.31b (PWD, AO)
+\bibhang=\skip52
+\bibsep=\skip53
+LaTeX Info: Redefining \cite on input line 694.
+\c@NAT@ctr=\count267
+)
+\splwrite=\write3
+\openout3 = `ManuscriptZ.spl'.
+
+\appnamewidth=\dimen147
+) (D:\Research\Miktex\tex/latex/geometry\geometry.sty
+Package: geometry 2020/01/02 v5.9 Page Geometry
+ (D:\Research\Miktex\tex/generic/iftex\ifvtex.sty
+Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
+ (D:\Research\Miktex\tex/generic/iftex\iftex.sty
+Package: iftex 2022/02/03 v1.0f TeX engine tests
+))
+\Gm@cnth=\count268
+\Gm@cntv=\count269
+\c@Gm@tempcnt=\count270
+\Gm@bindingoffset=\dimen148
+\Gm@wd@mp=\dimen149
+\Gm@odd@mp=\dimen150
+\Gm@even@mp=\dimen151
+\Gm@layoutwidth=\dimen152
+\Gm@layoutheight=\dimen153
+\Gm@layouthoffset=\dimen154
+\Gm@layoutvoffset=\dimen155
+\Gm@dimlist=\toks20
+ (D:\Research\Miktex\tex/latex/geometry\geometry.cfg)) (D:\Research\Miktex\tex/latex/lineno\lineno.sty
+Package: lineno 2023/05/20 line numbers on paragraphs v5.3
+ (C:\Users\T-Ji\AppData\Roaming\MiKTeX\tex/latex/kvoptions\kvoptions.sty
+Package: kvoptions 2020-10-07 v3.14 Key value format for package options (HO)
+ (C:\Users\T-Ji\AppData\Roaming\MiKTeX\tex/generic/ltxcmds\ltxcmds.sty
+Package: ltxcmds 2020-05-10 v1.25 LaTeX kernel commands for general use (HO)
+) (C:\Users\T-Ji\AppData\Roaming\MiKTeX\tex/generic/kvsetkeys\kvsetkeys.sty
+Package: kvsetkeys 2019/12/15 v1.18 Key value parser (HO)
+))
+\linenopenalty=\count271
+\output=\toks21
+\linenoprevgraf=\count272
+\linenumbersep=\dimen156
+\linenumberwidth=\dimen157
+\c@linenumber=\count273
+\c@pagewiselinenumber=\count274
+\c@LN@truepage=\count275
+\c@internallinenumber=\count276
+\c@internallinenumbers=\count277
+\quotelinenumbersep=\dimen158
+\bframerule=\dimen159
+\bframesep=\dimen160
+\bframebox=\box58
+LaTeX Info: Redefining \\ on input line 3180.
+) (D:\Research\Miktex\tex/latex/hyperref\hyperref.sty
+Package: hyperref 2023-07-08 v7.01b Hypertext links for LaTeX
+ (D:\Research\Miktex\tex/generic/pdftexcmds\pdftexcmds.sty
+Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO)
+ (C:\Users\T-Ji\AppData\Roaming\MiKTeX\tex/generic/infwarerr\infwarerr.sty
+Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
+)
+Package pdftexcmds Info: \pdf@primitive is available.
+Package pdftexcmds Info: \pdf@ifprimitive is available.
+Package pdftexcmds Info: \pdfdraftmode found.
+) (C:\Users\T-Ji\AppData\Roaming\MiKTeX\tex/generic/kvdefinekeys\kvdefinekeys.sty
+Package: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)
+) (D:\Research\Miktex\tex/generic/pdfescape\pdfescape.sty
+Package: pdfescape 2019/12/09 v1.15 Implements pdfTeX's escape features (HO)
+) (D:\Research\Miktex\tex/latex/hycolor\hycolor.sty
+Package: hycolor 2020-01-27 v1.10 Color options for hyperref/bookmark (HO)
+) (D:\Research\Miktex\tex/latex/letltxmacro\letltxmacro.sty
+Package: letltxmacro 2019/12/03 v1.6 Let assignment for LaTeX macros (HO)
+) (D:\Research\Miktex\tex/latex/auxhook\auxhook.sty
+Package: auxhook 2019-12-17 v1.6 Hooks for auxiliary files (HO)
+) (D:\Research\Miktex\tex/latex/hyperref\nameref.sty
+Package: nameref 2023-08-07 v2.53 Cross-referencing by name of section
+ (D:\Research\Miktex\tex/latex/refcount\refcount.sty
+Package: refcount 2019/12/15 v3.6 Data extraction from label references (HO)
+) (D:\Research\Miktex\tex/generic/gettitlestring\gettitlestring.sty
+Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
+)
+\c@section@level=\count278
+)
+\@linkdim=\dimen161
+\Hy@linkcounter=\count279
+\Hy@pagecounter=\count280
+ (D:\Research\Miktex\tex/latex/hyperref\pd1enc.def
+File: pd1enc.def 2023-07-08 v7.01b Hyperref: PDFDocEncoding definition (HO)
+Now handling font encoding PD1 ...
+... no UTF-8 mapping file for font encoding PD1
+) (D:\Research\Miktex\tex/generic/intcalc\intcalc.sty
+Package: intcalc 2019/12/15 v1.3 Expandable calculations with integers (HO)
+)
+\Hy@SavedSpaceFactor=\count281
+ (D:\Research\Miktex\tex/latex/hyperref\puenc.def
+File: puenc.def 2023-07-08 v7.01b Hyperref: PDF Unicode definition (HO)
+Now handling font encoding PU ...
+... no UTF-8 mapping file for font encoding PU
+)
+Package hyperref Info: Hyper figures OFF on input line 4167.
+Package hyperref Info: Link nesting OFF on input line 4172.
+Package hyperref Info: Hyper index ON on input line 4175.
+Package hyperref Info: Plain pages OFF on input line 4182.
+Package hyperref Info: Backreferencing OFF on input line 4187.
+Package hyperref Info: Implicit mode ON; LaTeX internals redefined.
+Package hyperref Info: Bookmarks ON on input line 4434.
+\c@Hy@tempcnt=\count282
+ (D:\Research\Miktex\tex/latex/url\url.sty
+\Urlmuskip=\muskip16
+Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
+)
+LaTeX Info: Redefining \url on input line 4772.
+\XeTeXLinkMargin=\dimen162
+ (D:\Research\Miktex\tex/generic/bitset\bitset.sty
+Package: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)
+ (D:\Research\Miktex\tex/generic/bigintcalc\bigintcalc.sty
+Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO)
+))
+\Fld@menulength=\count283
+\Field@Width=\dimen163
+\Fld@charsize=\dimen164
+Package hyperref Info: Hyper figures OFF on input line 6051.
+Package hyperref Info: Link nesting OFF on input line 6056.
+Package hyperref Info: Hyper index ON on input line 6059.
+Package hyperref Info: backreferencing OFF on input line 6066.
+Package hyperref Info: Link coloring OFF on input line 6071.
+Package hyperref Info: Link coloring with OCG OFF on input line 6076.
+Package hyperref Info: PDF/A mode OFF on input line 6081.
+ (D:\Research\Miktex\tex/latex/base\atbegshi-ltx.sty
+Package: atbegshi-ltx 2021/01/10 v1.0c Emulation of the original atbegshi
+package with kernel methods
+)
+\Hy@abspage=\count284
+\c@Item=\count285
+\c@Hfootnote=\count286
+)
+Package hyperref Info: Driver (autodetected): hpdftex.
+ (D:\Research\Miktex\tex/latex/hyperref\hpdftex.def
+File: hpdftex.def 2023-07-08 v7.01b Hyperref driver for pdfTeX
+ (D:\Research\Miktex\tex/latex/base\atveryend-ltx.sty
+Package: atveryend-ltx 2020/08/19 v1.0a Emulation of the original atveryend package
+with kernel methods
+)
+\Fld@listcount=\count287
+\c@bookmark@seq@number=\count288
+ (D:\Research\Miktex\tex/latex/rerunfilecheck\rerunfilecheck.sty
+Package: rerunfilecheck 2022-07-10 v1.10 Rerun checks for auxiliary files (HO)
+ (D:\Research\Miktex\tex/generic/uniquecounter\uniquecounter.sty
+Package: uniquecounter 2019/12/15 v1.4 Provide unlimited unique counter (HO)
+)
+Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 285.
+)
+\Hy@SectionHShift=\skip54
+) (D:\Research\Miktex\tex/latex/graphics\color.sty
+Package: color 2022/01/06 v1.3d Standard LaTeX Color (DPC)
+ (D:\Research\Miktex\tex/latex/graphics-cfg\color.cfg
+File: color.cfg 2016/01/02 v1.6 sample color configuration
+)
+Package color Info: Driver file: pdftex.def on input line 149.
+ (D:\Research\Miktex\tex/latex/graphics\mathcolor.ltx)) (D:\Research\Miktex\tex/latex/psnfss\pifont.sty
+Package: pifont 2020/03/25 PSNFSS-v9.3 Pi font support (SPQR) 
+LaTeX Font Info:    Trying to load font information for U+pzd on input line 63.
+ (D:\Research\Miktex\tex/latex/psnfss\upzd.fd
+File: upzd.fd 2001/06/04 font definitions for U/pzd.
+)
+LaTeX Font Info:    Trying to load font information for U+psy on input line 64.
+ (D:\Research\Miktex\tex/latex/psnfss\upsy.fd
+File: upsy.fd 2001/06/04 font definitions for U/psy.
+)) (D:\Research\Miktex\tex/latex/amsmath\amsmath.sty
+Package: amsmath 2023/05/13 v2.17o AMS math features
+\@mathmargin=\skip55
+
+For additional information on amsmath, use the `?' option.
+(D:\Research\Miktex\tex/latex/amsmath\amstext.sty
+Package: amstext 2021/08/26 v2.01 AMS text
+ (D:\Research\Miktex\tex/latex/amsmath\amsgen.sty
+File: amsgen.sty 1999/11/30 v2.0 generic functions
+\@emptytoks=\toks22
+\ex@=\dimen165
+)) (D:\Research\Miktex\tex/latex/amsmath\amsbsy.sty
+Package: amsbsy 1999/11/29 v1.2d Bold Symbols
+\pmbraise@=\dimen166
+) (D:\Research\Miktex\tex/latex/amsmath\amsopn.sty
+Package: amsopn 2022/04/08 v2.04 operator names
+)
+\inf@bad=\count289
+LaTeX Info: Redefining \frac on input line 234.
+\uproot@=\count290
+\leftroot@=\count291
+LaTeX Info: Redefining \overline on input line 399.
+LaTeX Info: Redefining \colon on input line 410.
+\classnum@=\count292
+\DOTSCASE@=\count293
+LaTeX Info: Redefining \ldots on input line 496.
+LaTeX Info: Redefining \dots on input line 499.
+LaTeX Info: Redefining \cdots on input line 620.
+\Mathstrutbox@=\box59
+\strutbox@=\box60
+LaTeX Info: Redefining \big on input line 722.
+LaTeX Info: Redefining \Big on input line 723.
+LaTeX Info: Redefining \bigg on input line 724.
+LaTeX Info: Redefining \Bigg on input line 725.
+\big@size=\dimen167
+LaTeX Font Info:    Redeclaring font encoding OML on input line 743.
+LaTeX Font Info:    Redeclaring font encoding OMS on input line 744.
+\macc@depth=\count294
+LaTeX Info: Redefining \bmod on input line 905.
+LaTeX Info: Redefining \pmod on input line 910.
+LaTeX Info: Redefining \smash on input line 940.
+LaTeX Info: Redefining \relbar on input line 970.
+LaTeX Info: Redefining \Relbar on input line 971.
+\c@MaxMatrixCols=\count295
+\dotsspace@=\muskip17
+\c@parentequation=\count296
+\dspbrk@lvl=\count297
+\tag@help=\toks23
+\row@=\count298
+\column@=\count299
+\maxfields@=\count300
+\andhelp@=\toks24
+\eqnshift@=\dimen168
+\alignsep@=\dimen169
+\tagshift@=\dimen170
+\tagwidth@=\dimen171
+\totwidth@=\dimen172
+\lineht@=\dimen173
+\@envbody=\toks25
+\multlinegap=\skip56
+\multlinetaggap=\skip57
+\mathdisplay@stack=\toks26
+LaTeX Info: Redefining \[ on input line 2953.
+LaTeX Info: Redefining \] on input line 2954.
+)
+\linenoamsmath@ams@eqpen=\count301
+ (D:\Research\Miktex\tex/latex/amsfonts\amssymb.sty
+Package: amssymb 2013/01/14 v3.01 AMS font symbols
+ (D:\Research\Miktex\tex/latex/amsfonts\amsfonts.sty
+Package: amsfonts 2013/01/14 v3.01 Basic AMSFonts support
+\symAMSa=\mathgroup4
+\symAMSb=\mathgroup5
+LaTeX Font Info:    Redeclaring math symbol \hbar on input line 98.
+LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
+(Font)                  U/euf/m/n --> U/euf/b/n on input line 106.
+)) (D:\Research\Miktex\tex/latex/jknappen\mathrsfs.sty
+Package: mathrsfs 1996/01/01 Math RSFS package v1.0 (jk)
+\symrsfs=\mathgroup6
+) (D:\Research\Miktex\tex/latex/amscls\amsthm.sty
+Package: amsthm 2020/05/29 v2.20.6
+\thm@style=\toks27
+\thm@bodyfont=\toks28
+\thm@headfont=\toks29
+\thm@notefont=\toks30
+\thm@headpunct=\toks31
+\thm@preskip=\skip58
+\thm@postskip=\skip59
+\thm@headsep=\skip60
+\dth@everypar=\toks32
+LaTeX Info: Redefining \qed on input line 273.
+) (D:\Research\Miktex\tex/latex/epstopdf-pkg\epstopdf.sty
+Package: epstopdf 2020-01-24 v2.11 Conversion with epstopdf on the fly (HO)
+ (C:\Users\T-Ji\AppData\Roaming\MiKTeX\tex/latex/grfext\grfext.sty
+Package: grfext 2019/12/03 v1.3 Manage graphics extensions (HO)
+) (D:\Research\Miktex\tex/latex/epstopdf-pkg\epstopdf-base.sty
+Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
+Package grfext Info: Graphics extension search list:
+(grfext)             [.pdf,.png,.jpg,.mps,.jpeg,.jbig2,.jb2,.PDF,.PNG,.JPG,.JPEG,.JBIG2,.JB2,.eps]
+(grfext)             \AppendGraphicsExtensions on input line 504.
+ (D:\Research\Miktex\tex/latex/00miktex\epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
+))) (D:\Research\Miktex\tex/latex/float\float.sty
+Package: float 2001/11/08 v1.3d Float enhancements (AL)
+\c@float@type=\count302
+\float@exts=\toks33
+\float@box=\box61
+\@float@everytoks=\toks34
+\@floatcapt=\box62
+) (D:\Research\Miktex\tex/latex/caption\caption.sty
+Package: caption 2023/03/12 v3.6j Customizing captions (AR)
+ (D:\Research\Miktex\tex/latex/caption\caption3.sty
+Package: caption3 2023/03/12 v2.4 caption3 kernel (AR)
+\caption@tempdima=\dimen174
+\captionmargin=\dimen175
+\caption@leftmargin=\dimen176
+\caption@rightmargin=\dimen177
+\caption@width=\dimen178
+\caption@indent=\dimen179
+\caption@parindent=\dimen180
+\caption@hangindent=\dimen181
+Package caption Info: elsarticle document class detected.
+ (D:\Research\Miktex\tex/latex/caption\caption-elsarticle.sto
+File: caption-elsarticle.sto 2020/08/22 v2.0 Adaption of the caption package to the elsarticle document class (AR)
+))
+\c@caption@flags=\count303
+\c@continuedfloat=\count304
+Package caption Info: float package is loaded.
+Package caption Info: hyperref package is loaded.
+) (D:\Research\Miktex\tex/latex/subfigure\subfigure.sty
+Package: subfigure 2002/07/30 v2.1.4 subfigure package
+\subfigtopskip=\skip61
+\subfigcapskip=\skip62
+\subfigcaptopadj=\dimen182
+\subfigbottomskip=\skip63
+\subfigcapmargin=\dimen183
+\subfiglabelskip=\skip64
+\c@subfigure=\count305
+\c@lofdepth=\count306
+\c@subtable=\count307
+\c@lotdepth=\count308
+
+****************************************
+* Local config file subfigure.cfg used *
+****************************************
+(D:\Research\Miktex\tex/latex/subfigure\subfigure.cfg)
+\subfig@top=\skip65
+\subfig@bottom=\skip66
+) (D:\Research\Miktex\tex/latex/booktabs\booktabs.sty
+Package: booktabs 2020/01/12 v1.61803398 Publication quality tables
+\heavyrulewidth=\dimen184
+\lightrulewidth=\dimen185
+\cmidrulewidth=\dimen186
+\belowrulesep=\dimen187
+\belowbottomsep=\dimen188
+\aboverulesep=\dimen189
+\abovetopsep=\dimen190
+\cmidrulesep=\dimen191
+\cmidrulekern=\dimen192
+\defaultaddspace=\dimen193
+\@cmidla=\count309
+\@cmidlb=\count310
+\@aboverulesep=\dimen194
+\@belowrulesep=\dimen195
+\@thisruleclass=\count311
+\@lastruleclass=\count312
+\@thisrulewidth=\dimen196
+) (D:\Research\Miktex\tex/latex/multirow\multirow.sty
+Package: multirow 2021/03/15 v2.8 Span multiple rows of a table
+\multirow@colwidth=\skip67
+\multirow@cntb=\count313
+\multirow@dima=\skip68
+\bigstrutjot=\dimen197
+) (D:\Research\Miktex\tex/latex/tools\tabularx.sty
+Package: tabularx 2020/01/15 v2.11c `tabularx' package (DPC)
+ (D:\Research\Miktex\tex/latex/tools\array.sty
+Package: array 2022/09/04 v2.5g Tabular extension package (FMi)
+\col@sep=\dimen198
+\ar@mcellbox=\box63
+\extrarowheight=\dimen199
+\NC@list=\toks35
+\extratabsurround=\skip69
+\backup@length=\skip70
+\ar@cellbox=\box64
+)
+\TX@col@width=\dimen256
+\TX@old@table=\dimen257
+\TX@old@col=\dimen258
+\TX@target=\dimen259
+\TX@delta=\dimen260
+\TX@cols=\count314
+\TX@ftn=\toks36
+) (D:\Research\Miktex\tex/latex/threeparttable\threeparttable.sty
+Package: threeparttable 2003/06/13  v 3.0
+\@tempboxb=\box65
+) (D:\Research\Miktex\tex/latex/tools\longtable.sty
+Package: longtable 2021-09-01 v4.17 Multi-page Table package (DPC)
+\LTleft=\skip71
+\LTright=\skip72
+\LTpre=\skip73
+\LTpost=\skip74
+\LTchunksize=\count315
+\LTcapwidth=\dimen261
+\LT@head=\box66
+\LT@firsthead=\box67
+\LT@foot=\box68
+\LT@lastfoot=\box69
+\LT@gbox=\box70
+\LT@cols=\count316
+\LT@rows=\count317
+\c@LT@tables=\count318
+\c@LT@chunks=\count319
+\LT@p@ftn=\toks37
+) (D:\Research\Miktex\tex/latex/enumitem\enumitem.sty
+Package: enumitem 2019/06/20 v3.9 Customized lists
+\labelindent=\skip75
+\enit@outerparindent=\dimen262
+\enit@toks=\toks38
+\enit@inbox=\box71
+\enit@count@id=\count320
+\enitdp@description=\count321
+)
+\c@lemma=\count322
+\c@corollary=\count323
+ (D:\Research\Miktex\tex/latex/algorithms\algorithm.sty
+Package: algorithm 2009/08/24 v0.1 Document Style `algorithm' - floating environment
+ (D:\Research\Miktex\tex/latex/base\ifthen.sty
+Package: ifthen 2022/04/13 v1.1d Standard LaTeX ifthen package (DPC)
+)
+\@float@every@algorithm=\toks39
+\c@algorithm=\count324
+) (D:\Research\Miktex\tex/latex/algorithmicx\algpseudocode.sty
+Package: algpseudocode 
+ (D:\Research\Miktex\tex/latex/algorithmicx\algorithmicx.sty
+Package: algorithmicx 2005/04/27 v1.2 Algorithmicx
+
+Document Style algorithmicx 1.2 - a greatly improved `algorithmic' style
+\c@ALG@line=\count325
+\c@ALG@rem=\count326
+\c@ALG@nested=\count327
+\ALG@tlm=\skip76
+\ALG@thistlm=\skip77
+\c@ALG@Lnr=\count328
+\c@ALG@blocknr=\count329
+\c@ALG@storecount=\count330
+\c@ALG@tmpcounter=\count331
+\ALG@tmplength=\skip78
+)
+Document Style - pseudocode environments for use with the `algorithmicx' style
+) (ManuscriptZ.aux)
+\openout1 = `ManuscriptZ.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 55.
+LaTeX Font Info:    ... okay on input line 55.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 55.
+LaTeX Font Info:    ... okay on input line 55.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 55.
+LaTeX Font Info:    ... okay on input line 55.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 55.
+LaTeX Font Info:    ... okay on input line 55.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 55.
+LaTeX Font Info:    ... okay on input line 55.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 55.
+LaTeX Font Info:    ... okay on input line 55.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 55.
+LaTeX Font Info:    ... okay on input line 55.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 55.
+LaTeX Font Info:    ... okay on input line 55.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 55.
+LaTeX Font Info:    ... okay on input line 55.
+ (D:\Research\Miktex\tex/context/base/mkii\supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count332
+\scratchdimen=\dimen263
+\scratchbox=\box72
+\nofMPsegments=\count333
+\nofMParguments=\count334
+\everyMPshowfont=\toks40
+\MPscratchCnt=\count335
+\MPscratchDim=\dimen264
+\MPnumerator=\count336
+\makeMPintoPDFobject=\count337
+\everyMPtoPDFconversion=\toks41
+)
+*geometry* driver: auto-detecting
+*geometry* detected driver: pdftex
+*geometry* verbose mode - [ preamble ] result:
+* driver: pdftex
+* paper: <default>
+* layout: <same size as paper>
+* layoutoffset:(h,v)=(0.0pt,0.0pt)
+* modes: 
+* h-part:(L,W,R)=(71.13188pt, 472.03123pt, 71.13188pt)
+* v-part:(T,H,B)=(56.9055pt, 681.15898pt, 56.9055pt)
+* \paperwidth=614.295pt
+* \paperheight=794.96999pt
+* \textwidth=472.03123pt
+* \textheight=681.15898pt
+* \oddsidemargin=-1.1381pt
+* \evensidemargin=-1.1381pt
+* \topmargin=-52.36449pt
+* \headheight=12.0pt
+* \headsep=25.0pt
+* \topskip=10.0pt
+* \footskip=30.0pt
+* \marginparwidth=65.0pt
+* \marginparsep=11.0pt
+* \columnsep=10.0pt
+* \skip\footins=24.0pt
+* \hoffset=0.0pt
+* \voffset=0.0pt
+* \mag=1000
+* \@twocolumnfalse
+* \@twosidefalse
+* \@mparswitchfalse
+* \@reversemarginfalse
+* (1in=72.27pt=25.4mm, 1cm=28.453pt)
+
+Package hyperref Info: Link coloring OFF on input line 55.
+(ManuscriptZ.out) (ManuscriptZ.out)
+\@outlinefile=\write4
+\openout4 = `ManuscriptZ.out'.
+
+Package caption Info: Begin \AtBeginDocument code.
+Package caption Info: longtable package is loaded.
+ (D:\Research\Miktex\tex/latex/caption\ltcaption.sty
+Package: ltcaption 2021/01/08 v1.4c longtable captions (AR)
+)
+Package caption Info: subfigure package is loaded.
+Package caption Info: threeparttable package is loaded.
+Package caption Info: End \AtBeginDocument code.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 89.
+ (D:\Research\Miktex\tex/latex/amsfonts\umsa.fd
+File: umsa.fd 2013/01/14 v3.01 AMS symbols A
+)
+LaTeX Font Info:    Trying to load font information for U+msb on input line 89.
+ (D:\Research\Miktex\tex/latex/amsfonts\umsb.fd
+File: umsb.fd 2013/01/14 v3.01 AMS symbols B
+)
+LaTeX Font Info:    Trying to load font information for U+rsfs on input line 89.
+ (D:\Research\Miktex\tex/latex/jknappen\ursfs.fd
+File: ursfs.fd 1998/03/24 rsfs font definition file (jk)
+)
+Overfull \hbox (2.22221pt too wide) has occurred while \output is active
+[] 
+ []
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\<def>-command' on input line 114.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\cnotenum' on input line 114.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\<def>-command' on input line 114.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\@corref' on input line 114.
+
+[1
+
+
+{C:/Users/T-Ji/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}] [2] [3] [4] [5] [6] [7] [8]
+
+LaTeX Warning: Reference `sec:conclusion' on page 9 undefined on input line 267.
+
+
+
+pdfTeX warning: pdflatex (file ./figures/fig1.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig1.pdf, id=237, 223.40504pt x 149.0874pt>
+File: figures/fig1.pdf Graphic file (type pdf)
+<use figures/fig1.pdf>
+Package pdftex.def Info: figures/fig1.pdf  used on input line 280.
+(pdftex.def)             Requested size: 236.01561pt x 157.51093pt.
+[9] [10 <./figures/fig1.pdf>] [11]
+
+pdfTeX warning: pdflatex (file ./figures/fig2.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig2.pdf, id=295, 382.51949pt x 123.91335pt>
+File: figures/fig2.pdf Graphic file (type pdf)
+<use figures/fig2.pdf>
+Package pdftex.def Info: figures/fig2.pdf  used on input line 352.
+(pdftex.def)             Requested size: 330.42041pt x 107.03987pt.
+
+
+pdfTeX warning: pdflatex (file ./figures/fig3.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig3.pdf, id=297, 318.18716pt x 211.28831pt>
+File: figures/fig3.pdf Graphic file (type pdf)
+<use figures/fig3.pdf>
+Package pdftex.def Info: figures/fig3.pdf  used on input line 368.
+(pdftex.def)             Requested size: 283.22162pt x 188.08469pt.
+[12 <./figures/fig2.pdf>]
+
+pdfTeX warning: pdflatex (file ./figures/fig4.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig4.pdf, id=336, 231.7972pt x 213.27922pt>
+File: figures/fig4.pdf Graphic file (type pdf)
+<use figures/fig4.pdf>
+Package pdftex.def Info: figures/fig4.pdf  used on input line 380.
+(pdftex.def)             Requested size: 236.01561pt x 217.17416pt.
+[13 <./figures/fig3.pdf> <./figures/fig4.pdf>] [14] [15]
+
+pdfTeX warning: pdflatex (file ./figures/fig5.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig5.pdf, id=397, 611.01315pt x 395.40765pt>
+File: figures/fig5.pdf Graphic file (type pdf)
+<use figures/fig5.pdf>
+Package pdftex.def Info: figures/fig5.pdf  used on input line 463.
+(pdftex.def)             Requested size: 283.22162pt x 183.28345pt.
+[16 <./figures/fig5.pdf>]
+Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on input line 479.
+ [17] [18] [19]
+
+pdfTeX warning: pdflatex (file ./figures/fig6.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig6.pdf, id=482, 622.01654pt x 375.53539pt>
+File: figures/fig6.pdf Graphic file (type pdf)
+<use figures/fig6.pdf>
+Package pdftex.def Info: figures/fig6.pdf  used on input line 573.
+(pdftex.def)             Requested size: 377.62642pt x 227.9875pt.
+
+
+pdfTeX warning: pdflatex (file ./figures/fig7.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig7.pdf, id=483, 721.19438pt x 380.52724pt>
+File: figures/fig7.pdf Graphic file (type pdf)
+<use figures/fig7.pdf>
+Package pdftex.def Info: figures/fig7.pdf  used on input line 579.
+(pdftex.def)             Requested size: 377.62642pt x 199.24559pt.
+[20 <./figures/fig6.pdf>] [21 <./figures/fig7.pdf>] [22] [23]
+
+pdfTeX warning: pdflatex (file ./figures/fig8.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig8.pdf, id=591, 529.82985pt x 237.85905pt>
+File: figures/fig8.pdf Graphic file (type pdf)
+<use figures/fig8.pdf>
+Package pdftex.def Info: figures/fig8.pdf  used on input line 681.
+(pdftex.def)             Requested size: 377.62642pt x 169.5344pt.
+[24 <./figures/fig8.pdf>]
+
+pdfTeX warning: pdflatex (file ./figures/fig9.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig9.pdf, id=636, 313.17949pt x 216.81657pt>
+File: figures/fig9.pdf Graphic file (type pdf)
+<use figures/fig9.pdf>
+Package pdftex.def Info: figures/fig9.pdf  used on input line 695.
+(pdftex.def)             Requested size: 283.22162pt x 196.0892pt.
+
+
+pdfTeX warning: pdflatex (file ./figures/fig10.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig10.pdf, id=639, 313.17949pt x 216.81657pt>
+File: figures/fig10.pdf Graphic file (type pdf)
+<use figures/fig10.pdf>
+Package pdftex.def Info: figures/fig10.pdf  used on input line 707.
+(pdftex.def)             Requested size: 283.22162pt x 196.0892pt.
+[25 <./figures/fig9.pdf>]
+
+pdfTeX warning: pdflatex (file ./figures/fig11.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig11.pdf, id=671, 323.19485pt x 216.80151pt>
+File: figures/fig11.pdf Graphic file (type pdf)
+<use figures/fig11.pdf>
+Package pdftex.def Info: figures/fig11.pdf  used on input line 725.
+(pdftex.def)             Requested size: 283.22162pt x 189.98865pt.
+
+
+pdfTeX warning: pdflatex (file ./figures/fig12.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig12.pdf, id=672, 323.19485pt x 216.80151pt>
+File: figures/fig12.pdf Graphic file (type pdf)
+<use figures/fig12.pdf>
+Package pdftex.def Info: figures/fig12.pdf  used on input line 732.
+(pdftex.def)             Requested size: 221.85526pt x 148.82239pt.
+
+
+pdfTeX warning: pdflatex (file ./figures/fig13.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig13.pdf, id=673, 323.19485pt x 216.80151pt>
+File: figures/fig13.pdf Graphic file (type pdf)
+<use figures/fig13.pdf>
+Package pdftex.def Info: figures/fig13.pdf  used on input line 734.
+(pdftex.def)             Requested size: 221.85526pt x 148.82239pt.
+
+
+pdfTeX warning: pdflatex (file ./figures/fig14.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig14.pdf, id=674, 323.19485pt x 216.80151pt>
+File: figures/fig14.pdf Graphic file (type pdf)
+<use figures/fig14.pdf>
+Package pdftex.def Info: figures/fig14.pdf  used on input line 736.
+(pdftex.def)             Requested size: 221.85526pt x 148.82239pt.
+
+
+pdfTeX warning: pdflatex (file ./figures/fig15.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig15.pdf, id=675, 323.19485pt x 216.80151pt>
+File: figures/fig15.pdf Graphic file (type pdf)
+<use figures/fig15.pdf>
+Package pdftex.def Info: figures/fig15.pdf  used on input line 738.
+(pdftex.def)             Requested size: 221.85526pt x 148.82239pt.
+[26 <./figures/fig10.pdf>] [27 <./figures/fig11.pdf> <./figures/fig12.pdf> <./figures/fig13.pdf> <./figures/fig14.pdf> <./figures/fig15.pdf>]
+
+pdfTeX warning: pdflatex (file ./figures/fig16.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig16.pdf, id=764, 403.517pt x 216.8151pt>
+File: figures/fig16.pdf Graphic file (type pdf)
+<use figures/fig16.pdf>
+Package pdftex.def Info: figures/fig16.pdf  used on input line 780.
+(pdftex.def)             Requested size: 354.02342pt x 190.22884pt.
+
+
+pdfTeX warning: pdflatex (file ./figures/fig17.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig17.pdf, id=765, 403.517pt x 216.8151pt>
+File: figures/fig17.pdf Graphic file (type pdf)
+<use figures/fig17.pdf>
+Package pdftex.def Info: figures/fig17.pdf  used on input line 786.
+(pdftex.def)             Requested size: 354.02342pt x 190.22884pt.
+[28] [29 <./figures/fig16.pdf> <./figures/fig17.pdf>]
+
+pdfTeX warning: pdflatex (file ./figures/fig18.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig18.pdf, id=804, 407.52881pt x 216.81337pt>
+File: figures/fig18.pdf Graphic file (type pdf)
+<use figures/fig18.pdf>
+Package pdftex.def Info: figures/fig18.pdf  used on input line 818.
+(pdftex.def)             Requested size: 354.02342pt x 188.35811pt.
+
+
+pdfTeX warning: pdflatex (file ./figures/fig19.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig19.pdf, id=805, 407.52881pt x 216.81337pt>
+File: figures/fig19.pdf Graphic file (type pdf)
+<use figures/fig19.pdf>
+Package pdftex.def Info: figures/fig19.pdf  used on input line 824.
+(pdftex.def)             Requested size: 354.02342pt x 188.35811pt.
+[30 <./figures/fig18.pdf> <./figures/fig19.pdf>] [31]
+
+pdfTeX warning: pdflatex (file ./figures/fig20.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig20.pdf, id=844, 323.18242pt x 216.79349pt>
+File: figures/fig20.pdf Graphic file (type pdf)
+<use figures/fig20.pdf>
+Package pdftex.def Info: figures/fig20.pdf  used on input line 881.
+(pdftex.def)             Requested size: 283.22162pt x 190.00145pt.
+
+
+pdfTeX warning: pdflatex (file ./figures/fig21.pdf): PDF inclusion: found PDF version <1.7>, but at most version <1.5> allowed
+<figures/fig21.pdf, id=845, 403.517pt x 216.8151pt>
+File: figures/fig21.pdf Graphic file (type pdf)
+<use figures/fig21.pdf>
+Package pdftex.def Info: figures/fig21.pdf  used on input line 889.
+(pdftex.def)             Requested size: 354.02342pt x 190.22884pt.
+[32 <./figures/fig20.pdf>] [33 <./figures/fig21.pdf>] [34] [35] (ManuscriptZ.bbl [36] [37] [38]) [39] (ManuscriptZ.aux)
+ ***********
+LaTeX2e <2023-06-01> patch level 1
+L3 programming layer <2023-06-30>
+ ***********
+
+
+LaTeX Warning: There were undefined references.
+
+Package rerunfilecheck Info: File `ManuscriptZ.out' has not changed.
+(rerunfilecheck)             Checksum: 2DDC1CADBC7831DCC240B389FDC29F3E;5250.
+ ) 
+Here is how much of TeX's memory you used:
+ 15035 strings out of 475550
+ 238813 string characters out of 5774731
+ 1957238 words of memory out of 5000000
+ 35828 multiletter control sequences out of 15000+600000
+ 570623 words of font info for 85 fonts, out of 8000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 72i,13n,79p,3962b,715s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ <C:\Users\T-Ji\AppData\Local\MiKTeX\fonts/pk/ljfour/jknappen/ec/dpi600\tcrm1000.pk><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmbx10.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmbxti10.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmex10.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmmi10.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmmi5.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmmi7.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmmi8.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmmi9.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmr10.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmr12.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmr5.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmr6.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmr7.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmr8.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmr9.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmss8.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmsy10.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmsy5.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmsy6.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmsy7.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmsy8.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmsy9.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmti10.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmti7.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmti8.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmtt10.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/cm/cmtt8.pfb><D:/Research/Miktex/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
+Output written on ManuscriptZ.pdf (39 pages, 2986836 bytes).
+PDF statistics:
+ 1078 PDF objects out of 1200 (max. 8388607)
+ 177 named destinations out of 1000 (max. 500000)
+ 266 words of extra memory for PDF output out of 10000 (max. 10000000)
+

@@ -1,0 +1,243 @@
+\providecommand{\noopsort}[1]{}\providecommand{\singleletter}[1]{#1}%
+\begin{thebibliography}{10}
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\texttt{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \def\href#1#2{#2} \def\path#1{#1}\fi
+
+\bibitem{kang_seismic_2023}
+J.~Kang, K.~Ikago, Seismic control of multidegree-of-freedom structures using a
+  concentratedly arranged tuned viscous mass damper, Earthquake Engineering and
+  Structural Dynamics 52~(14) (2023) 4708--4732.
+
+\bibitem{pandit_optimization_2024}
+A.~Pandit, R.~Ghiasi, A.~Malekjafarian, On the optimization of tuned mass
+  damper inerter ({TMDI}) systems for buildings subjected to real ground
+  motions using slime mould algorithm, Soil Dynamics and Earthquake Engineering
+  179 (2024) 108557.
+
+\bibitem{xiang_pendulum_2024}
+Y.~Xiang, P.~Tan, H.~He, H.~Yao, X.~Zheng, Pendulum tuned mass damper ({PTMD})
+  with geometric nonlinear dampers for seismic response control, Journal of
+  Sound and Vibration 570 (2024) 118023.
+
+\bibitem{djerouni_multi-tuned_2025}
+S.~Djerouni, S.~Elias, M.~Abdeddaim, R.~Rupakhety, Multi-tuned mass damper
+  inerter ({MTMDI}) system for earthquake-induced vibration control of
+  buildings, Engineering Structures 322 (2025) 119139.
+
+\bibitem{galoshejerdi_design_2025}
+L.~H. Galoshejerdi, A.~Assadi, Design and optimization of a nonlinear tuned
+  mass damper with eddy current damping, International Journal of Structural
+  Stability and Dynamics (2025) 2650397.
+
+\bibitem{bein_smart_2008}
+T.~Bein, J.~B{\"o}s, S.~Herold, D.~Mayer, T.~Melz, M.~Thomaier, Smart
+  interfaces and semi-active vibration absorber for noise reduction in vehicle
+  structures, Aerospace Science and Technology 12~(1) (2008) 62--73.
+
+\bibitem{alibabaei_damage-based_2023}
+M.~Alibabaei~Shahraki, R.~Kamgar, H.~Heidarzadeh, Damage-based design of
+  multiple tuned mass dampers to improve the seismic performance of steel frame
+  structures, Soil Dynamics and Earthquake Engineering 173 (2023) 108062.
+
+\bibitem{xu_dynamic_2024}
+K.~Xu, Q.~Li, K.~Zhou, X.~Han, Dynamic performance of a supertall building with
+  an active tuned mass damper system during super typhoon saola, Engineering
+  Structures 318 (2024) 118778.
+
+\bibitem{Lu_particle_2025}
+Z.~Lu, Z.~Wang, L.~Bao, X.~Zhao, Q.~Zhang, Particle tuned mass dampers for
+  wind-induced vibration control in supertall building tower crowns,
+  International Journal of Structural Stability and Dynamics 25~(19) (2025)
+  2550209.
+
+\bibitem{gasparetto_MultiObjective_2023}
+V.~E.~L. Gasparetto, J.~Reid, W.~P. Parsons, M.~S.~A. ElSayed, M.~Saad,
+  S.~Shieldand, G.~L. Brown, L.~M. Hilliard, Multi-{{Objective Design
+  Optimization}} of {{Multiple Tuned Mass Dampers}} for {{Attenuation}} of
+  {{Dynamic Aeroelastic Response}} of {{Aerospace Structures}}, Aerospace
+  10~(3) (2023) 235.
+
+\bibitem{sun_Coupled_2024}
+K.~Sun, J.~Tang, Z.~Wu, D.~Cao, Coupled nonlinear vibration characteristics of
+  quasi-zero-stiffness gough-stewart isolation platform, Aerospace Science and
+  Technology 152 (2024) 109352.
+
+\bibitem{nagarajaiah_adaptive_2009}
+S.~Nagarajaiah, Adaptive passive, semiactive, smart tuned mass dampers:
+  Identification and control using empirical mode decomposition, hilbert
+  transform, and short-term fourier transform, Structural Control and Health
+  Monitoring 16~(7-8) (2009) 800--841.
+
+\bibitem{dai_tuned_2019}
+J.~Dai, Z.-D. Xu, P.-P. Gai, Tuned mass-damper-inerter control of wind-induced
+  vibration of flexible structures based on inerter location, Engineering
+  Structures 199 (2019) 109585.
+\newblock \href {http://dx.doi.org/10.1016/j.engstruct.2019.109585}
+  {\path{doi:10.1016/j.engstruct.2019.109585}}.
+
+\bibitem{sun_2024_active}
+K.~Sun, J.~Tang, Y.~Yang, B.~Jiang, Y.~Li, D.~Cao, Active control of
+  quasi-zero-stiffness vibration isolator with variable load, International
+  Journal of Structural Stability and Dynamics 24~(21) (2024) 2450243.
+
+\bibitem{wang_latching_2025}
+H.~Wang, S.~Zhu, Latching control for pendulum tuned mass damper: Theoretical
+  analysis and proof-of-concept experiment, Mechanical Systems and Signal
+  Processing 224 (2025) 112158.
+
+\bibitem{xiao_model_2026}
+W.~Xiaojing, L.~Ziyue, Y.~Sunmeng, W.~Xiaolong, Model predictive control of an
+  active tuned mass damper based on kalman-filter disturbance estimation,
+  International Journal of Structural Stability and Dynamics (2026) 2750375.
+
+\bibitem{xu_fuzzy_2006}
+Z.-D. Xu, Y.-Q. Guo, Fuzzy control method for earthquake mitigation structures
+  with magnetorheological dampers, Journal of Intelligent Material Systems and
+  Structures 17~(10) (2006) 871--881.
+\newblock \href {http://dx.doi.org/10.1177/1045389X06061044}
+  {\path{doi:10.1177/1045389X06061044}}.
+
+\bibitem{yan_fuzzy_2020}
+X.~Yan, Z.-D. Xu, Q.-X. Shi, Fuzzy neural network control algorithm for
+  asymmetric building structure with active tuned mass damper, Journal of
+  Vibration and Control 26~(21-22) (2020) 2037--2049.
+\newblock \href {http://dx.doi.org/10.1177/1077546320910003}
+  {\path{doi:10.1177/1077546320910003}}.
+
+\bibitem{mnih_playing_2013}
+V.~Mnih, K.~Kavukcuoglu, D.~Silver, A.~Graves, I.~Antonoglou, D.~Wierstra,
+  M.~Riedmiller, Playing atari with deep reinforcement learning, arXiv preprint
+  arXiv:1312.5602.
+
+\bibitem{mnih_human-level_2015}
+V.~Mnih, K.~Kavukcuoglu, D.~Silver, A.~A. Rusu, J.~Veness, M.~G. Bellemare,
+  A.~Graves, M.~Riedmiller, A.~K. Fidjeland, G.~Ostrovski, et~al., Human-level
+  control through deep reinforcement learning, Nature 518~(7540) (2015)
+  529--533.
+
+\bibitem{lillicrap_continuous_2015}
+T.~P. Lillicrap, J.~J. Hunt, A.~Pritzel, N.~Heess, T.~Erez, Y.~Tassa,
+  D.~Silver, D.~Wierstra, Continuous control with deep reinforcement learning,
+  arXiv preprint arXiv:1509.02971.
+
+\bibitem{fujimoto_addressing_2018}
+S.~Fujimoto, H.~Hoof, D.~Meger, Addressing function approximation error in
+  actor-critic methods, in: Proceedings of the 35th International Conference on
+  Machine Learning, Vol.~80, Stockholm, Sweden, 2018, pp. 1587--1596.
+
+\bibitem{wang_proposal_2007}
+X.~Wang, Y.~Cheng, W.~Sun, A {{Proposal}} of {{Adaptive PID Controller Based}}
+  on {{Reinforcement Learning}}, Journal of China University of Mining and
+  Technology 17~(1) (2007) 40--44.
+
+\bibitem{zhang_Novel_2023}
+Y.~A. Zhang, S.~Y. Zhu, Novel {{Model-free Optimal Active Vibration Control
+  Strategy Based}} on {{Deep Reinforcement Learning}}, Structural Control and
+  Health Monitoring 2023~(1) (2023) 1--15.
+
+\bibitem{yuan_Research_2021}
+R.~Yuan, Y.~Yang, C.~Su, S.~Hu, H.~Zhang, E.~Cao, Research on {{Vibration
+  Reduction Control Based}} on {{Reinforcement Learning}}, Advances in Civil
+  Engineering 2021~(1) (2021) 7619214.
+
+\bibitem{shuprajhaa_reinforcement_2022}
+T.~Shuprajhaa, S.~K. Sujit, K.~Srinivasan, Reinforcement learning based
+  adaptive pid controller design for control of linear/nonlinear unstable
+  processes, Applied Soft Computing 128 (2022) 109450.
+
+\bibitem{liu_active_2025}
+X.~Liu, G.~Cai, Active nonlinear vibration control of space membrane structure
+  based on deep reinforcement learning, Thin-Walled Structures 210 (2025)
+  112987.
+
+\bibitem{jiang_Model-free_2025}
+J.~Jiang, J.~Tang, K.~Zhao, M.~Li, Y.~Li, D.~Cao, Model-free optimal vibration
+  control of a nonlinear system based on deep reinforcement learning,
+  International Journal of Structural Stability and Dynamics 25~(08) (2025)
+  2550079.
+
+\bibitem{jiang_Datadriven_2025}
+J.~Jiang, J.~Tang, M.~Liu, Y.~Li, H.~Chen, D.~Cao, A data-driven neural model
+  predictive controller for multi-layer nonlinear vibration isolation system,
+  Aerospace Science and Technology 166 (2025) 110583.
+
+\bibitem{na_Adaptive_2019}
+J.~Na, Y.~Huang, X.~Wu, S.~Su, G.~Li, Adaptive finite-time fuzzy control of
+  nonlinear active suspension systems with input delay, IEEE Transactions on
+  Cybernetics 50~(6) (2019) 2639--2650.
+
+\bibitem{sun_Reinforcement_2022}
+Y.~Sun, J.~Xu, C.~Chen, W.~Hu, Reinforcement {{Learning-Based Optimal Tracking
+  Control}} for {{Levitation System}} of {{Maglev Vehicle With Input Time
+  Delay}}, IEEE Transactions on Instrumentation and Measurement 71 (2022)
+  1--13.
+
+\bibitem{fu_Time_2019}
+J.~Fu, Z.~Dai, Z.~Yang, J.~Lai, M.~Yu, Time delay analysis and constant
+  time-delay compensation control for {{MRE}} vibration control system with
+  multiple-frequency excitation, Smart Materials and Structures 29~(1) (2020)
+  014001.
+
+\bibitem{sinou_active_2021}
+J.~J. Sinou, B.~Chomette, Active vibration control and stability analysis of a
+  time-delay system subjected to friction-induced vibration, Journal of Sound
+  and Vibration 500 (2021) 116013.
+
+\bibitem{araujo_pole-zero_2025}
+J.~M. Ara{\'u}jo, N.~J.~B. Dantas, C.~E.~T. D{\'o}rea, D.~Richiedei,
+  I.~Tamellin, Pole-zero placement through the robust receptance method for
+  multi-input active vibration control with time delay, Journal of Sound and
+  Vibration 599 (2025) 118850.
+
+\bibitem{xu_extrapolation_2026}
+Z.-D. Xu, Y.-R. Dong, L.-H. Zeng, Y.~Tao, Y.~Wei, F.-P. Kong, Y.~Xu, S.-D. Li,
+  W.~Li, Study on extrapolation-newmark optimal compensation strategy of
+  real-time hybrid test system, International Journal of Structural Stability
+  and Dynamics 26~(03) (2026) 2650003.
+\newblock \href {http://dx.doi.org/10.1142/S0219455426500033}
+  {\path{doi:10.1142/S0219455426500033}}.
+
+\bibitem{he_deep_2016}
+K.~He, X.~Zhang, S.~Ren, J.~Sun, Deep residual learning for image recognition,
+  in: Proceedings of the IEEE Conference on Computer Vision and Pattern
+  Recognition, 2016, pp. 770--778.
+
+\bibitem{hochreiter_long_1997}
+S.~Hochreiter, J.~Schmidhuber, Long short-term memory, Neural Computation 9~(8)
+  (1997) 1735--1780.
+
+\bibitem{chung_empirical_2014}
+J.~Y. Chung, C.~Gulcehre, K.~Cho, Y.~Bengio, Empirical evaluation of gated
+  recurrent neural networks on sequence modeling, arXiv preprint
+  arXiv:1412.3555.
+
+\bibitem{vaswani_attention_2017}
+A.~Vaswani, N.~Shazeer, N.~Parmar, J.~Uszkoreit, L.~Jones, A.~N. Gomez,
+  {\L}.~Kaiser, I.~Polosukhin, Attention is all you need, in: Advances in
+  Neural Information Processing Systems, Vol.~30, Curran Associates, Inc, 2017,
+  pp. 5998--6008.
+
+\bibitem{liu_self-attention-based_2022}
+K.~Liu, Y.~Zhao, G.~Wang, B.~Peng, Self-attention-based multi-agent continuous
+  control method in cooperative environments, Information Sciences 585 (2022)
+  454--470.
+
+\bibitem{wang_immune_2024}
+C.~Wang, W.~H. Cheng, H.~L. Zhang, W.~Dou, J.~Chen, An immune optimization deep
+  reinforcement learning control method used for magnetorheological elastomer
+  vibration absorber, Engineering Applications of Artificial Intelligence 137
+  (2024) 109108.
+
+\bibitem{zhao_mw-maddpg_2023}
+M.~Zhao, G.~Wang, Q.~Fu, X.~Guo, Y.~Chen, T.~Li, X.~Liu, Mw-maddpg: A
+  meta-learning based decision-making method for collaborative uav swarm,
+  Frontiers in Neurorobotics 17.
+
+\bibitem{kaelbling_Reinforcement_1996}
+L.~P. Kaelbling, M.~L. Littman, A.~W. Moore, Reinforcement {{Learning}}: {{A
+  Survey}}, Journal of Artificial Intelligence Research 4 (1996) 237--285.
+
+\end{thebibliography}

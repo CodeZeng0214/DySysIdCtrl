@@ -1,0 +1,19 @@
+\begin{table}[htbp]
+\centering
+\caption{Controller performance data under fixed-frequency excitation conditions. The fixed-frequency excitation is a 30\,Hz sinusoid of amplitude $F_0=150\,\mathrm{N}$, and the mean maximum amplitude is expressed in metres. \textcolor{blue}{The TD3 and GRUA-TD3 rows each summarise three independent training runs, every run contributing the checkpoint with the highest mean reward over a 20-episode window of its training curve; each checkpoint is evaluated over ten random realisations of the loop delay and of the sampling jitter that are shared with the corresponding no-control response, so that every value is the mean $\pm$ standard deviation over thirty episodes.}}
+\label{tab:fixed_freq_data}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lcccc}
+\toprule
+\multirow{2}{*}{Control Strategy} & \multicolumn{2}{c}{Ideal Environment} & \multicolumn{2}{c}{Non-Ideal Environment \textcolor{blue}{Delay}-(3,1)} \\
+\cline{2-5}
+& Mean Max.\ Amplitude \textcolor{blue}{(m)} & Attenuation Rate & Mean Max.\ Amplitude \textcolor{blue}{(m)} & Attenuation Rate \\ \midrule
+No Control & $6.50\times10^{-3}$ & 0.00\% & $6.12\times10^{-3}$ & 0.00\% \\
+PID & $1.18\times10^{-3}$ & 81.85\% & $2.32\times10^{-3}$ & 62.02\% \\
+TD3 & $(1.61\pm0.25)\times10^{-3}$ & $72.28\pm4.83$\% & $(2.18\pm0.22)\times10^{-3}$ & $62.39\pm5.09$\% \\
+GRUA-TD3 & $(1.03\pm0.18)\times10^{-3}$ & $82.20\pm4.12$\% & $(8.06\pm1.19)\times10^{-4}$ & $86.08\pm2.48$\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+

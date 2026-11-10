@@ -1,0 +1,964 @@
+\documentclass[review]{elsarticle}
+\journal{International Journal of Structural Stability and Dynamics}
+
+% 页面布局
+\usepackage{geometry}
+\geometry{left=2.5cm,right=2.5cm,top=2cm,bottom=2cm} % 统一规范页边距
+
+% 行号与超链接
+\usepackage{lineno,hyperref}
+\modulolinenumbers[5]
+
+% 基础工具
+\usepackage{color}
+\usepackage{pifont}    % 特殊标记符号 ✓ ● ×
+
+% 数学公式
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{amsbsy}
+% \usepackage{mathptmx}   % Times New Roman 数学字体
+\usepackage{mathrsfs}  % 花体字母 \mathscr{}
+\usepackage{amsthm}    % 定理、证明环境
+
+% 图表相关
+\usepackage{graphicx}
+\usepackage{epstopdf}   
+\usepackage{float}      % 图片[H]强制定位
+\usepackage{caption}
+\usepackage{subfigure}  % 多张子图
+
+% 表格相关
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{threeparttable}
+\usepackage{longtable}
+\newcolumntype{C}{>{\centering\arraybackslash}X} % 自适应居中列
+
+% 全局设置所有enumerate环境编号样式为 (1) (2) (3)
+\usepackage{enumitem}
+\setlist[enumerate]{label=(\arabic*), leftmargin=*}
+
+% 定理环境
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+
+% 算法环境
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% 参考文献格式
+\bibliographystyle{elsarticle-num}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Temporal Perception and Attention Mechanism Enhanced TD3 for Active Tuned Mass Damper Control}
+
+\author[author1]{Kexiang Zeng}
+\author[author1]{Jie Tang\corref{mycorrespondingauthor}}
+\ead{tangjie@swjtu.edu.cn}
+\cortext[mycorrespondingauthor]{Corresponding author}
+\author[author1]{Xing Zheng}
+\author[author2]{Qiang Min}
+\author[author1]{Meng Li}
+\author[author1]{Yinghui Li}
+\author[author3]{Huatao Chen}
+\author[author3]{Dengqing Cao}
+\address[author1]{School of Mechanics and Aerospace Engineering, Southwest Jiaotong University, Chengdu 610031, China}
+\address[author2]{National Key Laboratory of Digital and Agile Aircraft Design, Chengdu Aircraft Design $\&$ Research Institute, AVIC, Chengdu 610091, China}
+\address[author3]{School of Mathematics and  Statistics, Shandong University of Technology, ZiBo 255000, China}
+
+%
+\begin{abstract}
+Combining deep reinforcement learning and structural vibration control theories, this paper proposes an intelligent vibration control algorithm based on \textcolor{blue}{temporal-aware sensing}, termed GRUA-TD3, which enhances the standard Twin Delayed Deep Deterministic Policy Gradient (TD3) with Gated Recurrent Unit (GRU) and \textcolor{blue}{an attention pooling} mechanism.
+Building upon the standard TD3 architecture, a \textcolor{blue}{GRU Predictor Module} is placed before the input of both the Actor and Critic networks to extract temporal features from state sequences \textcolor{blue}{and to predict the near-future response}, followed by an integrated \textcolor{blue}{attention pooling} layer that dynamically weights and aggregates features across different time steps.
+Simultaneously, temporal information such as the sampling time interval and \textcolor{blue}{the measured total loop delay} is explicitly incorporated into the observation state vector to form a time-augmented state as the network input, thereby enhancing the controller's ability to perceive temporal variations and predict changes in system states.
+A non-ideal simulation environment incorporating random \textcolor{blue}{loop delays} and variable step sizes is constructed, and the trained GRUA-TD3 controller is compared with passive, conventional PID, and standard TD3 controllers under multiple typical operating conditions, including initial displacement, fixed-frequency excitation, and random excitation.
+\textcolor{blue}{An ablation study and a model-parameter robustness study are further conducted to quantify the contribution of each architectural component and to examine the sensitivity of the controller to structural parameter drift.} The results demonstrate that, in an ideal environment, the GRUA-TD3 controller achieves vibration absorption performance close to that of conventional controllers, reducing the primary structure displacement \textcolor{blue}{amplitude by more than 76\%}.
+In non-ideal environments, it maintains rapid convergence and superior control performance, suppressing the primary structure vibration amplitude \textcolor{blue}{by more than 80\%}, with better robustness and environmental adaptability.
+\end{abstract}
+
+\begin{keyword}
+Vibration control \sep Deep reinforcement learning \sep Active tuned mass damper \sep Gated recurrent unit \sep \textcolor{blue}{Attention pooling mechanism}
+\end{keyword}
+
+\end{frontmatter}
+% ======================================================================
+
+\linenumbers
+
+\section*{Abbreviations}
+\begin{longtable}{@{}p{3.0cm} p{12.0cm}@{}}
+TMD & Tuned Mass Damper \\[1em]
+DRL & Deep Reinforcement Learning \\[1em]
+DQN & Deep Q-Network \\[1em]
+DDPG & Deep Deterministic Policy Gradient \\[1em]
+TD3 & Twin Delayed Deep Deterministic Policy Gradient \\[1em]
+GRU & Gated Recurrent Unit \\[1em]
+GRUA-TD3 & TD3 with Gated Recurrent Unit and \textcolor{blue}{Attention Pooling} Mechanism \\[1em]
+LSTM & Long Short-Term Memory \\[1em]
+MDP & Markov Decision Process \\[1em]
+MRE & Magnetorheological Elastomer \\[1em]
+MR & Magnetorheological \\[1em]
+TDC & Time-Delay Compensator \\[1em]
+PID & Proportional-Integral-Derivative \\[1em]
+MLP & Multi-Layer Perceptron \\[1em]
+RNN & Recurrent Neural Network \\[1em]
+MADDPG & Multi-Agent Deep Deterministic Policy Gradient \\[1em]
+MAML & Model-Agnostic Meta-Learning \\[1em]
+MLS & Maximum Length Sequence
+\end{longtable}
+
+\section*{Nomenclature}
+\begin{longtable}{@{}p{2.5cm} p{12.5cm}@{}}
+% --- System Dynamics & Kinematics ---
+\multicolumn{2}{l}{\textbf{\textit{System Dynamics $\&$ Kinematics}}} \\
+$m$ & Absorber mass. \\
+$M$ & Primary structure mass. \\
+$k_m$ & Absorber stiffness coefficient. \\
+$k_M$ & Primary structure stiffness coefficient. \\
+$c_m$ & Absorber damping coefficient. \\
+$c_M$ & Primary structure damping coefficient. \\
+$k_f$ & Actuator force coefficient. \\
+$x_1, \dot{x}_1, \ddot{x}_1$ & Absorber displacement, velocity, and acceleration. \\
+$x_2, \dot{x}_2, \ddot{x}_2$ & Primary structure displacement, velocity, and acceleration. \\
+$z, \dot{z}$ & Ground displacement and velocity. \\
+$f(t)$ & External excitation force. \\
+$u$ & Active control force supplied by the actuator. \\
+$\mathbf{X}(t)$ & Real-time state vector, $\mathbf{X}(t) = [x_1, \dot{x}_1, x_2, \dot{x}_2]^{\mathrm{T}}$. \\
+$\mathbf{A}, \mathbf{B}, \mathbf{C}, \mathbf{D}$ & System, input, output, and direct transmission matrices of the state-space model. \\
+$\mathbf{E}, \mathbf{G}$ & External disturbance matrix and external excitation input matrix. \\
+$\mathbf{Y}(t)$ & System output vector. \\
+$f_M, f_m$ & Natural frequencies of the primary structure and the absorber, respectively. \\
+$F_0$ & Amplitude of the sinusoidal excitation force. \\
+$\omega$ & Angular frequency of the sinusoidal excitation. \\
+\\
+
+% --- Reinforcement Learning ---
+\multicolumn{2}{l}{\textbf{\textit{Reinforcement Learning}}} \\
+$\mathcal{S}, \mathcal{A}$ & State space and action space of the Markov Decision Process (MDP). \\
+$\mathcal{P}$ & State transition probability. \\
+$\mathcal{R}$ & Reward function. \\
+$\gamma$ & Discount factor, $\gamma \in [0,1)$. \\
+$s_t, a_t, r_t$ & State, action, and reward at time step $t$. \\
+$Q(s,a)$ & Action-value (Q-value) function. \\
+$\pi$ & Deterministic policy. \\
+$\theta^Q, \theta^\pi$ & Parameters of the Critic network and the Actor network, respectively. \\
+$\theta^{Q'}, \theta^{\pi'}$ & Parameters of the target Critic and target Actor networks. \\
+$y$ & Target Q-value computed via the Bellman equation. \\
+$J(\theta^\pi)$ & Objective function of the Actor network. \\
+$L(\theta^Q)$ & Loss function of the Critic network. \\
+$\tau$ & Soft update coefficient for target networks. \\
+\\
+
+% --- Loop Delay & Sampling Uncertainty ---
+\multicolumn{2}{l}{\textbf{\textit{\textcolor{blue}{Loop Delay} $\&$ Sampling Uncertainty}}} \\
+\textcolor{blue}{$\tau_{d}$} & \textcolor{blue}{Total loop delay, i.e., the sum of the sensor, computation and actuation delays below.} \\
+$\tau_{\mathrm{sensor}}$ & Sensor acquisition and transmission delay. \\
+$\tau_{\mathrm{compute}}$ & Controller computation and DRL network inference delay. \\
+$\tau_{\mathrm{actuator}}$ & Actuator electromechanical response delay. \\
+$\Delta t$ & Nominal (ideal) sampling interval. \\
+$t_k$ & Actual sampling instant at the $k$-th control step. \\
+$\delta_k$ & Random timing jitter at the $k$-th step. \\
+$o_t$ & \textcolor{blue}{Delayed and irregularly sampled observation perceived by the agent at time $t$.} \\
+\\
+
+% --- GRUA-TD3 Controller ---
+\multicolumn{2}{l}{\textbf{\textit{GRUA-TD3 Controller Architecture}}} \\
+$\mathbf{S}_t$ & Time-augmented state vector at time $t$. \\
+$\tilde{\mathbf{X}}$ & Environment observation state matrix at the current moment. \\
+$\Delta t_{last}$ & Actual sampling interval of the previous control step. \\
+$\mathbf{H}_t$ & GRU hidden state vector at time step $t$. \\
+$\hat{\mathbf{H}}_t, \hat{\mathbf{S}}_t$ & Predicted hidden state vector and predicted state vector at time $t$. \\
+$L_h$ & Length of the historical observation sequence fed into the GRU layer. \\
+$L_f$ & Length of the future prediction sequence output by the GRU layer. \\
+$T$ & Total length of the augmented sequence, $T = L_h + L_f$. \\
+$\mathcal{H}_t$ & Augmented time-series feature matrix concatenating past, present, and future hidden states. \\
+$\mathcal{S}_t$ & Augmented state sequence for attention weighting. \\
+$e_j$ & Unnormalized attention score at the $j$-th time step. \\
+$\mathbf{w}_a, b_a$ & Learnable weight vector and bias of the attention scoring layer. \\
+$\alpha_i$ & Normalized attention weight at the $i$-th time step. \\
+$\bar{\mathbf{S}}_t$ & Attention-aggregated state vector fed into subsequent MLP layers. \\
+$A$ & Action command output by the Actor network. \\
+\\
+
+% --- Reward Function & Training Hyperparameters ---
+\multicolumn{2}{l}{\textbf{\textit{Reward Function $\&$ Training Hyperparameters}}} \\
+$\epsilon$ & Displacement tolerance threshold in the reward function. \\
+$A_{\max}$ & Physical upper limit of the control force. \\
+$r_{disp}$ & Displacement-based reward component. \\
+$r_{act}$ & Action penalty component. \\
+$\mathbb{I}(\cdot)$ & Indicator function. \\
+$T_s$ & Mean time step in simulation. \\
+$\sigma_{Ts}$ & Standard deviation of the time step. \\
+$\alpha_{actor}, \alpha_{critic}$ & Learning rates of the Actor and Critic networks. \\
+$\sigma_{noise}$ & Standard deviation of the policy exploration noise. \\
+$c_{noise}$ & Noise clipping value for target policy smoothing. \\
+$d_{policy}$ & Policy update delay frequency. \\
+$len_{history}$ & Historical sequence length for GRU input. \\
+$len_{fc}$ & Future prediction sequence length. \\
+$B_{size}$ & Mini-batch size for training. \\
+$N$ & Replay buffer capacity. \\
+\end{longtable}
+
+\setcounter{table}{0}
+
+% ======================================================================
+\section{Introduction}
+\label{sec:introduction}
+
+In civil engineering, aerospace, and other engineering fields, structures and equipment subjected to external excitations—such as earthquakes, wind loads, and mechanical disturbances—are prone to sustained vibration, which can lead to accumulated structural fatigue, degraded equipment precision, or, in severe cases, structural failure, resulting in enormous economic losses and safety hazards.
+It is therefore essential to investigate effective vibration control methods for dynamic systems operating under conditions that closely approximate real engineering environments.
+The Tuned Mass Damper (TMD) is one of the most widely used vibration control devices in engineering, with applications ranging from seismic isolation of buildings \citep{kang_seismic_2023,pandit_optimization_2024,xiang_pendulum_2024,djerouni_multi-tuned_2025,galoshejerdi_design_2025} and vibration reduction in vehicle structures \citep{bein_smart_2008} to vibration mitigation in high-rise buildings \citep{alibabaei_damage-based_2023,xu_dynamic_2024,Lu_particle_2025} and vibration absorption in aerospace structures \citep{gasparetto_MultiObjective_2023,sun_Coupled_2024}.
+Its fundamental principle is to form a vibration subsystem consisting of an auxiliary mass, spring, and damping elements, and to tune its natural frequency close to the critical resonance frequency of the primary structure, thereby absorbing, transferring, and dissipating the vibration energy of the primary system \citep{nagarajaiah_adaptive_2009}.
+\textcolor{blue}{In recent years, the tuned mass-damper-inerter (TMDI), in which an inerter is inserted between the absorber and the primary structure, has attracted considerable attention for flexible structures because the inerter supplies a large effective inertia with only a small physical mass. Dai et al. \citep{dai_tuned_2019} showed that, once the installation location of the inerter is optimized, the wind-induced vibration of a flexible structure can be suppressed considerably more effectively than by a conventional TMD of the same mass ratio.}
+Based on whether an actuator is employed to inject energy into the controlled system, structural vibration control methods can be broadly classified into passive control and active control \citep{sun_2024_active}.
+Although passive control methods offer the advantages of simplicity and low cost, their fixed parameters result in poor adaptability to variations in the controlled system state and to complex broadband disturbances; they are typically effective only at suppressing high-frequency vibrations and perform poorly against low-frequency vibrations \citep{wang_latching_2025}.
+Active control methods, by contrast, employ external sensors and actuators to inject control forces or energy into the controlled structure in real time, thereby suppressing structural vibrations under complex environmental conditions \citep{xiao_model_2026}.
+Owing to the use of active control algorithms, the frequency range of suppression is generally broader, offering greater application potential.
+\textcolor{blue}{Intelligent control strategies that embed fuzzy reasoning or neural networks into the control loop have also been widely adopted for structural vibration mitigation, because they accommodate the strong nonlinearity of magnetorheological dampers and the uncertain dynamics of asymmetric building structures without requiring a precise analytical model. Xu and Guo \citep{xu_fuzzy_2006} developed a fuzzy control method for earthquake mitigation structures equipped with magnetorheological dampers and showed that the semi-active damping force can be scheduled in real time according to the structural response. Yan et al. \citep{yan_fuzzy_2020} proposed a fuzzy neural-network control algorithm for an asymmetric building structure equipped with an active tuned mass damper and demonstrated that the coupled translational--torsional response can still be suppressed effectively when the structural parameters are uncertain.}
+However, most active control methods rely on accurate mathematical and physical modeling and analysis of the controlled plant.
+When confronted with real physical systems, these methods often struggle to exhibit sufficient robustness due to the difficulty of establishing accurate mathematical-physical models.
+
+With the continuous growth of computing power and the continuous expansion of various data scales, artificial intelligence technologies represented by Deep Reinforcement Learning (DRL) have undergone rapid development. The DeepMind team \citep{mnih_playing_2013,mnih_human-level_2015} incorporated neural networks into the Q-learning framework and proposed the Deep Q-Network (DQN) in 2013, which is capable of learning successful policies directly from high-dimensional state vector inputs through end-to-end reinforcement learning, thereby establishing the research paradigm for deep reinforcement learning. To overcome the limitation that DQN can only handle discrete action spaces, researchers subsequently developed improved reinforcement learning algorithms for continuous action space control: Lillicrap et al. \citep{lillicrap_continuous_2015} proposed the Deep Deterministic Policy Gradient (DDPG) algorithm, which builds on the Q-learning mechanism and combines the Actor-Critic architecture with deep neural networks, successfully enabling the agent to learn in continuous action spaces and becoming a classic algorithm in the field of continuous control. However, DDPG is prone to Q-value overestimation, which leads to unstable policy training and performance degradation. To address this, the Twin Delayed Deep Deterministic Policy Gradient (TD3) algorithm was proposed by Fujimoto et al. \citep{fujimoto_addressing_2018}, which significantly improved the convergence stability and robustness of the algorithm in continuous control environments and has since become one of the most robust deterministic policy algorithms widely recognized in the academic community. Building on these developments, reinforcement learning algorithms have found numerous applications in the field of structural vibration control, owing to their independence from mathematical-physical models of the controlled system, demonstrating considerable application potential. Wang et al. \citep{wang_proposal_2007} implemented online adaptive tuning of PID parameters based on the Actor-Critic framework, enhancing the controller's robustness against unsteady vibration processes. Zhang et al. \citep{zhang_Novel_2023} proposed a model-free active vibration control strategy based on the DDPG algorithm framework; their results showed that the proposed model-free strategy can provide optimal control performance across a variety of systems and excitations, and exhibits better robustness in partially observable systems. Yuan et al. \citep{yuan_Research_2021} introduced reinforcement learning algorithms to address the precise control of magnetorheological (MR) dampers, enabling the MR damper to adjust its damping in real time and provide optimal damping force to the structure. the results demonstrated that the RL strategy can significantly improve the damping effectiveness of MR dampers. Shuprajhaa et al. \citep{shuprajhaa_reinforcement_2022} discussed, from a robustness perspective, the practical adaptability of data-driven DRL methods in unstable control environments. Liu et al. \citep{liu_active_2025} addressed the nonlinear control problem of space membrane structures by training a model-free DRL controller based on the DDPG algorithm to suppress nonlinear vibration; their results showed that the trained DDPG agent even outperformed model-based controllers in certain cases. Jiang et al. \citep{jiang_Model-free_2025} proposed a model-free optimal vibration controller for nonlinear systems based on DRL, as well as a data-driven neural model predictive controller that integrates DRL with Model Predictive Control \citep{jiang_Datadriven_2025}. The above examples collectively illustrate that DRL algorithms can achieve performance comparable to that of conventional control algorithms without relying on accurate mathematical-physical models, holding great promise for vibration control applications.
+
+When these methods are applied to real engineering environments, existing research methods have exposed many practical problems that cannot be ignored.
+Most mainstream DRL algorithms assume a fixed sampling time step during environment interaction simulations; yet in real engineering environments, the controller's sampling step size cannot remain constant due to physical hardware limitations and is usually accompanied by non-negligible random timing jitter.
+Moreover, actual control loops typically involve \textcolor{blue}{loop delays} arising simultaneously from sensing data sampling, control signal communication and transmission, and actuator \textcolor{blue}{response}; furthermore, the substantial computational demands of deep reinforcement learning during the inference and decision-making stage further exacerbate this effect.
+Fortunately, the time-delay problem in system control has already received scholarly attention: Jing et al.
+\citep{na_Adaptive_2019} proposed an adaptive fuzzy control scheme for active suspension systems with control input time delays and unknown nonlinearities, and conducted dynamic simulations in the professional vehicle simulation software Carsim to demonstrate the effectiveness of the proposed control method.
+Sun et al.
+\citep{sun_Reinforcement_2022} considered the complex operational challenges of maglev trains and proposed an adaptive neural network controller with input time-delay compensation based on DRL; experimental results showed that it can effectively suppress air-gap vibrations under time delays and uncertain dynamics.
+Fu et al.
+\citep{fu_Time_2019} designed a Time-Delay Compensator (TDC) based on a conventional fuzzy controller to improve the vibration attenuation of a magnetorheological elastomer (MRE) vibration control system; the results showed that the root-mean-square acceleration with TDC was attenuated more than without TDC, with superior energy consumption performance.
+Sinou et al.
+\citep{sinou_active_2021} proposed a critical time-delay estimation strategy for friction-induced vibration and noise problems, effectively predicting the true critical time delay of an autonomous controlled system subjected to friction-induced vibration.
+Ara\'{u}jo et al.
+\citep{araujo_pole-zero_2025} achieved pole-zero placement for multi-input active vibration control via the robust receptance method, thereby realizing multi-input vibration control in a time-delay environment.
+\textcolor{blue}{Xu et al. \citep{xu_extrapolation_2026} proposed an extrapolation--Newmark optimal compensation strategy for real-time hybrid testing systems, in which the actuator response delay is predicted online and compensated through an optimal extrapolation scheme, leading to a clear improvement in the accuracy of real-time hybrid simulation under large integration steps.}
+The above examples demonstrate the favorable adaptability of DRL algorithms in complex environments with time-delay factors.
+
+Compared with conventional time-delay control methods, DRL can leverage deep neural networks to process high-dimensional, nonlinear, and massive datasets, thus providing a feasible technical path for intelligent vibration control of structure under complex time delay conditions.
+
+With the rapid advancement of deep learning, sophisticated network architectures have been continuously proposed, such as residual neural networks \citep{he_deep_2016}, LSTM recurrent units \citep{hochreiter_long_1997}, GRU gated recurrent units \citep{chung_empirical_2014}, and attention mechanisms \citep{vaswani_attention_2017}. These architectures can better adapt to diverse dataset structures compared with traditional fully connected neural networks. Residual architectures enable neural networks to become deeper and more complex, greatly improving the feature extraction capability for complex data \citep{he_deep_2016}. Recurrent neural networks can better capture dynamic variation characteristics in time-series data, alleviating the long-term dependency problem \citep{hochreiter_long_1997,chung_empirical_2014}. Attention mechanisms endow neural networks with the ability to adaptively assign weights and focus on critical information \citep{vaswani_attention_2017}. Introducing these architectures into DRL can equip the trained agent with analogous capabilities. Scholars have already optimized the reinforcement learning framework by improving network architectures and algorithms at various stages of DRL. Liu et al. \citep{liu_self-attention-based_2022} proposed a novel Actor-Critic architecture for cooperative problems under continuous control, applying the self-attention mechanism to the Critic network and achieving better control performance than existing algorithms; as the number of agents increases, the algorithm also exhibits higher learning efficiency. Wang et al. \citep{wang_immune_2024} optimized and improved the experience replay buffer of the standard TD3 algorithm based on the biological principles of the human immune system to address training efficiency issues; the results performed well in a magnetorheological elastomer vibration absorber. Zhao et al. \citep{zhao_mw-maddpg_2023} proposed an improved MAML-based Multi-Agent Deep Deterministic Policy Gradient (MADDPG) algorithm in the field of UAV swarm cooperative decision-making, achieving unbiased network initialization by automatically assigning weights to meta-learning trajectories; experimental results showed that MADDPG significantly improved task success rate, average reward, and robustness compared with existing methods. All of the above examples underscore the enormous potential of DRL framework improvements in enhancing controller performance.
+
+Although many scholars have made relevant improvements to DRL algorithms and frameworks with considerable achievements, applications in the field of structural vibration control remain relatively scarce, and there has been no comprehensive integration of advanced network architectures—such as recurrent neural networks and \textcolor{blue}{attention pooling} mechanisms—for optimizing and comparatively analyzing the algorithm framework.
+To this end, this paper proposes a \textcolor{blue}{temporal-aware} intelligent vibration control algorithm that enhances the standard TD3 with Gated Recurrent Unit (GRU) and \textcolor{blue}{an attention pooling} mechanism, termed GRUA-TD3.
+Based on the standard TD3 framework, the algorithm integrates Gated Recurrent Units at the front end of both the Actor and Critic networks to extract temporal features from state sequences, and subsequently introduces an \textcolor{blue}{attention pooling} mechanism to adaptively weight critical information across different time steps.
+Simultaneously, temporal information such as the sampling time interval and \textcolor{blue}{the measured total loop delay} is explicitly incorporated into the observation state vector to construct a time-augmented state.
+Through multi-condition comparative experiments in a non-ideal simulation environment containing random \textcolor{blue}{loop delays} and variable step sizes, the control performance and robustness of the proposed algorithm under complex dynamic conditions are verified.
+The results indicate that the proposed algorithm can maintain rapid convergence and superior control performance in non-ideal environments, with better robustness and environmental adaptability.
+
+\textcolor{blue}{On the basis of the above discussion, the specific contributions of this work can be summarized as follows.}
+\begin{enumerate}
+\item \textcolor{blue}{\emph{Explicit temporal-state augmentation.} Two quantities that are directly observable in a real digital control loop, namely the actual sampling interval of the previous step, $\Delta t_{last}$, and the measured total loop delay, $\tau_{d}$, are explicitly embedded into the observation vector. The controller therefore perceives the timing state of the control loop directly instead of inferring it implicitly from the response history.}
+\item \textcolor{blue}{\emph{Temporal perception module trained end-to-end with TD3.} A temporal perception module, consisting of a GRU Predictor Module (a GRU layer followed by a multi-step state predictor) and an attention pooling layer, is embedded in the Actor and in the Critic of TD3. The two modules are independent of each other and share no network parameters; only the learning rates of the two networks differ. The module is not pre-trained and no auxiliary prediction loss is defined for it; the whole network is optimized end-to-end by the TD3 objective alone, so that the predictor learns a representation that is useful for anticipating the near-future response as well as for generating the control action.}
+\item \textcolor{blue}{\emph{Non-ideal environment and systematic comparison.} A simulation environment with random loop delay and a variable sampling interval is constructed, and the proposed controller is benchmarked against passive control, a PID controller, and a standard MLP-based TD3 controller under free-vibration, fixed-frequency, and random excitations. An ablation study, a multi-seed statistical study, and a model-parameter robustness study are provided to isolate the contribution of each component, to quantify the repeatability of the results, and to examine the sensitivity of the controller to structural parameter drift.}
+\end{enumerate}
+\textcolor{blue}{Compared with the existing literature, the novelty of this work is threefold: (i) the delay and the jitter are treated as measurable, time-varying quantities that enter the state rather than as a fixed modelling parameter; (ii) a temporal perception module --- a GRU Predictor Module together with an attention pooling layer --- is embedded independently in the Actor and in the Critic, the two modules sharing no parameters between the two networks and being trained purely end-to-end by the TD3 objective, so that neither a separate prediction loss nor a pre-training stage is needed; and (iii) the resulting controller is validated under a non-ideal temporal environment rather than under an ideal, uniformly sampled one.}
+
+The overall structure of this paper is organized as follows: Section~\ref{sec:system} establishes the mathematical foundation based on deep reinforcement learning algorithms, mathematically models the time delays and sampling uncertainties present in real environments, and derives the dynamic model of the primary structure--TMD absorber system.
+Section~\ref{sec:controller} discusses the principles and framework of the \textcolor{blue}{temporal-aware} GRUA-TD3 deep reinforcement learning control algorithm.
+Section~\ref{sec:simulation} compares the effectiveness of the improved algorithm through numerical simulation experiments.
+Finally, Section~\ref{sec:conclusion} summarizes the main research findings and proposes directions for future research.
+
+% ======================================================================
+\section{System Modeling Based on Deep Reinforcement Learning}
+\label{sec:system}
+
+Reinforcement learning provides the core framework for realizing model-free intelligent active control, and the TD3 algorithm is a representative method within the Actor-Critic paradigm. By leveraging deep neural networks, the agent can extract useful features from high-dimensional, complex inputs and make intelligent decisions, making TD3 widely applicable across various fields.
+
+\subsection{Deep Reinforcement Learning Algorithms for Continuous Action Spaces}
+
+In reinforcement learning, an agent learns optimal policies through interaction with its environment under the Markov Decision Process (MDP) framework. An MDP is described by the five-tuple $(\mathcal{S}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)$, where $\mathcal{S}$ is the state space, $\mathcal{A}$ is the action space, $\mathcal{P}$ is the state transition probability, $\mathcal{R}$ is the reward function, and $\gamma \in [0,1)$ is the discount factor. As illustrated in Figure~\ref{fig:rl_agent}, at each time step $t$, the agent observes state $s_t$, selects action $a_t$, after which the environment transitions to $s_{t+1}$ according to $\mathcal{P}$ and provides a reward $r_t$.
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.5\textwidth]{figures/fig1}}
+	\caption{Reinforcement learning agent decision-making diagram.}
+	\label{fig:rl_agent}
+\end{figure}
+
+DDPG is a representative reinforcement learning algorithm for continuous action spaces and belongs to the category of model-free off-policy methods. It adopts the Actor-Critic architecture, combining policy optimization with value evaluation: the Actor is responsible for outputting the action policy, while the Critic evaluates the action value $Q(s,a)$. The two networks are updated alternately to achieve a more robust learning process. To improve training stability, DDPG introduces experience replay and target networks, and adopts the deterministic policy gradient to update the Actor network parameters. The target Q-value of the Critic network is updated via the Bellman equation \citep{kaelbling_Reinforcement_1996}:
+
+\begin{equation}\label{eq:bellman}
+y = r + \gamma Q'(s', \pi'(s'|\theta^{\pi'})|\theta^{Q'}),
+\end{equation}
+where $Q'$ and $\pi'$ are the target networks of the Critic and Actor, respectively, and $\gamma$ is the discount factor.
+
+The optimization objective of the Critic is to minimize the mean squared error:
+
+\begin{equation}\label{eq:critic_loss}
+L(\theta^Q) = \mathbb{E}_{s,a,r,s'} \left[ (Q(s,a|\theta^Q) - y)^2 \right],
+\end{equation}
+where $y$ is the target Q-value and $\theta^Q$ denotes the parameters of the Critic network.
+
+The Actor network is updated by maximizing the Q-value evaluated by the Critic network. Its objective function is given by:
+
+\begin{equation}\label{eq:actor_obj}
+J(\theta^\pi) = \mathbb{E}_{s} \left[ Q(s, \pi(s|\theta^\pi)|\theta^Q) \right],
+\end{equation}
+where $\theta^\pi$ is the parameters of the Actor network. The Actor network parameters are updated via gradient ascent:
+
+\begin{equation}\label{eq:actor_grad}
+\nabla_{\theta^\pi} J(\theta^\pi) = \mathbb{E}_{s} \left[ \nabla_a Q(s, a|\theta^Q) |_{a=\pi(s)} \nabla_{\theta^\pi} \pi(s|\theta^\pi) \right].
+\end{equation}
+In the DDPG algorithm, the parameters of the target networks are updated via soft updates:
+
+\begin{equation}\label{eq:soft_update}
+\theta' \leftarrow \tau \theta + (1 - \tau) \theta',
+\end{equation}
+where $\tau$ is a small positive number used to regulate the update speed of the target network parameters.
+
+The Twin Delayed Deep Deterministic Policy Gradient (TD3) algorithm is an improvement over DDPG. While its overall framework resembles that of DDPG, it introduces three key mechanisms to enhance training stability and control performance:
+
+\begin{enumerate}
+\item \textbf{Clipped Double Q-Learning:} TD3 uses two independent Critic networks to estimate the Q-value, and takes the minimum of the two as the target Q-value during updates:
+\begin{equation}\label{eq:clipped_double_q}
+y = r + \gamma \min_{i=1,2} Q'_i(s', \pi'(s'|\theta^{\pi'})|\theta^{Q'_i}).
+\end{equation}
+This strategy can effectively suppress the bias caused by Q-value overestimation, thereby enhancing training stability.
+
+\item \textbf{Delayed Policy Updates:} TD3 introduces a delay mechanism in Actor updates, i.e., the Actor network is updated only after a certain number of time steps, allowing the Critic network more learning opportunities to provide more reliable value estimates, thus improving Actor update quality and reducing computational overhead.
+
+\item \textbf{Target Policy Smoothing:} TD3 introduces target action noise when computing the target Q-value to increase policy exploration. The target Q-value is computed as:
+\begin{equation}\label{eq:target_smoothing}
+y = r + \gamma \min_{i=1,2} Q'_i(s', \pi'(s'|\theta^{\pi'}) + \epsilon),
+\end{equation}
+where $\epsilon$ is the noise added to the target action, typically following a uniform or normal distribution, to enhance policy exploration.
+\end{enumerate}
+
+Through these three innovations, the TD3 algorithm mitigates the overestimation and training instability problems inherent in DDPG and is currently one of the most widely adopted reinforcement learning algorithms. Therefore, this paper adopts TD3 as the base algorithm and builds further improvements upon it.
+
+\subsection{Modeling of \textcolor{blue}{Loop Delay} and Sampling Uncertainty}
+
+The standard TD3 algorithm is built upon the MDP assumption, i.e., that the observed state at the current moment fully captures all information required for the future evolution of the environment.
+However, in real digital control systems, \textcolor{blue}{loop delays} and sampling uncertainties systematically violate this premise.
+\textcolor{blue}{A single term is adopted throughout this paper: the extra time between the instant at which a physical quantity is sampled and the instant at which the corresponding control action takes effect is referred to as the \emph{total loop delay}, and its total value is denoted by $\tau_{d}$.}
+As shown in Figure~\ref{fig:control_flow}, \textcolor{blue}{total loop delay} is almost unavoidable in a real control loop.
+The \textcolor{blue}{total loop delay $\tau_{d}$} can be approximately expressed as the superposition of \textcolor{blue}{the delays of the individual links}:
+
+\begin{equation}\label{eq:total_delay}
+\textcolor{blue}{\tau_{d}} = \tau_{\mathrm{sensor}} + \tau_{\mathrm{compute}} + \tau_{\mathrm{actuator}},
+\end{equation}
+where $\tau_{\mathrm{sensor}}$ is the sensor acquisition and transmission delay, $\tau_{\mathrm{compute}}$ is the controller data processing and DRL network forward inference time, and $\tau_{\mathrm{actuator}}$ is the electromechanical response time of the actuator. \textcolor{blue}{It should be emphasized that $\tau_{d}$ is not an unknown constant that must be assumed, but a measurable quantity. In a real digital control loop, each sensor sample and each actuation command is time-stamped by the same system clock. If the control command computed from the observation sampled at the instant $t_k$ is actually applied at the instant $t_k+\tau_{d}$, then the difference between the two time stamps directly provides the total total loop delay, i.e., $\tau_{d}=t_{\mathrm{actuation}}-t_{\mathrm{sampling}}$. The delay is therefore available to the controller in real time and can be appended to the observation state, as will be described in Section~\ref{sec:controller}.}
+\textcolor{blue}{For compactness, the delay setting of a simulated episode is written as $-(x,y)$; this notation means that the total loop delay of the episode is a random variable following a normal distribution whose mean is $x$ time steps and whose standard deviation is $y$ time steps. For example, $-(3,1)$ denotes a mean delay of three sampling steps with a standard deviation of one sampling step, and a setting with $y=0$, such as $-(3,0)$, corresponds to a deterministic (fixed) delay.}
+
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.7\textwidth]{figures/fig2}}
+	\caption{Real control flow diagram.}
+	\label{fig:control_flow}
+\end{figure}
+
+The direct consequence of this \textcolor{blue}{delay} is that the control force $u_t$, computed by the controller at time $t$ based on the observed state $s_t$, actually acts on the system at approximately $t+\textcolor{blue}{\tau_{d}}$, by which time the true system state has evolved to $s_{t+\textcolor{blue}{\tau_{d}}}$.
+This temporal mismatch between the control force and the controlled state effectively introduces a frequency-proportional phase lag into the control loop, which, in severe cases, can weaken the damping effect or even induce instability.
+
+Furthermore, the sampling process in embedded applications is often not strictly uniform. Affected by factors such as clock drift, interrupt response delay, and communication contention, the actual sampling instants exhibit random jitter, as illustrated in Figure~\ref{fig:sampling_jitter}:
+
+\begin{equation}\label{eq:sampling_jitter}
+t_{k+1} = t_k + \Delta t + \delta_k,
+\end{equation}
+where $\Delta t$ is the ideal sampling interval, and $\delta_k$ is the random jitter term at the $k$-th step.
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.6\textwidth]{figures/fig3}}
+	\caption{Sampling jitter diagram.}
+	\label{fig:sampling_jitter}
+\end{figure}
+
+Under the combined influence of these factors, the agent cannot directly observe the true state $s_t$ and can only access a time-biased observation $o_t = f(s_{t-\tau}, \delta)$. For a standard TD3 controller employing a fully connected MLP architecture, the network processes each input independently and statically at every time step. Its forward mapping $f_{\mathrm{MLP}}: o_t \mapsto a_t$ makes decisions based solely on the current single observation, lacking the ability to model the temporal dynamics of historical observation sequences. This limitation can lead to unstable policy outputs, divergent value estimates, and degraded control accuracy. Therefore, endowing the DRL controller with the capability to capture temporal dependencies and integrate historical context represents a critical direction for improvement.
+
+\subsection{Dynamic Modeling of the Primary Structure--Absorber System}
+
+In aerospace engineering, equipment demands high precision and strong environmental adaptability, and the design and optimization of vibration absorption systems directly affect the operational stability of the system. Against this background, this study focuses on the vibration damping of spacecraft systems and establishes a simplified dynamic model, as shown in Figure~\ref{fig:tmd_model}. The system consists of the primary structure to be damped and an auxiliary active TMD absorber. This configuration is highly representative of scenarios such as aerospace platform vibration mitigation and building seismic resistance.
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.5\textwidth]{figures/fig4}}
+	\caption{Physical model diagram of the TMD absorber system.}
+	\label{fig:tmd_model}
+\end{figure}
+
+Let the absorber mass be $m$ and the primary structure mass be $M$; in \textcolor{blue}{Figure~\ref{fig:tmd_model}}, $c_m$ and $c_M$ are the absorber damping and primary structure damping, respectively; $k_m$ and $k_M$ are the absorber stiffness and primary structure stiffness, respectively; $x_1$ is the actuator displacement; $x_2$ is the primary structure displacement; $z$ is the ground displacement; $f(t)$ is the external excitation; and $u$ is the control force provided by the absorber. \textcolor{blue}{To avoid any confusion with the symbol $F$ that appears in Figure~\ref{fig:tmd_model}, the external excitation is denoted by $f(t)$ throughout the equations of this paper, and the two symbols refer to the same physical quantity.}
+According to Newton's laws of motion, the differential equations of motion of this system can be described as:
+
+\begin{equation}\label{eq:eom_system}
+\left\{ \begin{aligned}
+& m{\ddot{x}}_{1}=-{k}_{m}({x}_{1}-{x}_{2})-{c}_{m}({\dot{x}}_{1}-{\dot{x}}_{2})+u \\
+& M{\ddot{x}}_{2}={k}_{m}({x}_{1}-{x}_{2})-{k}_{M}({x}_{2}-z)+{c}_{m}({\dot{x}}_{1}-{\dot{x}}_{2})\textcolor{blue}{-{c}_{M}({\dot{x}}_{2}-\dot{z})}+f(t)-u
+\end{aligned} \right..
+\end{equation}
+A state-space representation is further constructed for the system's differential equations of motion. Defining the real-time state vector as $\mathbf{X}(t) = [x_1(t), \dot{x}_1(t), x_2(t), \dot{x}_2(t)]^T$, the above differential equations of motion are transformed into state-space form:
+
+\begin{equation}\label{eq:state_space}
+\left\{ \begin{aligned}
+& \dot{\mathbf{X}}(t)=\mathbf{A}\mathbf{X}(t)+\mathbf{B}u(t)+\mathbf{E}z(t)+\mathbf{G}f(t) \\
+& \mathbf{Y}(t)=\mathbf{C}\mathbf{X}(t)+\mathbf{D}u(t)
+\end{aligned} \right.,
+\end{equation}
+where the system matrix $\mathbf{A}$, input matrix $\mathbf{B}$, output matrix $\mathbf{C}$, direct transmission matrix $\mathbf{D}$, external disturbance matrix $\mathbf{E}$, and external excitation input matrix $\mathbf{G}$ take the following specific forms:
+
+\begin{equation}\label{eq:matrices}
+\begin{aligned}
+\mathbf{A} &= \begin{bmatrix} 0 & 1 & 0 & 0 \\ -\frac{k_m}{m} & -\frac{c_m}{m} & \frac{k_m}{m} & \frac{c_m}{m} \\ 0 & 0 & 0 & 1 \\ \frac{k_m}{M} & \frac{c_m}{M} & -\frac{k_m + k_M}{M} & -\frac{c_m + c_M}{M} \end{bmatrix},
+\quad
+\mathbf{B} = \begin{bmatrix} 0 \\ \frac{k_f}{m} \\ 0 \\ -\frac{k_f}{M} \end{bmatrix}, 
+\quad
+\mathbf{E} &= \begin{bmatrix} 0 & 0 \\ 0 & 0 \\ 0 & 0 \\ \frac{c_M}{M} & \frac{k_M}{M} \end{bmatrix}, 
+\quad
+\mathbf{G} = \begin{bmatrix} 0 \\ 0 \\ 0 \\ \frac{1}{M} \end{bmatrix}\\[6pt]
+\mathbf{C} &= \begin{bmatrix} -\frac{k_m}{m} & -\frac{c_m}{m} & \frac{k_m}{m} & \frac{c_m}{m} \\ \frac{k_m}{M} & \frac{c_m}{M} & -\frac{k_m + k_M}{M} & -\frac{c_m + c_M}{M} \end{bmatrix},
+\quad
+\mathbf{D} = \begin{bmatrix} \frac{k_f}{m} \\ -\frac{k_f}{M} \end{bmatrix}.\\[6pt]
+\end{aligned}.
+\end{equation}
+
+%缺少系统参数的表述。
+The parameters of the primary structure--absorber system are listed in Table~\ref{tab:system_params} and are used throughout the subsequent numerical simulations.
+From these parameters, the natural frequency of the primary structure is approximately $f_{M}=\textcolor{blue}{22.51}\,\text{Hz}$, and that of the absorber is approximately $f_{m}=\textcolor{blue}{27.57}\,\text{Hz}$; the two frequencies are relatively close.
+When the absorber applies no control force, the excitation force acting on the primary system is partially balanced by the elastic restoring force from the absorber within a certain frequency band, forming an anti-resonance phenomenon \textcolor{blue}{at $f_{m}=27.57\,\text{Hz}$, i.e., at the natural frequency of the absorber, where the displacement of the primary structure is theoretically cancelled}.
+\textcolor{blue}{Because the absorber is coupled to the primary structure, the two natural frequencies of the coupled primary structure--absorber system are shifted away from $f_{M}$ and $f_{m}$; for the parameters listed in Table~\ref{tab:system_params} they are approximately $20.9\,\text{Hz}$ and $29.7\,\text{Hz}$, and the second of these two frequencies dominates the response of the primary structure in the neighbourhood of $30\,\text{Hz}$ that is examined in Section~\ref{sec:simulation}.}
+This is the core mechanism by which passive absorbers function.
+However, in engineering practice, system parameters drift, external excitations become more complex, and environmental uncertainties superimpose on the structural response.
+Relying solely on a passive absorber often makes it difficult to achieve high-precision vibration control.
+Therefore, introducing an active control strategy that enables the actuator to output appropriate control forces based on state feedback can further reduce vibration amplitude and shorten the time required to restore stability.
+
+\begin{table}[htbp]
+\centering
+\caption{Two-degree-of-freedom system parameters.}
+\label{tab:system_params}
+\begin{tabular}{lll} 
+\toprule   
+Symbol & Value & Unit \\  
+\midrule   
+$m$    & 1.0   & kg   \\
+$M$    & 15.0  & kg   \\
+$k_m$  & 30000 & N/m  \\
+$k_M$  & 300000& N/m  \\
+$c_m$  & 0.0001& N/(m/s) \\
+$c_M$  & 0.001 & N/(m/s) \\
+\bottomrule  
+\end{tabular}
+\end{table}
+
+% ======================================================================
+\section{GRUA-TD3 Controller Based on Temporal Perception}
+\label{sec:controller}
+
+Section~\ref{sec:system} established the dynamic model of the active TMD vibration absorption system that is widely used in engineering.
+Building on this foundation, this section addresses the problems of \textcolor{blue}{loop delays} and sampling uncertainties in complex environments by proposing a \textcolor{blue}{temporal-aware} GRUA-TD3 deep reinforcement learning control algorithm.
+By integrating Gated Recurrent Units and an \textcolor{blue}{attention pooling} mechanism into the TD3 framework and constructing time-augmented states, the robustness of the controller in non-ideal environments is enhanced.
+\textcolor{blue}{Before the individual modules are described, it is worth explaining why this architecture is particularly well suited to active vibration control, since its suitability stems mainly from the temporal characteristics of the vibration control problem itself. First, the response of a lightly damped structure near resonance is markedly time-dependent, and the phase lag between the control force and the structural response alters the effective damping; the controller must therefore exploit both the recent history and, to some extent, information about the near-future response. Second, sampling in real embedded controllers is usually not strictly equidistant, and recurrent encoding performed directly on the raw sequence index implicitly assumes a fixed sampling interval; once $\Delta t_{last}$ and $\tau_{d}$ are supplied explicitly, the GRU can interpret an irregularly sampled sequence together with the actual time intervals. Third, the information content of the individual time steps is not equally important, and attention pooling can assign a higher weight to the time steps that matter most. Finally, the multi-step prediction branch forces the encoder to form a representation of the near-future response, and because the whole network is trained end-to-end by the TD3 objective, this representation is shaped directly by the control task and is therefore closely related to the delay-compensation problem.}
+
+\subsection{\textcolor{blue}{GRU Predictor Module}}
+
+In long-sequence training and inference, conventional RNNs are more susceptible to vanishing or exploding gradients, leading to significant performance degradation. LSTM and GRU dynamically regulate information flow through gating mechanisms based on current input and historical state, avoiding simplistic overwriting-based state updates while achieving a more reasonable balance between long-term and short-term memory. Therefore, they are more suitable for extracting long-term dependencies in time series and exhibit greater stability when handling vibration control problems characterized by time delays and variable step sizes. The design philosophy of the GRU recurrent unit is similar to that of LSTM, simplifying the structure while preserving LSTM's capabilities. Compared with LSTM, as shown in Figure~\ref{fig:gru}, GRU retains only two types of gate structures: an update gate and a reset gate. The update gate controls how much information from the previous time step is carried into the current time step, while the reset gate determines how much information from the previous time step is discarded. This dual-gate structure reduces the number of gates while maintaining comparable performance, resulting in a lighter network with faster parameter updates, which is more amenable to deployment and operation in resource-constrained embedded systems.
+\textcolor{blue}{It should be noted that the GRU layer is not used to identify the delay explicitly. The measured total loop delay is supplied to the network directly through the observation, whereas the GRU is responsible for restoring the temporal context of the response that the delayed and irregularly sampled observation fails to provide.}
+\textcolor{blue}{It should also be emphasized that, although the loop delay is measured explicitly in the experiments, the presence of a random delay still exposes the controller to delay uncertainty during training, and the proposed architecture is designed precisely to cope with this uncertainty. Specifically, the GRU Predictor Module and the attention pooling layer capture the variation pattern of the loop delay inside the control loop, so that the controller retains a consistently good performance when it is confronted with a different delay. This design improves not only the robustness of the controller but also its adaptability in practical applications.}
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.6\textwidth]{figures/fig5}}
+	\caption{Schematic diagram of the GRU gated recurrent unit.}
+	\label{fig:gru}
+\end{figure}
+
+To address the partial observability problem caused jointly by \textcolor{blue}{total loop delay} and sampling \textcolor{blue}{uncertainty}, a \textcolor{blue}{GRU Predictor Module} is integrated at the front end of both the Actor and Critic networks to extract temporal features from vibration responses \textcolor{blue}{and to predict the near-future response}.
+The input to the GRU layer is the state vector sequence of the current time step and the past $L_h$ time steps $\mathbf{S}_{t-L_h+1}, \mathbf{S}_{t-L_h+2}, \dots, \mathbf{S}_t$, and the output is the corresponding hidden state vector sequence $\mathbf{H}_{t-L_h+1}, \mathbf{H}_{t-L_h+2}, \dots, \mathbf{H}_t$.
+Through a fully connected layer, the terminal hidden state $\mathbf{H}_t$ of the sequence is mapped to a predicted state vector sequence for the next $L_f$ time steps $\hat{\mathbf{S}}_{t+1}, \hat{\mathbf{S}}_{t+2}, \dots, \hat{\mathbf{S}}_{t+L_f}$.
+This \textcolor{blue}{GRU Predictor Module}, composed of the GRU layer and the fully connected \textcolor{blue}{multi-step predictor}, enables the network to compensate for observation delays by incorporating historical information, thereby improving its ability to perceive and predict changes in system states.
+\textcolor{blue}{The quantities $\hat{\mathbf{H}}_{t+1},\dots,\hat{\mathbf{H}}_{t+L_f}$ are not generated by a module that is separate from the GRU Predictor Module: they are simply the hidden states that the GRU produces when it is rolled forward by $L_f$ steps from the terminal hidden state $\mathbf{H}_t$, and the fully connected predictor maps them to the predicted state vectors $\hat{\mathbf{S}}_{t+1},\dots,\hat{\mathbf{S}}_{t+L_f}$. No separate prediction loss, prediction target or pre-training stage is used for this branch. The whole network, including the GRU Predictor Module and the attention pooling layer, is trained end-to-end by the standard TD3 objectives given by Eqs.~(\ref{eq:critic_loss}) and (\ref{eq:actor_obj}); the predicted future states and future hidden states are therefore latent quantities that are shaped solely by the actor and critic gradients, and they are retained by the network because they help to improve the control performance rather than because they reproduce a pre-defined regression target. The complete procedure is summarized in Algorithm~\ref{alg:grua_td3}.}
+
+\begin{algorithm}[htbp]
+\color{blue}
+\makeatletter
+\renewcommand{\fnum@algorithm}{\textcolor{blue}{\@nameuse{fname@algorithm}~\@nameuse{thealgorithm}}}
+\makeatother
+\caption{\textcolor{blue}{End-to-end training procedure of the GRUA-TD3 controller}}
+\label{alg:grua_td3}
+\begin{algorithmic}[1]
+\Require{Number of episodes $E$; history length $L_h$; prediction length $L_f$; learning rates $\alpha_{actor}$ and $\alpha_{critic}$; discount factor $\gamma$; soft-update coefficient $\tau$; policy delay $d_{policy}$; batch size $B_{size}$; replay capacity $N$}
+\State Initialize the Actor $\pi$ and the two Critics $Q_1$, $Q_2$ with parameters $\theta^{\pi}$, $\theta^{Q_1}$, $\theta^{Q_2}$; initialize the target networks $\theta^{\pi'}$, $\theta^{Q'_1}$, $\theta^{Q'_2}$ with the same values and the replay buffer $\mathcal{D}$ with capacity $N$
+\For{$episode=1$ to $E$}
+  \State Reset the environment; sample the total loop delay $\tau_{d}$ and the sampling jitter sequence $\delta_k$ of this episode
+  \State Initialize the observation history buffer with $L_h$ copies of the initial time-augmented state
+  \For{$t=1$ to the end of the episode}
+     \State Receive the delayed observation $\tilde{\mathbf{X}}_t$, the previous sampling interval $\Delta t_{last}$ and the measured delay $\tau_{d}$; form $\mathbf{S}_t=[\tilde{\mathbf{X}}_t,\Delta t_{last},\tau_{d}]$ and append it to the history buffer
+     \State Encode $\mathbf{S}_{t-L_h+1},\dots,\mathbf{S}_t$ with the GRU Predictor Module; roll the GRU forward $L_f$ steps to obtain $\hat{\mathbf{H}}_{t+1},\dots,\hat{\mathbf{H}}_{t+L_f}$ and map them to the predicted states $\hat{\mathbf{S}}_{t+1},\dots,\hat{\mathbf{S}}_{t+L_f}$ through the fully connected multi-step predictor
+     \State Build the augmented hidden-state sequence $\mathcal{H}_t$ (Eq.~(\ref{eq:augmented_feature})) and the augmented state sequence $\mathcal{S}_t$ (Eq.~(\ref{eq:augmented_state_seq}))
+     \State Compute the scores by Eq.~(\ref{eq:attention_score}), normalize them by Eq.~(\ref{eq:softmax_attention}) and aggregate the states into $\bar{\mathbf{S}}_t$ by Eq.~(\ref{eq:attention_aggregated})
+     \State Output the action $A_t=\pi(\bar{\mathbf{S}}_t)+\epsilon_{expl}$ and clip it to $[-A_{\max},A_{\max}]$
+     \State Apply $A_t$ after the delay $\tau_{d}$; observe the reward $r_t$ and the next observation, and store the transition in $\mathcal{D}$
+     \State Sample a mini-batch of $B_{size}$ transitions from $\mathcal{D}$
+     \State Compute the target value by Eq.~(\ref{eq:target_smoothing}) and update $\theta^{Q_1}$, $\theta^{Q_2}$ by minimizing Eq.~(\ref{eq:critic_loss}); the GRU Predictor Module of the Critic and its attention pooling layer are updated by the same gradient
+     \If{$t \bmod d_{policy} = 0$}
+        \State Update $\theta^{\pi}$ by maximizing Eq.~(\ref{eq:actor_obj}) and soft-update all target networks by Eq.~(\ref{eq:soft_update})
+     \EndIf
+  \EndFor
+\EndFor
+\Ensure Trained Actor network $\pi$; note that, in each network, the GRU Predictor Module and the attention pooling module are updated by the same back-propagation passes as that network itself, and that no separate prediction loss, training stage or optimizer is used.
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Time-Augmented State Construction}
+
+Since GRU layers are integrated at the front end of both the Actor and Critic networks, the network input is no longer the state at a single moment but rather a continuous sequence of states over multiple time steps.
+This paper incorporates a temporal perception mechanism into the state construction by treating temporal information (such as the sampling time interval ($\Delta t$) and \textcolor{blue}{the measured total loop delay}) as part of the state vector, feeding them into the network along with the observations.
+This allows the agent to explicitly perceive changes in the temporal dimension and dynamically adjust the control strategy accordingly.
+The \textcolor{blue}{time-augmented} state vector is defined as:
+
+\begin{equation}\label{eq:time_augmented_state}
+{\mathbf{S}}_{t}=[\tilde{\mathbf{X}},\Delta {t}_{last},\textcolor{blue}{{\tau}_{d}}],
+\end{equation}
+where $\tilde{\mathbf{X}}$ denotes the environment observation state matrix at the current moment; $\Delta t_{last}$ is the actual sampling time interval of the previous control step; and \textcolor{blue}{$\tau_{d}$ is the measured total loop delay at the current moment, which is obtained from the time stamps as described in Section~\ref{sec:system}}.
+By explicitly incorporating temporal information into the state, the agent can perceive the trend of environmental state changes in the temporal dimension, thereby improving the effectiveness and stability of the policy.
+
+\subsection{\textcolor{blue}{Attention Pooling} Mechanism Integration}
+\label{subsec:attention}
+
+Although the GRU network alone can extract temporal information, during long-term information transmission, the importance of individual time steps is not explicitly differentiated, and crucial early information may be attenuated or even ignored during propagation.
+To this end, this paper further integrates an \textcolor{blue}{attention pooling} layer after the GRU to enhance the ability to focus on critical time steps.
+The \textcolor{blue}{attention pooling} layer computes a weight distribution based on the feature vectors extracted by the GRU, enabling the network to dynamically adjust the degree of attention to each time step, thereby improving the adaptive capability to \textcolor{blue}{loop delays} and variable-step disturbances.
+
+This paper adopts a time-step-based attention-weighted aggregation strategy, whose overall process can be summarized in the following steps:
+
+\textbf{Step 1:} The GRU encodes the input sequence to obtain the hidden state sequences of the past and present $L_h$ time steps $\mathbf{H}_{t-L_h+1}, \mathbf{H}_{t-L_h+2}, \dots, \mathbf{H}_t$, as well as the predicted hidden state sequences of the future $L_f$ time steps $\hat{\mathbf{H}}_{t+1}, \hat{\mathbf{H}}_{t+2}, \dots, \hat{\mathbf{H}}_{t+L_f}$. Subsequently, the hidden state sequences of the future $L_f$ time steps are mapped through a fully connected layer to obtain the predicted state vector sequences for future time steps $\hat{\mathbf{S}}_{t+1}, \hat{\mathbf{S}}_{t+2}, \dots, \hat{\mathbf{S}}_{t+L_f}$.
+
+\textbf{Step 2:} The past, present, and future hidden state sequences are concatenated to form an augmented time-series feature matrix:
+
+\begin{equation}\label{eq:augmented_feature}
+{\mathcal{H}}_{t}=\{{\mathbf{H}}_{t-{L}_{h}+1},\ldots ,{\mathbf{H}}_{t},{\widehat{\mathbf{H}}}_{t+1},\ldots ,{\widehat{\mathbf{H}}}_{t+{L}_{f}}\},\qquad T={L}_{h}+{L}_{f}.
+\end{equation}
+This matrix aggregates information from different time steps, encompassing both actual observations from historical and current moments as well as predicted information from future moments.
+
+\textbf{Step 3:} The \textcolor{blue}{attention pooling} layer employs a learnable scoring function to compute importance scores for each time step based on the augmented hidden state vector sequence. A scalar evaluation score $e_i$ is assigned to each time step in the sequence:
+
+\begin{equation}\label{eq:attention_score}
+{e}_{j}=\mathbf{w}_{a}^{\top }{h}_{j}+{b}_{a},\qquad j=1,\ldots ,T
+\end{equation}
+where $\mathbf{w}_a$ and $b_a$ are the weight vector and bias term of the \textcolor{blue}{attention pooling} layer, respectively, and $h_j$ is the hidden state vector at the $j$-th time step.
+
+\textbf{Step 4:} The scores are normalized via the Softmax function to obtain the attention weights $\alpha_i$ for each time step, endowing the weight distribution with probabilistic meaning:
+
+\begin{equation}\label{eq:softmax_attention}
+\alpha_i = \frac{\exp(e_i)}{\sum_{j=1}^{T} \exp(e_j)}.
+\end{equation}
+
+\textbf{Step 5:} The ``historical observation segment'' and the ``future prediction segment'' of the states are concatenated to form an augmented state sequence:
+
+\begin{equation}\label{eq:augmented_state_seq}
+{\mathcal{S}}_{t}=\{{\mathbf{S}}_{t-{L}_{h}+1},\ldots ,{\mathbf{S}}_{t},{\hat{\mathbf{S}}}_{t+1},\ldots ,{\hat{\mathbf{S}}}_{t+{L}_{f}}\},\qquad T={L}_{h}+{L}_{f}
+\end{equation}
+
+\textbf{Step 6:} The augmented state sequence is weighted and summed according to the attention weights to obtain the attention-aggregated state vector ${\bar{\mathbf{S}}}_{t}$, which serves as the input feature for the subsequent MLP layers of the Actor and Critic:
+
+\begin{equation}\label{eq:attention_aggregated}
+{\overline{\mathbf{S}}}_{t}=\sum\limits_{i=1}^{T}{{\alpha }_{i}}{\mathbf{S}}_{i}.
+\end{equation}
+
+This mechanism assigns higher weights to more critical historical and predicted time steps.
+Consequently, when the system suffers from \textcolor{blue}{loop delays} and sampling timing jitter, the policy's utilization of effective information becomes more concentrated, which is more conducive to improving overall robustness.
+\textcolor{blue}{It should be stressed once more that Steps 1--6 describe a trainable but fully differentiable module that is optimized jointly with the Actor and the Critic, rather than a predictor that is trained on its own. No target for $\hat{\mathbf{S}}_{t+1},\dots,\hat{\mathbf{S}}_{t+L_f}$ is imposed by the environment during training: the attention scores $e_j$, the attention weights $\alpha_i$ and the predicted future states are all learned by back-propagation of the TD3 actor and critic losses alone. The multi-step state predictor is therefore not trained in a separate stage, and the whole temporal perception module is updated within a single optimization loop.}
+
+Integrating the above design, in the GRUA-TD3 algorithm network architecture, the Actor network takes as input the \textcolor{blue}{time-augmented} state vector sequence $Seq_t$.
+The state sequence first passes through the GRU layer and the \textcolor{blue}{attention pooling} layer to be extracted and aggregated into a state feature vector, and then passes through a fully connected network to output the action command $A$.
+The Critic network takes as input the \textcolor{blue}{time-augmented} state vector sequence and the action $A$.
+The state sequence similarly undergoes processing by the GRU layer and the \textcolor{blue}{attention pooling} layer before being concatenated with the action vector, and finally passes through a fully connected network to obtain the value estimate $Q$ of the current state-action pair.
+The overall structure of the Actor and Critic networks integrating the GRU and attention mechanism is shown in Figures~\ref{fig:network_arch_actor} and~\ref{fig:network_arch_critic}.
+\textcolor{blue}{It should be emphasized that the Actor and the Critic each possess their own temporal perception module: the GRU Predictor Module and the attention pooling layer of Figures~\ref{fig:network_arch_actor} and~\ref{fig:network_arch_critic} are instantiated separately in the two networks, and no parameter is shared between them. The two modules are updated within the same TD3 training loop, and the only quantity that differs in their configuration is the learning rate.}
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.8\textwidth]{figures/fig6}}
+	\caption{\textcolor{blue}{Actor network architecture of the GRUA-TD3 algorithm.}}
+	\label{fig:network_arch_actor}
+\end{figure}
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.8\textwidth]{figures/fig7}}
+	\caption{\textcolor{blue}{Critic network architecture of the GRUA-TD3 algorithm.}}
+	\label{fig:network_arch_critic}
+\end{figure}
+
+
+
+% ======================================================================
+\section{Simulation Experiments and Analysis}
+\label{sec:simulation}
+
+To verify the effectiveness and control performance of the controller trained by the GRUA-TD3 algorithm proposed in Section~\ref{sec:controller}, this paper constructs a non-ideal vibration control environment incorporating \textcolor{blue}{loop delays} and variable step sizes.
+Simulation experiments are conducted in Python using the PyTorch package, and the results are analyzed to evaluate the control performance of the GRUA-TD3 controller.
+
+\subsection{Reward Function and Controller Parameter}
+
+To enable the agent to learn a near-optimal control strategy in the presence of external excitations and to swiftly return the system state to the stable region, a piecewise smooth reward function is constructed. Let the displacement of the primary structure at the current time step be $x_2$, and the displacement at the next time step under the policy be $x_2'$. Considering the requirements of aerospace engineering for vibration control precision, the displacement tolerance threshold is defined as $\epsilon = 1 \times 10^{-3}$, and the physical upper limit of the control force output is $A_{\max}=5\,\text{N}$. The reward consists of the following components:
+
+\medskip\noindent\textbf{(1) Displacement Reward $r_{disp}$}
+
+The displacement reward adopts a piecewise evaluation mechanism: when the controlled displacement falls within the tolerance range, i.e., $|x_2'| \le \epsilon$, the system provides a positive reward:
+
+\begin{equation}\label{eq:reward_disp_pos}
+r_{disp} = \frac{\epsilon - |x_2'|}{\epsilon} + \mathbb{I}(|x_2'| \le |x_2|) \frac{|x_2| - |x_2'|}{|x_2| + 1 \times 10^{-14}}.
+\end{equation}
+When external disturbances cause the displacement to exceed the tolerance range, i.e., $|x_2'| > \epsilon$, the system imposes a penalty:
+
+\begin{equation}\label{eq:reward_disp_neg}
+r_{disp} = -2 \log_{10} \left( \frac{|x_2'|}{\epsilon} \right) - \mathbb{I}(|x_2'| > |x_2|) \frac{|x_2'| - |x_2|}{|x_2'| + 1 \times 10^{-14}},
+\end{equation}
+where the logarithmic term penalizes out-of-bound displacements while ensuring that the penalty grows more smoothly for extremely large displacements, thereby avoiding excessively strong gradients during training that could lead to instability.
+
+\medskip\noindent\textbf{(2) Action Penalty $r_{act}$}
+
+To prevent the control force from chronically or frequently hitting the saturation limit, which would increase energy consumption or even pose actuator risks, a penalty term negatively correlated with the action magnitude is introduced:
+
+\begin{equation}\label{eq:reward_action}
+{r}_{act}=-\frac{|{A}_{t}|}{4{A}_{\max }}.
+\end{equation}
+
+\noindent This penalty is proportional to the absolute value of the action, encouraging smooth convergence of the agent, which is consistent with practical engineering requirements for actuator lifespan and energy efficiency. Finally, the displacement reward and action penalty are combined and clipped to obtain the normalized single-step total reward:
+
+\begin{equation}\label{eq:reward_total}
+r_t = \text{clip} \left( \frac{r_{disp} + r_{act}}{4}, -1.0, 1.0 \right).
+\end{equation}
+
+\textcolor{blue}{Two aspects of the reward design deserve further explanation. First, the displacement of the primary structure rather than its acceleration is adopted as the main control objective. For the precision-sensitive payload considered in this study, the residual displacement directly determines the alignment error and the mechanical strain of the primary structure, whereas the acceleration is dominated by high-frequency components that are only weakly correlated with the residual pointing error; moreover, acceleration measurements are considerably noisier in practice and would inject spurious components into the reward signal. Second, the relative weight of the displacement reward and of the action penalty is not dictated by any physical constraint of the problem. The factor $1/4$ in Eq.~(\ref{eq:reward_action}) and the normalization by $4$ in Eq.~(\ref{eq:reward_total}) were selected empirically, after repeated trials, so that the displacement term dominates the reward during the early stage of training while the action penalty remains large enough to prevent the actuator from operating continuously at its saturation limit; this choice corresponds to a displacement-to-action weighting ratio of approximately $4\!:\!1$. This ratio is a tunable design parameter that balances the vibration attenuation against the control cost, and it can be re-tuned when a different actuator or a different energy-consumption requirement is considered.}
+
+\begin{table}[htbp]
+\centering
+\caption{GRUA-TD3 controller training hyperparameters.}
+\label{tab:hyperparams}
+\begin{tabular}{lll} 
+\toprule   
+Symbol & Meaning & Value \\  
+\midrule   
+$T$ & Simulation Duration & \textcolor{blue}{1.2\,s (free vibration), 2.5\,s (sinusoidal excitation)} \\
+${T}_{s}$ & Mean Time Step & 0.001 s \\
+${\sigma }_{Ts}$ & Time Step Std.\ Dev. & 0.1\,${T}_{s}$ \\
+${\alpha }_{actor}$ & Actor Learning Rate & $5\times10^{-6}$ \\
+${\alpha }_{critic}$ & Critic Learning Rate & $1\times10^{-5}$ \\
+$\tau$ & Soft Update Parameter & 0.001 \\
+$\gamma$ & Discount Factor & 0.99 \\
+${\sigma }_{noise}$ & Policy Noise Std.\ Dev. & 0.2 \\
+${c}_{noise}$ & Noise Clipping Value & 0.5 \\
+${d}_{policy}$ & Policy Delay Frequency & 3 \\
+$len_{history}$ & History Sequence Length & 36 \\
+$len_{fc}$ & Prediction Sequence Length & 4 \\
+${B}_{size}$ & Batch Size & 128 \\
+$N$ & Replay Buffer Size & $5\times10^{5}$ \\
+\bottomrule  
+\end{tabular}
+\end{table}
+
+Since time-augmented states are introduced and the network input is a sequence of states rather than a single state, additional sequence-related hyperparameters are required beyond the standard TD3 parameters. Regarding the GRU network architecture, after multiple rounds of training tuning and simulation experiments, the number of hidden units in the GRU layer was set to 64 with a single layer, which helps mitigate the gradient explosion problem inherent in RNN architectures. Furthermore, after repeated debugging, the length of the historical sequence input to the GRU layer was set to 36 to balance the network's ability to extract environmental dynamic features with training efficiency and computational cost, ensuring that the network can leverage a sufficiently long past state sequence for prediction. The length of the predicted sequence output by the GRU layer was set to 4, endowing the network with basic temporal perception and prediction capability.
+
+Regarding training hyperparameters, to suppress potential gradient instability introduced by the GRU network structure, a gradient clipping parameter with a threshold of 1.0 was applied to the optimizer. Smaller learning rates were selected for both the Actor and Critic networks to promote stable convergence during TD3 training. The soft update weight parameter was set to $\tau = 0.001$ to ensure smooth updates of the target networks and reduce oscillations. The batch size was set to 128 to balance training efficiency and stability. Other parameters such as action bounds, discount factor, policy smoothing noise and its range clipping, and delayed policy frequency were kept consistent with the standard TD3 algorithm settings to avoid introducing additional oscillations. After multiple rounds of training tuning and simulation experiments, the training hyperparameters of GRUA-TD3 are summarized in Table~\ref{tab:hyperparams}:
+
+\subsection{Simulation Experiment Comparison and Analysis}
+
+To more comprehensively evaluate the control performance and robustness of the improved algorithm, multiple sets of comparative experiments are designed in this section. Four types of control strategies are selected as baseline references:
+
+\begin{itemize}
+\item \textbf{Passive Control (No Control):} Serving as the baseline reference, this strategy relies solely on the inherent damping and stiffness of the primary structure--absorber system to absorb and attenuate vibrations. The absorber receives no current input, meaning no active control energy is introduced.
+
+\item \textbf{PID Controller (PID Control):} As a classical method, this controller employs empirically tuned parameters adjusted to a relatively suitable state and participates in the comparison at its optimal performance under delay-free conditions.
+
+\item \textbf{TD3 Controller (MLP-TD3):} This controller is trained via deep reinforcement learning without temporal perception capability. Its network adopts an MLP architecture without recurrent neural networks or attention mechanisms.
+
+\item \textbf{GRUA-TD3 Controller (GRUA-TD3):} The controller is trained using the GRUA-TD3 algorithm proposed in this paper. The network contains a GRU layer and an \textcolor{blue}{attention pooling} layer, and has \textcolor{blue}{temporal-aware} capabilities.
+\end{itemize}
+
+%时滞时间没有给出具体的值
+In terms of training, the TD3 and GRUA-TD3 controllers are trained separately in both ideal and non-ideal environments, yielding a total of four training groups.
+The initial conditions are all set to free vibration, with the primary structure initial displacement fixed at 0.006 m.
+This produces TD3 and GRUA-TD3 controllers for the ideal environment, as well as TD3 and GRUA-TD3 controllers for the non-ideal environment.
+The non-ideal environment introduces \textcolor{blue}{total loop delay} and variable-step sampling mechanisms to simulate the \textcolor{blue}{delay} and sampling jitter that may occur in practical engineering.
+\textcolor{blue}{Following the notation defined in Section~\ref{sec:system}, the delay setting is denoted as $-(x,y)$, i.e., the total loop delay of the episode follows a normal distribution with a mean of $x$ time steps and a standard deviation of $y$ time steps.} \textcolor{blue}{The delay-free environment is denoted by ``NoDelay''.}
+The duration of each time step follows a normal distribution with a mean of $T_s$ and a standard deviation of $\sigma_{Ts}$.
+The controller training process is illustrated in Figure~\ref{fig:training_flow}.
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.8\textwidth]{figures/fig8}}
+	\caption{GRUA-TD3 algorithm training flow diagram.}
+	\label{fig:training_flow}
+\end{figure}
+
+\subsection{Training Reward Comparison}
+
+Figure~\ref{fig:reward_curves_ideal} presents the episode reward curves during the training process of the standard TD3 and GRUA-TD3 algorithms under ideal and non-ideal environments.
+\textcolor{blue}{Because the reinforcement learning training is stochastic, each controller was trained three times with different random seeds; all the reward curves reported below are the mean of the three independent runs, and the shaded band around each curve represents one standard deviation.}
+From the reward curves, it can be observed that the rewards of the reinforcement learning controllers are generally low at the early stage of training.
+As interaction experience accumulates and parameter updates progress, the rewards gradually increase and stabilize.
+In the ideal environment, as shown in Figure~\ref{fig:reward_curves_ideal}, both the standard TD3 and GRUA-TD3 achieve relatively high reward levels, with GRUA-TD3 converging faster and attaining a higher final average reward, overall closer to the PID controller's reward value of 100.09.
+
+\begin{figure}[!htbp]
+	\centerline{\includegraphics[width=0.6\textwidth]{figures/fig9}}
+	\caption{Comparison of training rewards for different TD3 algorithms under ideal environment. \textcolor{blue}{Each curve is the mean of three training runs with different random seeds and the shaded band denotes $\pm$ one standard deviation.}}
+	\label{fig:reward_curves_ideal}
+\end{figure}
+
+After introducing \textcolor{blue}{loop delays} and variable step sizes, as shown in Figure~\ref{fig:reward_curves_delay}, although the standard TD3 reward converges relatively quickly, the final reward value fluctuates considerably and its mean is lower than that of GRUA-TD3.
+\textcolor{blue}{As in Figure~\ref{fig:reward_curves_ideal}, the curves are the mean of three runs with different random seeds and the shaded bands indicate one standard deviation; the band of the MLP-TD3 controller is clearly wider than that of GRUA-TD3, which indicates that the proposed controller is not only more accurate on average but also more repeatable.}
+In contrast, GRUA-TD3 maintains relatively higher rewards and achieves faster stabilization.
+Furthermore, the final rewards of both algorithms under this operating condition exceed the PID controller's reward value of $-79.24$ under the same conditions.
+These comprehensive results indicate that GRUA-TD3 possesses stronger adaptability and superior overall control performance in environments with time delays and variable step sizes.
+
+\begin{figure}[!htbp]
+	\centerline{\includegraphics[width=0.6\textwidth]{figures/fig10}}
+	\caption{Comparison of training rewards for different TD3 algorithms under \textcolor{blue}{the non-ideal environment with total loop delay}. \textcolor{blue}{Each curve is the mean of three training runs with different random seeds and the shaded band denotes $\pm$ one standard deviation.}}
+	\label{fig:reward_curves_delay}
+\end{figure}
+
+\subsection{Results Analysis}
+
+To verify the control performance of the proposed controller, three operating conditions are established.
+First, the free vibration condition, in which the initial displacement of the primary structure is non-zero, i.e., $x_M = 0.006\,\text{m}$.
+Second, the condition in which the primary structure is continuously subjected to an external sinusoidal alternating force described by $F(t)=F_0\sin(\omega t)$, where \textcolor{blue}{$F_0 = 150\,\mathrm{N}$ is the amplitude of the excitation} and \textcolor{blue}{$\omega = 30 \times 2\pi\,\text{rad/s}$}, \textcolor{blue}{i.e., a 30\,Hz sinusoidal excitation}. \textcolor{blue}{As shown in Section~\ref{sec:system}, the two natural frequencies of the coupled primary structure--absorber system are approximately 20.9\,Hz and 29.7\,Hz; the excitation frequency of 30\,Hz therefore lies very close to the second of these two natural frequencies and represents a severe, near-resonant loading condition for the primary structure, which makes this operating condition a demanding test for the controller.}
+Third, the condition in which the primary structure is subjected to external random disturbance excitation, approximated using an MLS signal.
+\textcolor{blue}{The duration of the simulation is chosen according to the excitation type. In the initial-displacement experiments the free vibration of the system decays rapidly, so that a duration of 1.2\,s is sufficient to observe the effect of the controller on the system response. The sinusoidal-excitation experiments are run for 2.5\,s, because in this case the system has to undergo several complete excitation cycles before its response characteristics and the regulating effect of the controller become clearly identifiable, and the MLS random-excitation experiments are simulated for 2.0\,s. These different durations ensure that each experiment fully exhibits the performance of the controllers under the corresponding excitation condition, and within one experiment the duration is identical for all the controllers compared.}
+
+\subsubsection{Control Performance Comparison under Free Vibration Conditions}
+
+Figures~\ref{fig:free_vib_ideal} and~\ref{fig:free_vib_delay_all} compare the control performance of different controllers under free vibration conditions with various time-delay settings. The mean maximum amplitude in Table~\ref{tab:free_vib_data} represents the average of the maximum amplitudes within the last 30\% of the control duration. As shown in Figure~\ref{fig:free_vib_ideal} and Table~\ref{tab:free_vib_data}, in the ideal environment, the PID controller, TD3 controller, and the improved GRUA-TD3 controller can all effectively suppress primary structure vibration. All three controllers can attenuate the primary structure amplitude by approximately 80\% within a relatively short period. Among them, the PID controller holds an advantage in terms of convergence speed and final steady-state error. In the early stage of control, the PID and TD3 controllers achieve faster vibration attenuation, whereas the GRUA-TD3 controller, owing to its longer input state sequence, acts relatively more conservatively in the initial phase with slightly slower attenuation speed. However, as time progresses, GRUA-TD3 gradually exhibits stronger control capability and ultimately achieves vibration suppression performance close to that of the PID controller.
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.6\textwidth]{figures/fig11}}
+	\caption{Comparison of free vibration response control performance under ideal environment.}
+	\label{fig:free_vib_ideal}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\subfigure[\textcolor{blue}{Delay} -(1,0)]{\includegraphics[width=0.47\textwidth]{figures/fig12}\label{fig:free_vib_delay_10}}
+	\hfill
+	\subfigure[\textcolor{blue}{Delay} -(2,0)]{\includegraphics[width=0.47\textwidth]{figures/fig13}\label{fig:free_vib_delay_20}}
+	\\
+	\subfigure[\textcolor{blue}{Delay} -(3,0)]{\includegraphics[width=0.47\textwidth]{figures/fig14}\label{fig:free_vib_delay_30}}
+	\hfill
+	\subfigure[\textcolor{blue}{Delay} -(3,1)]{\includegraphics[width=0.47\textwidth]{figures/fig15}\label{fig:free_vib_delay_31}}
+	\caption{Comparison of free vibration control performance under different \textcolor{blue}{total loop delay} and variable-step environments.}
+	\label{fig:free_vib_delay_all}
+\end{figure}
+
+
+\begin{table}[htbp]
+\centering
+\caption{Controller performance data under free vibration conditions. \textcolor{blue}{The mean maximum amplitude is expressed in metres.}}
+\label{tab:free_vib_data}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc} 
+\toprule   
+\multirow{2}{*}{Control Strategy} & \multicolumn{2}{c}{Ideal Environment} & \multicolumn{2}{c}{Non-Ideal Environment \textcolor{blue}{Delay}-(3,1)} \\ \cline{2-5}
+& Mean Max.\ Amplitude \textcolor{blue}{(m)} & Attenuation Rate & Mean Max.\ Amplitude \textcolor{blue}{(m)} & Attenuation Rate \\ \midrule
+No Control  & $4.60\times10^{-3}$ & 0.00\% & $4.60\times10^{-3}$ & 0.00\% \\
+PID         & $7.99\times10^{-4}$ & 82.64\% & $2.44\times10^{-3}$ & 46.91\% \\
+TD3         & $9.67\times10^{-4}$ & 78.98\% & $1.03\times10^{-3}$ & 77.54\% \\
+GRUA-TD3    & $1.09\times10^{-3}$ & 76.30\% & $6.72\times10^{-4}$ & 85.41\% \\
+\bottomrule  
+\end{tabular}
+\end{table}
+
+When \textcolor{blue}{loop delays} and variable-step sampling are introduced into the environment, Figure~\ref{fig:free_vib_delay_all} more intuitively illustrates the performance differences through its four subfigures.
+As shown in figures~\ref{fig:free_vib_delay_10} and \ref{fig:free_vib_delay_20}, when the fixed delay step count is small (1--2 steps), the control performance of both the PID and standard TD3 algorithms degrades, though a certain degree of vibration reduction can still be achieved.
+As the delay step count increases to 3 (figure~\ref{fig:free_vib_delay_30}), the PID controller performance degrades rapidly and exhibits sustained oscillations; its control performance is even worse than that in the ideal environment.
+Under the same condition, the standard TD3 can still maintain some vibration suppression capability; although the control accuracy and convergence speed are noticeably degraded, the primary structure amplitude attenuation can still exceed 75\%.
+When random delay is introduced alongside the fixed delay (figure~\ref{fig:free_vib_delay_31}), the performance degradation trend persists.
+In contrast, the improved GRUA-TD3 controller proposed in this paper maintains high control performance under both fixed delay step counts and random delay conditions, achieving a primary structure amplitude attenuation rate that stably exceeds 85\% with faster convergence speed.
+This demonstrates the superior robustness and adaptability of the intelligent TMD absorber trained by the GRUA-TD3 algorithm under complex temporal conditions.
+
+\subsubsection{Control Performance Comparison under Fixed-Frequency Excitation}
+
+To further verify the generalization performance of the algorithm, this paper includes comparative experiments under fixed-frequency excitation conditions.
+Figures~\ref{fig:fixed_freq_ideal} and~\ref{fig:fixed_freq_delay} compare the control performance of different controllers under fixed-frequency excitation with different time-delay settings.
+As shown in Figure~\ref{fig:fixed_freq_ideal} and Table~\ref{tab:fixed_freq_data}, in the ideal delay-free environment, \textcolor{blue}{all three active controllers attenuate the displacement amplitude of the primary structure substantially, the attenuation rates being 81.85\% for the PID controller, 76.11\% for the standard TD3 controller and 83.18\% for the GRUA-TD3 controller}.
+When random \textcolor{blue}{loop delays} and variable step sizes are present, as shown in Figure~\ref{fig:fixed_freq_delay}, the PID controller performance degrades markedly, and its vibration attenuation effectiveness worsens.
+\textcolor{blue}{Quantitatively, the attenuation rate of the PID controller drops to 62.02\%, and that of the standard TD3 controller drops to 51.90\%, which shows that the standard TD3 controller loses a considerable part of its effectiveness once the total loop delay is introduced. The GRUA-TD3 controller, in contrast, not only retains its attenuation capability but improves it slightly, reaching 84.77\% and leaving the smallest residual amplitude of the four strategies.}
+These results indicate that GRUA-TD3 is more effective at maintaining control stability and robustness in complex and uncertain dynamic environments.
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.75\textwidth]{figures/fig16}}
+	\caption{Comparison of control performance under fixed-frequency excitation.}
+	\label{fig:fixed_freq_ideal}
+\end{figure}
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.75\textwidth]{figures/fig17}}
+	\caption{Comparison of fixed-frequency excitation control performance under \textcolor{blue}{total loop delay} $-(3,1)$ and variable-step environment.}
+	\label{fig:fixed_freq_delay}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\caption{Controller performance data under fixed-frequency excitation conditions. \textcolor{blue}{The fixed-frequency excitation is a 30\,Hz sinusoid of amplitude $F_0=150\,\mathrm{N}$, and the mean maximum amplitude is expressed in metres.}}
+\label{tab:fixed_freq_data}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc} 
+\toprule   
+\multirow{2}{*}{Control Strategy} & \multicolumn{2}{c}{Ideal Environment} & \multicolumn{2}{c}{Non-Ideal Environment \textcolor{blue}{Delay}-(3,1)} \\ \cline{2-5}
+& Mean Max.\ Amplitude \textcolor{blue}{(m)} & Attenuation Rate & Mean Max.\ Amplitude \textcolor{blue}{(m)} & Attenuation Rate \\ \midrule
+No Control  & \textcolor{blue}{$6.50\times10^{-3}$} & 0.00\% & \textcolor{blue}{$6.12\times10^{-3}$} & 0.00\% \\
+PID         & \textcolor{blue}{$1.18\times10^{-3}$} & \textcolor{blue}{81.85\%} & \textcolor{blue}{$2.32\times10^{-3}$} & \textcolor{blue}{62.02\%} \\
+TD3         & \textcolor{blue}{$1.55\times10^{-3}$} & \textcolor{blue}{76.11\%} & \textcolor{blue}{$2.94\times10^{-3}$} & \textcolor{blue}{51.90\%} \\
+GRUA-TD3    & \textcolor{blue}{$1.09\times10^{-3}$} & \textcolor{blue}{83.18\%} & \textcolor{blue}{$9.31\times10^{-4}$} & \textcolor{blue}{84.77\%} \\
+\bottomrule  
+\end{tabular}
+\end{table}
+
+\subsubsection{Control Performance Comparison under Random Excitation}
+
+In practical engineering problems, the excitation forces acting on structural platforms are often characterized by irregular and broadband fluctuations.
+Such external forcing functions can be approximately generated in simulation environments through periodic pseudo-random binary sequences, specifically the Maximum Length Sequence (MLS).
+Based on this, this paper introduces comparative experiments under MLS random excitation to evaluate the performance of each controller in scenarios closer to real-world applications.
+As can be observed from Figures~\ref{fig:mls_ideal} and~\ref{fig:mls_delay}, even under random excitation conditions, the GRUA-TD3 controller can still effectively suppress structural vibration, reducing the vibration amplitude by over 80\%.
+When the environment becomes more complex, compared with the conventional PID controller, GRUA-TD3 significantly reduces the primary structure vibration after a certain period (approximately 0.2 s), demonstrating that this controller possesses stronger adaptability and robustness in \textcolor{blue}{complex and uncertain} dynamic environments.
+
+\begin{figure}[htbp]
+	\centerline{\includegraphics[width=0.75\textwidth]{figures/fig18}}
+	\caption{Comparison of control performance under MLS random excitation.}
+	\label{fig:mls_ideal}
+\end{figure}
+
+\begin{figure}[!htbp]
+	\centerline{\includegraphics[width=0.75\textwidth]{figures/fig19}}
+	\caption{Comparison of MLS random excitation control performance under \textcolor{blue}{total loop delay} $-(3,1)$ and variable-step environment.}
+	\label{fig:mls_delay}
+\end{figure}
+  
+It is worth noting that, in Table~\ref{tab:random_data}, the PID controller exhibits a higher attenuation rate under the non-ideal environment (71.72\%) than under the ideal environment (43.14\%).
+This is because, as shown in Figure~\ref{fig:mls_ideal}, the PID controller performs well in the initial stage under the ideal environment but shows a divergent trend after approximately 1.5~s, resulting in a larger mean maximum amplitude within the last 30\% of the control duration (the evaluation metric).
+In the non-ideal environment, the random \textcolor{blue}{loop delays} and variable step sizes alter the system's dynamic response characteristics such that this divergent behavior does not occur, leading to a smaller evaluated mean maximum amplitude.
+
+\begin{table}[htbp]
+\centering
+\caption{Controller performance data under random excitation conditions. \textcolor{blue}{The excitation is an MLS random signal approximated by a periodic pseudo-random binary sequence, and the mean maximum amplitude is expressed in metres.}}
+\label{tab:random_data}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc} 
+\toprule   
+\multirow{2}{*}{Control Strategy} & \multicolumn{2}{c}{Ideal Environment} & \multicolumn{2}{c}{Non-Ideal Environment \textcolor{blue}{Delay}-(3,1)} \\ \cline{2-5}
+& Mean Max.\ Amplitude \textcolor{blue}{(m)} & Attenuation Rate & Mean Max.\ Amplitude \textcolor{blue}{(m)} & Attenuation Rate \\ \midrule
+No Control  & $9.50\times10^{-3}$ & 0.00\% & $9.21\times10^{-3}$ & 0.00\% \\
+PID         & $5.40\times10^{-3}$ & 43.14\% & $2.60\times10^{-3}$ & 71.72\% \\
+TD3         & $1.71\times10^{-3}$ & 81.98\% & $2.10\times10^{-3}$ & 77.23\% \\
+GRUA-TD3    & $1.68\times10^{-3}$ & 82.30\% & $1.82\times10^{-3}$ & 80.24\% \\
+\bottomrule  
+\end{tabular}
+\end{table}
+
+\subsubsection{\textcolor{blue}{Ablation Study}}
+
+\textcolor{blue}{The complete GRUA-TD3 controller combines three design elements: the time augmentation of the observation, the GRU Predictor Module (the GRU layer together with the multi-step state predictor) and the attention pooling module. To determine which of these elements is actually responsible for the improvement reported above, an ablation study was carried out in the non-ideal environment with a $-(3,1)$ total loop delay. Five configurations were compared: (i) no control; (ii) the MLP-TD3 controller, which has no temporal capability; (iii) the GRUA-TD3 controller whose attention weights are frozen to a uniform (non-learnable) distribution, which isolates the effect of the attention pooling module; (iv) the GRUA-TD3 controller without time augmentation, in which the sampling interval and the measured delay are removed from the observation, which isolates the effect of the time-augmented state; and (v) the complete GRUA-TD3 controller. All five configurations were evaluated on the same two operating conditions, namely the initial-displacement condition and the 30\,Hz fixed-frequency excitation condition.}
+
+\textcolor{blue}{The results are listed in Table~\ref{tab:ablation}, and the displacement time histories of the five configurations are compared in Figures~\ref{fig:ablation_free} (initial displacement) and~\ref{fig:ablation_fixed} (30\,Hz fixed-frequency excitation). The complete GRUA-TD3 controller achieves the best performance under both conditions, with attenuation rates of 81.85\% and 89.11\%, respectively, and the removal of any single element degrades the performance. Replacing the learned attention weights with a uniform distribution reduces the attenuation rate to 46.42\% under initial-displacement excitation, which is even lower than that of the purely feed-forward MLP-TD3 controller, and to 67.12\% under fixed-frequency excitation; this shows that an attention pooling layer only helps when its weights are allowed to adapt, and that all time steps are not equally informative. Removing the time augmentation reduces the attenuation rates to 66.12\% and 60.98\%, and removing the temporal perception module altogether (the MLP-TD3 controller, which has no GRU Predictor Module) reduces them to 65.03\% and 50.51\%; the degradation is particularly pronounced under fixed-frequency excitation, where the response is evaluated over a long interval and an uncompensated phase error accumulates. The ablation therefore confirms that the GRU Predictor Module, the time-augmented observation and the trainable attention pooling module all contribute to the final performance, and that the combination of the three is required to obtain the robustness reported in the previous subsections.}
+
+\begin{table}[htbp]
+\color{blue}
+\captionsetup{labelfont={color=blue}}
+\centering
+\caption{\textcolor{blue}{Ablation study of the GRUA-TD3 controller in the non-ideal environment with a $-(3,1)$ loop delay. The attenuation rate is computed with respect to the no-control response of the same experiment set.}}
+\label{tab:ablation}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcccc} 
+\toprule   
+\multirow{2}{*}{Control Strategy} & \multicolumn{2}{c}{Initial Displacement} & \multicolumn{2}{c}{Fixed-Frequency Excitation} \\ \cline{2-5}
+& Mean Max.\ Amplitude (m) & Attenuation Rate & Mean Max.\ Amplitude (m) & Attenuation Rate \\ \midrule
+No Control                      & $4.60\times10^{-3}$ & 0.00\%  & $6.12\times10^{-3}$ & 0.00\%  \\
+MLP-TD3                         & $1.61\times10^{-3}$ & 65.03\% & $3.03\times10^{-3}$ & 50.51\% \\
+GRUA-TD3 (\textcolor{blue}{Fixed attn.})      & $2.46\times10^{-3}$ & 46.42\% & $2.01\times10^{-3}$ & 67.12\% \\
+GRUA-TD3 (\textcolor{blue}{No time aug.}) & $1.56\times10^{-3}$ & 66.12\% & $2.39\times10^{-3}$ & 60.98\% \\
+GRUA-TD3 (Proposed)             & $8.35\times10^{-4}$ & 81.85\% & $6.66\times10^{-4}$ & 89.11\% \\
+\bottomrule  
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+	\color{blue}
+	\captionsetup{labelfont={color=blue}}
+	\centerline{\includegraphics[width=0.6\textwidth]{figures/fig20}}
+	\caption{\textcolor{blue}{Comparison of the ablation configurations under the initial-displacement condition in the non-ideal environment with a $-(3,1)$ total loop delay. MLP-TD3 corresponds to the removal of the GRU Predictor Module, ``Fixed att.'' to the removal of the trainable attention pooling, and ``No time aug.'' to the removal of the time augmentation.}}
+	\label{fig:ablation_free}
+\end{figure}
+
+\begin{figure}[H]
+	\color{blue}
+	\captionsetup{labelfont={color=blue}}
+	\centerline{\includegraphics[width=0.75\textwidth]{figures/fig21}}
+	\caption{\textcolor{blue}{Comparison of the ablation configurations under the 30\,Hz fixed-frequency excitation in the non-ideal environment with a $-(3,1)$ total loop delay. MLP-TD3 corresponds to the removal of the GRU Predictor Module, ``Fixed att.'' to the removal of the trainable attention pooling, and ``No time aug.'' to the removal of the time augmentation.}}
+	\label{fig:ablation_fixed}
+\end{figure}
+
+\subsubsection{\textcolor{blue}{Robustness to Model Parameter Variation}}
+
+\textcolor{blue}{Because the controller is intended to be applied to a physical structure whose parameters are known only approximately, the sensitivity of the trained controller to a drift of the structural parameters was also examined. Taking the nominal parameters of Table~\ref{tab:system_params} as the reference, the primary-structure mass and the primary-structure stiffness were perturbed by $\pm10\%$ one at a time, giving the four additional parameter sets $(0.9M,K,C)$, $(1.1M,K,C)$, $(M,0.9K,C)$ and $(M,1.1K,C)$; the damping coefficients were left unchanged. The controller was not re-trained for any of these sets: the same GRUA-TD3 controller, trained on the nominal model under a $-(3,1)$ total loop delay, was applied directly. The results are collected in Table~\ref{tab:robustness}.}
+
+\begin{table}[htbp]
+\color{blue}
+\captionsetup{labelfont={color=blue}}
+\centering
+\caption{\textcolor{blue}{Robustness of the trained GRUA-TD3 controller to $\pm10\%$ variations of the structural parameters, evaluated in the non-ideal environment with a $-(3,1)$ loop delay. the attenuation rate is computed with respect to the no-control response of the same experiment set.}}
+\label{tab:robustness}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc} 
+\toprule   
+\multirow{2}{*}{Model Parameter} & \multicolumn{2}{c}{Initial Displacement} & \multicolumn{2}{c}{Fixed-Frequency Excitation} \\ \cline{2-5}
+& Mean Max.\ Amplitude (m) & Attenuation Rate & Mean Max.\ Amplitude (m) & Attenuation Rate \\ \midrule
+No Control        & $4.60\times10^{-3}$ & 0.00\%  & $6.12\times10^{-3}$ & 0.00\%  \\
+$(M,K,C)$         & $2.74\times10^{-4}$ & 94.05\% & $6.69\times10^{-4}$ & 89.05\% \\
+$(0.9M,K,C)$      & $2.84\times10^{-4}$ & 93.83\% & $8.52\times10^{-4}$ & 86.08\% \\
+$(1.1M,K,C)$      & $4.74\times10^{-4}$ & 89.71\% & $5.50\times10^{-4}$ & 91.01\% \\
+$(M,0.9K,C)$      & $3.48\times10^{-4}$ & 92.44\% & $5.90\times10^{-4}$ & 90.35\% \\
+$(M,1.1K,C)$      & $2.04\times10^{-4}$ & 95.56\% & $7.62\times10^{-4}$ & 87.54\% \\
+\bottomrule  
+\end{tabular}
+\end{table}
+
+\textcolor{blue}{Under the initial-displacement condition the attenuation rate varies only between 89.71\% and 95.56\% over the five parameter sets, with a standard deviation of 1.97\%, and under the fixed-frequency excitation condition it varies between 86.08\% and 91.01\%, with a standard deviation of 1.81\%. In both cases the worst-case performance remains close to the nominal performance, so that a $\pm10\%$ drift of the structural mass or stiffness does not compromise the effectiveness of the controller. This behaviour is consistent with the model-free nature of the proposed controller and indicates that the temporal context supplied to the network partly absorbs the change in the structural dynamics.}
+
+
+% ======================================================================
+\section{Conclusions}
+\label{sec:conclusions}
+
+Focusing on the active control requirements of active tuned mass dampers in engineering environments, this paper explored the concept of structural vibration control based on deep reinforcement learning.
+To effectively address the \textcolor{blue}{total loop delay} caused by sensing and actuation delays, along with the system non-stationarity induced by random sampling, a \textcolor{blue}{temporal-aware} GRUA-TD3 controller based on \textcolor{blue}{temporal-aware sensing} suitable for complex environmental conditions was developed.
+Temporal information from two sources, the sampling time interval and \textcolor{blue}{the measured total loop delay}, was incorporated into the observation vector to construct a time-augmented state.
+At the front end of the Actor and Critic networks of the standard TD3 algorithm, \textcolor{blue}{GRU Predictor Modules} were introduced to extract feature information from the input time-augmented state sequences \textcolor{blue}{and to predict the near-future response}.
+Subsequently, an \textcolor{blue}{attention pooling} layer was added after the \textcolor{blue}{GRU Predictor Modules} to adaptively weight the key information within the predicted time sequences \textcolor{blue}{produced by the predictor}.
+Through numerical simulation experiments and comparative analysis with conventional control algorithms and the standard TD3 algorithm, the following conclusions are drawn:
+
+\begin{enumerate}
+\item The standard TD3 algorithm is feasible for model-free vibration control. Simulation results demonstrate stable convergence and an approximately 80\% reduction in the vibration amplitude of the primary structure under ideal conditions, confirming the potential of deep reinforcement learning for structural vibration control.
+
+\item In an ideal simulation environment, the GRUA-TD3 controller achieves vibration suppression comparable to that of the PID and standard TD3 controllers, reducing the displacement amplitude of the primary structure by more than \textcolor{blue}{76\%, and by up to 83\% under fixed-frequency excitation}.
+Furthermore, the controller trained under free vibration conditions generalizes effectively to both fixed-frequency and random excitations.
+
+\item In non-ideal environments with \textcolor{blue}{total loop delay} and variable step sizes, the GRUA-TD3 controller exhibits more stable convergence, stronger robustness, and superior vibration attenuation than the standard TD3 and PID controllers.
+It reduces the vibration amplitude of the primary structure by more than \textcolor{blue}{80\%} under complex \textcolor{blue}{total loop delay} conditions, demonstrating enhanced adaptability to complex engineering environments.
+
+\item \textcolor{blue}{The ablation and the robustness experiments identify the origin of this improvement and the admissible parameter drift. Removing the time augmentation, freezing the attention weights to a uniform distribution, or omitting the GRU Predictor Module each degrades the attenuation rate, and the complete configuration is the only one that remains above 81\% under both the initial-displacement and the fixed-frequency conditions. When the primary-structure mass or stiffness is perturbed by $\pm10\%$, the controller is applied without any re-training and the attenuation rate remains between 89.71\% and 95.56\% under initial-displacement excitation and between 86.08\% and 91.01\% under fixed-frequency excitation, the standard deviation being below 2.0\% in both cases.}
+\end{enumerate}
+
+\textcolor{blue}{\textbf{Limitations and future work.}} This study has several aspects that can be further refined and expanded.
+Limited by current hardware conditions and research time, the results obtained in this paper are primarily based on numerical simulations. \textcolor{blue}{They should therefore be regarded as a proof of concept obtained at the simulation stage rather than as a validated engineering solution. It is nevertheless worth emphasizing that the simulation stage is indispensable at the present stage of the work: it is the only way in which a prescribed and repeatable total loop delay and sampling jitter can be imposed, and in which the passive, PID, MLP-TD3 and GRUA-TD3 controllers can be compared under strictly identical conditions, none of which can be guaranteed on a physical test rig. A physical experiment is nevertheless required before the method can be claimed to be applicable in practice, and the experimental validation is therefore regarded as the most important item of future work.}
+In future work, the GRUA-TD3 controller could be deployed on a physical vibration control experimental platform to comprehensively verify its actual control performance and robustness, and to further optimize the algorithm for specific issues that may arise in practical applications, such as sensor noise and actuator nonlinearity.
+Furthermore, the dynamic model adopted in this paper is relatively simple; future work may extend the proposed control method to more complex nonlinear systems or multi-degree-of-freedom systems to further examine the control performance and practical applicability of the algorithm across a broader range of engineering scenarios.
+
+% ======================================================================
+\section*{Acknowledgments}
+The authors gratefully acknowledge the support by the National Natural Science Foundation of China (Grant No.12672029), the Natural Science Foundation of Sichuan Province (Grant No.2026NSFSC0012), the Fundamental Research Funds for the Central Universities (Grant No.2682026ZTPY014), the Open Funding of National Key Laboratory of Digital and Agile Aircraft Design (Grant No.F20250203), the Innovation Research Group of Natural Science Foundation of Sichuan Province for Aircraft Design and Service Safety (Grant No.2025NSFTD0002), Sichuan Province Key Laboratory of Advanced Structural Materials Mechanical Behavior and Service Safety, School of Mechanics and Aerospace Engineering, Southwest Jiaotong University.
+
+\section*{Declaration of conflicting interests}
+The authors declared no potential conflicts of interest with respect to the research, authorship, and/or publication of this article.
+
+\section*{Data availability}
+The data that support the findings of this study are available from the corresponding authors upon reasonable request.
+
+% ======================================================================
+\bibliography{ref}
+
+\end{document}

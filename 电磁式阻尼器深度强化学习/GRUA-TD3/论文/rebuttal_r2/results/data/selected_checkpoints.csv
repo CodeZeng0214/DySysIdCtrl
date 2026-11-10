@@ -1,0 +1,13 @@
+run,ckpt_ep,best20,window_end,path
+T1,840,6.96,838,savedata\T1_20260327中午MLP无延迟初位移条件部分观测\checkpoints\0327_235953_ep840ckpt.pth
+T1-1,1170,15.11,1170,savedata\T1-1_20260328中午MLP无延迟初位移条件部分观测\checkpoints\0328_215455_ep1170ckpt.pth
+T1-2,520,-0.74,522,savedata\T1-2_20260407下午MLP无延迟初位移条件部分观测\checkpoints\0408_125534_ep520ckpt.pth
+T2,565,66.25,565,savedata\T2_20260317下午无延迟初位移条件部分观测，修改平滑奖励函数，不看动作\checkpoints\0318_135341_ep565ckpt.pth
+T2-1,440,55.42,444,savedata\T2-1_20260926_随机种子实验T2-4\checkpoints\0926_165631_ep440ckpt.pth
+T2-2,250,80.57,248,savedata\T2-2_20260928_随机种子实验T2-7\checkpoints\0929_012255_ep250ckpt.pth
+T3,655,94.88,655,savedata\T3_20260401下午MLP-3-1延迟初位移条件部分观测\checkpoints\0401_181423_ep655ckpt.pth
+T3-1,50,-2.27,48,savedata\T3-1_20260925_随机种子实验T3-1\checkpoints\0925_102719_ep50ckpt.pth
+T3-2,230,-89.04,233,savedata\T3-2_20260928_随机种子实验T3-2\checkpoints\0928_225257_ep230ckpt.pth
+T4,105,130.98,104,savedata\T4_20260324下午-4-1延迟初位移条件部分观测平滑奖励看动作\checkpoints\0324_154204_ep105ckpt.pth
+T4-1,110,94.6,107,savedata\T4-1_20260928_随机种子实验T4-3\checkpoints\0928_112222_ep110ckpt.pth
+T4-2,110,163.77,115,savedata\T4-2_20260928_随机种子实验T4-4\checkpoints\0928_125403_ep110ckpt.pth

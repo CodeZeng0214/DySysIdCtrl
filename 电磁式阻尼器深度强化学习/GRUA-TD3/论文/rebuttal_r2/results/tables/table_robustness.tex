@@ -1,0 +1,21 @@
+\begin{table}[htbp]
+\centering
+\caption{Robustness of the trained GRUA-TD3 controller to $\pm10\%$ variations of the primary-structure mass $M$ and stiffness $k_M$. Each parameter configuration has its own no-control baseline, evaluated with the same delay and sampling-jitter realisations as the controlled run (10 paired episodes; mean $\pm$ standard deviation).}
+\label{tab:robustness}
+\small
+\setlength{\tabcolsep}{3.4pt}
+\begin{tabular}{lcccc}
+\toprule
+\multirow{2}{*}{Model Parameter} & \multicolumn{2}{c}{Initial Displacement} & \multicolumn{2}{c}{Fixed-Frequency Excitation} \\
+\cline{2-5}
+ & No Control (m) & Attenuation & No Control (m) & Attenuation \\
+\midrule
+$(M,K,C)$ & $4.60\times10^{-3}$ & 94.72\%$\pm$1.26 & $5.84\times10^{-3}$ & 87.91\%$\pm$1.21 \\
+$(0.9M,k_M)$ & $4.52\times10^{-3}$ & 97.46\%$\pm$1.10 & $4.14\times10^{-3}$ & 77.71\%$\pm$0.23 \\
+$(1.1M,k_M)$ & $4.90\times10^{-3}$ & 84.37\%$\pm$7.50 & $2.57\times10^{-3}$ & 78.00\%$\pm$0.04 \\
+$(M,0.9k_M)$ & $4.90\times10^{-3}$ & 86.60\%$\pm$2.31 & $2.19\times10^{-3}$ & 71.77\%$\pm$0.05 \\
+$(M,1.1k_M)$ & $4.51\times10^{-3}$ & 96.04\%$\pm$2.87 & $4.70\times10^{-3}$ & 82.77\%$\pm$0.77 \\
+\bottomrule
+\end{tabular}
+\end{table}
+

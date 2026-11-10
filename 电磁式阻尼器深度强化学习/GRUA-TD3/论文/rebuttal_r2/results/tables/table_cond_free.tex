@@ -1,0 +1,19 @@
+\begin{table}[htbp]
+\centering
+\caption{Controller performance data under free vibration conditions. The mean maximum amplitude is expressed in metres. \textcolor{blue}{The TD3 and GRUA-TD3 rows each summarise three independent training runs, every run contributing the checkpoint with the highest mean reward over a 20-episode window of its training curve; each checkpoint is evaluated over ten random realisations of the loop delay and of the sampling jitter that are shared with the corresponding no-control response, so that every value is the mean $\pm$ standard deviation over thirty episodes.}}
+\label{tab:free_vib_data}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lcccc}
+\toprule
+\multirow{2}{*}{Control Strategy} & \multicolumn{2}{c}{Ideal Environment} & \multicolumn{2}{c}{Non-Ideal Environment \textcolor{blue}{Delay}-(3,1)} \\
+\cline{2-5}
+& Mean Max.\ Amplitude \textcolor{blue}{(m)} & Attenuation Rate & Mean Max.\ Amplitude \textcolor{blue}{(m)} & Attenuation Rate \\ \midrule
+No Control & $4.60\times10^{-3}$ & 0.00\% & $4.60\times10^{-3}$ & 0.00\% \\
+PID & $7.99\times10^{-4}$ & 82.64\% & $2.44\times10^{-3}$ & 46.91\% \\
+TD3 & $(1.66\pm0.47)\times10^{-3}$ & $63.90\pm10.19$\% & $(1.96\pm1.31)\times10^{-3}$ & $57.41\pm28.42$\% \\
+GRUA-TD3 & $(7.80\pm2.92)\times10^{-4}$ & $83.05\pm6.34$\% & $(8.80\pm4.92)\times10^{-4}$ & $80.88\pm10.70$\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
